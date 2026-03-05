@@ -13,10 +13,10 @@ todos:
     status: completed
   - id: phase-4-dashboards
     content: "Phase 4 -- Dashboards: Client dashboard with order list, order detail with status timeline, device test report viewer (tabbed by category, pass/fail badges, expandable details, summary donut chart). Admin dashboard with KPI cards, order management table, device inventory, client list, manual status progression."
-    status: in_progress
+    status: completed
   - id: phase-5-device-cli
     content: "Phase 5 -- Device CLI: Python CLI tool with provision/test/status/finalize commands. Full test suite (~80-100 tests across 7 categories). Supabase reporter that uploads results in real-time. Self-destruct mechanism that removes all CLI traces, credentials, and itself after technician confirmation."
-    status: pending
+    status: in_progress
   - id: phase-6-agent-prompts
     content: "Phase 6 -- Agent Prompts: Write ~40 detailed coding agent prompts for all industry-specific productivity tools (PropertyGPT, ListingSync, VisaDoc OCR, TableMaster AI, InvoiceOCR Pro, LegalDoc Analyzer, ClinicScheduler, PermitTracker, TradeDoc AI, StudyBuddy, CodeQwen, BizOwner OS, etc.)."
     status: pending
