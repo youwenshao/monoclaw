@@ -6,7 +6,7 @@ export const COMPANY = {
   name: "MonoClaw",
   legalName: "Sentimento Technologies Limited",
   website: "www.monoclaw.app",
-  openclawWebsite: "www.openclaw.app",
+  openclawWebsite: "www.openclaw.ai",
   location: "Hong Kong",
 } as const;
 
@@ -112,13 +112,13 @@ export const BUNDLES: Bundle[] = [
     id: "pro_bundle",
     name: "Pro Bundle",
     priceHkd: 999,
-    description: "Fast + Think + Coder models",
+    description: "One Fast + One Think + One Coder model",
     includedCategories: ["fast", "think", "coder"],
     features: [
-      "All Fast models (5 models)",
-      "All Think models (4 models)",
-      "All Coder models (2 models)",
-      "11 models total",
+      "1 Fast model of your choice",
+      "1 Think model of your choice",
+      "1 Coder model of your choice",
+      "3 models total",
     ],
   },
   {
@@ -181,7 +181,7 @@ export const CLIENT_PERSONAS: ClientPersona[] = [
   { slug: "academic-researcher", name: "Academic Researcher", tagline: "AI-powered literature review, auto-formatted citations, grant deadline tracking", softwareStack: ["PaperSieve", "CiteBot", "TranslateAssist", "GrantTracker"] },
   { slug: "vibe-coder", name: "Vibe Coder", tagline: "Local coding assistant, HK-specific dev tools, zero API costs", softwareStack: ["CodeQwen-9B", "HKDevKit", "DocuWriter", "GitAssistant"] },
   { slug: "solopreneur", name: "Solopreneur", tagline: "Unified business dashboard, automated MPF, one-click social posting", softwareStack: ["BizOwner OS", "MPFCalc", "SocialSync", "SupplierLedger"] },
-  { slug: "curious-student", name: "Curious Student", tagline: "Private study assistant, interview prep, job tracking, thesis formatting", softwareStack: ["StudyBuddy", "InterviewPrep", "JobTracker", "ThesisFormatter"] },
+  { slug: "curious-student", name: "Student", tagline: "Private study assistant, interview prep, job tracking, thesis formatting", softwareStack: ["StudyBuddy", "InterviewPrep", "JobTracker", "ThesisFormatter"] },
 ];
 
 interface OrderStatusConfig {

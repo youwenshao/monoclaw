@@ -31,19 +31,59 @@ export function AddonsStep() {
   const selectedBundle = order.addons.bundle;
 
   function toggleModel(modelId: string) {
+    const model = LLM_MODELS.find((m) => m.id === modelId);
+    if (!model) return;
+
     const current = [...selectedModels];
     const idx = current.indexOf(modelId);
-    if (idx >= 0) current.splice(idx, 1);
-    else current.push(modelId);
-    setAddons({ models: current, bundle: null });
+
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      if (selectedBundle === "pro_bundle") {
+        // Pro bundle: check if we already have a model from this category
+        const sameCategory = current.find((id) => {
+          const m = LLM_MODELS.find((x) => x.id === id);
+          return m?.category === model.category;
+        });
+        if (sameCategory) {
+          // Replace existing model in this category
+          const sameIdx = current.indexOf(sameCategory);
+          current.splice(sameIdx, 1);
+        }
+        // Max 3 models for Pro bundle
+        if (current.length >= 3) {
+          return; // Should not happen with replacement logic above
+        }
+      }
+      current.push(modelId);
+    }
+    setAddons({ models: current, bundle: selectedBundle });
   }
 
   function selectBundle(bundleId: string | null) {
     if (selectedBundle === bundleId) {
       setAddons({ models: [], bundle: null });
     } else {
+      // When switching to Pro bundle, clear models as they need to be selected specifically
+      // When switching to Max bundle, clear models as it includes all
       setAddons({ models: [], bundle: bundleId });
     }
+  }
+
+  function getModelStatus(modelId: string, categoryId: ModelCategory) {
+    const isSelected = selectedModels.includes(modelId);
+    const isDisabled = !!selectedBundle && selectedBundle !== "pro_bundle";
+
+    if (selectedBundle === "pro_bundle") {
+      const hasOtherInCategory = selectedModels.some((id) => {
+        const m = LLM_MODELS.find((x) => x.id === id);
+        return m?.category === categoryId && id !== modelId;
+      });
+      return { isSelected, isDisabled: false, hasOtherInCategory };
+    }
+
+    return { isSelected, isDisabled, hasOtherInCategory: false };
   }
 
   function handleBack() {
@@ -52,6 +92,9 @@ export function AddonsStep() {
   }
 
   function handleNext() {
+    if (selectedBundle === "pro_bundle" && selectedModels.length < 3) {
+      // Optional: alert or validation for Pro bundle
+    }
     setCurrentStep(3);
     router.push("/order/industry" as never);
   }
@@ -78,20 +121,33 @@ export function AddonsStep() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {bundle.id === "pro_bundle" ? <Package className="h-5 w-5 text-primary" /> : <Crown className="h-5 w-5 text-primary" />}
+                    {bundle.id === "pro_bundle" ? (
+                      <Package className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Crown className="h-5 w-5 text-primary" />
+                    )}
                     <CardTitle className="text-lg">{bundle.name}</CardTitle>
                   </div>
-                  <Badge variant={bundle.id === "max_bundle" ? "default" : "secondary"}>
-                    {bundle.id === "pro_bundle" ? tPricing("popular") : tPricing("bestValue")}
+                  <Badge
+                    variant={bundle.id === "max_bundle" ? "default" : "secondary"}
+                  >
+                    {bundle.id === "pro_bundle"
+                      ? tPricing("popular")
+                      : tPricing("bestValue")}
                   </Badge>
                 </div>
-                <p className="text-2xl font-bold text-primary">{formatHKD(bundle.priceHkd)}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {formatHKD(bundle.priceHkd)}
+                </p>
                 <CardDescription>{bundle.description}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-1 text-sm">
                   {bundle.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-muted-foreground">
+                    <li
+                      key={f}
+                      className="flex items-center gap-2 text-muted-foreground"
+                    >
                       <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                       {f}
                     </li>
@@ -105,37 +161,77 @@ export function AddonsStep() {
 
       <div className="mb-10">
         <h2 className="mb-4 text-xl font-semibold">
-          {tPricing("addons")} <span className="text-sm font-normal text-muted-foreground">(a-la-carte)</span>
+          {selectedBundle === "pro_bundle"
+            ? "Select Your 3 Models"
+            : tPricing("addons")}{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            {selectedBundle === "pro_bundle"
+              ? "(Pick one from each category)"
+              : "(a-la-carte)"}
+          </span>
         </h2>
         {MODEL_CATEGORIES.map((cat) => {
           const models = LLM_MODELS.filter((m) => m.category === cat.id);
+          // Standard models are not part of Pro bundle
+          const isCategoryInPro = ["fast", "think", "coder"].includes(cat.id);
+          const isProMode = selectedBundle === "pro_bundle";
+
           return (
-            <div key={cat.id} className="mb-6">
+            <div
+              key={cat.id}
+              className={`mb-6 ${
+                isProMode && !isCategoryInPro ? "opacity-50 grayscale" : ""
+              }`}
+            >
               <div className="mb-3 flex items-center gap-2">
                 {categoryIcons[cat.id]}
                 <h3 className="font-medium">{cat.name}</h3>
-                <Badge variant="outline">{formatHKD(cat.priceHkd)} {tPricing("perModel")}</Badge>
-                <span className="text-xs text-muted-foreground">{cat.parameterRange}</span>
+                {!isProMode && (
+                  <Badge variant="outline">
+                    {formatHKD(cat.priceHkd)} {tPricing("perModel")}
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {cat.parameterRange}
+                </span>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {models.map((model) => (
-                  <label
-                    key={model.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                      selectedModels.includes(model.id) ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                    } ${selectedBundle ? "pointer-events-none opacity-50" : ""}`}
-                  >
-                    <Checkbox
-                      checked={selectedModels.includes(model.id)}
-                      onCheckedChange={() => toggleModel(model.id)}
-                      disabled={!!selectedBundle}
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{model.name} <span className="text-muted-foreground">{model.parameterSize}</span></p>
-                      <p className="text-xs text-muted-foreground">{model.description}</p>
-                    </div>
-                  </label>
-                ))}
+                {models.map((model) => {
+                  const { isSelected, isDisabled } = getModelStatus(
+                    model.id,
+                    cat.id
+                  );
+                  const isModelDisabled =
+                    isDisabled || (isProMode && !isCategoryInPro);
+
+                  return (
+                    <label
+                      key={model.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "hover:bg-muted/50"
+                      } ${isModelDisabled ? "pointer-events-none opacity-50" : ""}`}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleModel(model.id)}
+                        disabled={isModelDisabled}
+                      />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {model.name}{" "}
+                          <span className="text-muted-foreground">
+                            {model.parameterSize}
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {model.description}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           );

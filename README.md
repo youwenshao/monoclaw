@@ -3,7 +3,7 @@
 MonoClaw offers a service that sets up a virtual employee named **Mona**, powered by local LLMs running on dedicated Mac hardware in Hong Kong. Operated by **Sentimento Technologies Limited**, MonoClaw provides a tailored software suite over base OpenClaw, offering intuitive and seamless integration into existing business workflows with a focus on privacy and data integrity.
 
 Product Website: [www.monoclaw.app](https://www.monoclaw.app)  
-Powered by: [OpenClaw](https://www.openclaw.app)
+Powered by: [OpenClaw](https://www.openclaw.ai)
 
 ---
 

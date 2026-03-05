@@ -61,12 +61,20 @@ const SOFTWARE_FEATURES = [
   "Free setup & configuration",
 ];
 
-function computeAlaCarteTotal(categoryIds: ModelCategory[]): number {
+function computeAlaCarteTotal(bundleId: string, categoryIds: ModelCategory[]): number {
   let total = 0;
   for (const catId of categoryIds) {
     const cat = MODEL_CATEGORIES.find((c) => c.id === catId);
-    const modelCount = LLM_MODELS.filter((m) => m.category === catId).length;
-    if (cat) total += cat.priceHkd * modelCount;
+    if (!cat) continue;
+
+    if (bundleId === "pro_bundle") {
+      // Pro bundle offers 1 model per category
+      total += cat.priceHkd;
+    } else {
+      // Max bundle offers all models in all categories
+      const modelCount = LLM_MODELS.filter((m) => m.category === catId).length;
+      total += cat.priceHkd * modelCount;
+    }
   }
   return total;
 }
@@ -263,7 +271,7 @@ export function PricingContent() {
 
           <div className="mx-auto grid max-w-3xl gap-6 sm:grid-cols-2">
             {BUNDLES.map((bundle) => {
-              const alaCarte = computeAlaCarteTotal(bundle.includedCategories);
+              const alaCarte = computeAlaCarteTotal(bundle.id, bundle.includedCategories);
               const savings = alaCarte - bundle.priceHkd;
               const isMax = bundle.id === "max_bundle";
 

@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
   {
     question: "What if I need custom software?",
     answer:
-      "Your OpenClaw agent can pull additional software from our GitHub repository at www.openclaw.app. Contact us for bespoke development.",
+      "Your OpenClaw agent can pull additional software from our GitHub repository at www.openclaw.ai. Contact us for bespoke development.",
   },
 ];
 
