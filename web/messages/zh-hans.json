@@ -1,0 +1,116 @@
+{
+  "common": {
+    "companyName": "MonoClaw",
+    "parentCompany": "Sentimento Technologies Limited",
+    "tagline": "您的AI员工，由本地智能驱动",
+    "learnMore": "了解更多",
+    "getStarted": "立即开始",
+    "currency": "港币",
+    "loading": "加载中..."
+  },
+  "nav": {
+    "home": "首页",
+    "pricing": "价格",
+    "industries": "行业方案",
+    "about": "关于我们",
+    "faq": "常见问题",
+    "contact": "联系我们",
+    "dashboard": "控制台",
+    "admin": "管理后台",
+    "signIn": "登录",
+    "signOut": "退出",
+    "orderNow": "立即订购"
+  },
+  "footer": {
+    "product": "产品",
+    "company": "公司",
+    "legal": "法律",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "copyright": "© 2026 Sentimento Technologies Limited. 保留所有权利。",
+    "madeIn": "香港制造",
+    "description": "MonoClaw 部署 Mona——您的AI虚拟员工，运行于香港本地的专用Mac硬件上。"
+  },
+  "locale": {
+    "en": "English",
+    "zh-hant": "繁體中文",
+    "zh-hans": "简体中文",
+    "switchLocale": "语言"
+  },
+  "auth": {
+    "signInWithGoogle": "使用 Google 登录",
+    "signInDescription": "登录以查看您的控制台和订单状态。",
+    "welcomeBack": "欢迎回来",
+    "newAccount": "初次使用 MonoClaw？"
+  },
+  "hero": {
+    "title": "认识 Mona，您的AI员工",
+    "subtitle": "由本地大语言模型驱动的虚拟员工，运行于香港专用Mac硬件上。私密、快速、全天候在线。",
+    "cta": "立即开始",
+    "secondaryCta": "查看价格"
+  },
+  "pricing": {
+    "title": "简单透明的定价",
+    "subtitle": "一次性付费，无需持续缴费。您的AI员工，永久拥有。",
+    "softwareSuite": "OpenClaw 软件套装",
+    "hardware": "硬件",
+    "addons": "本地LLM附加模型",
+    "bundles": "套餐",
+    "perModel": "每个模型",
+    "popular": "最受欢迎",
+    "bestValue": "最佳价值",
+    "includedFeatures": "包含功能",
+    "startingFrom": "起价"
+  },
+  "industries": {
+    "title": "为您的行业量身定制",
+    "subtitle": "预装软件，专为香港主要商业领域打造。",
+    "painPoints": "我们解决的痛点",
+    "softwareStack": "预装软件",
+    "viewAll": "查看所有行业"
+  },
+  "dashboard": {
+    "title": "控制台",
+    "orders": "我的订单",
+    "noOrders": "您还没有任何订单。",
+    "orderDetails": "订单详情",
+    "testReport": "设备测试报告",
+    "statusTimeline": "状态时间轴",
+    "settings": "设置",
+    "deviceInfo": "设备信息",
+    "overallStatus": "整体状态",
+    "testCategories": "测试类别",
+    "passed": "通过",
+    "failed": "失败",
+    "warnings": "警告",
+    "skipped": "跳过"
+  },
+  "order": {
+    "title": "订购您的AI员工",
+    "step1": "选择硬件",
+    "step2": "选择附加模型",
+    "step3": "选择行业",
+    "step4": "确认及付款",
+    "hardwareNote": "您将直接从Apple购买硬件，并寄送至我们的办公室进行设置。",
+    "configNote": "SSD存储容量、iMac颜色及以太网配置由您自行决定。",
+    "review": "确认订单",
+    "pay": "前往付款",
+    "total": "总计",
+    "confirmation": "订单已确认",
+    "confirmationMessage": "感谢您的订单！请按照以下说明购买您的硬件。",
+    "appleRedirect": "前往Apple购买硬件",
+    "shippingInstructions": "寄送至我们的办公室地址进行设置"
+  },
+  "admin": {
+    "title": "管理后台",
+    "totalOrders": "订单总数",
+    "revenue": "收入",
+    "devicesInProgress": "处理中设备",
+    "avgTestPassRate": "平均测试通过率",
+    "orders": "订单",
+    "devices": "设备",
+    "clients": "客户",
+    "updateStatus": "更新状态",
+    "assignTechnician": "指派技术员"
+  }
+}

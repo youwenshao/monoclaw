@@ -1,0 +1,116 @@
+{
+  "common": {
+    "companyName": "MonoClaw",
+    "parentCompany": "Sentimento Technologies Limited",
+    "tagline": "Your AI Employee, Powered by Local Intelligence",
+    "learnMore": "Learn More",
+    "getStarted": "Get Started",
+    "currency": "HKD",
+    "loading": "Loading..."
+  },
+  "nav": {
+    "home": "Home",
+    "pricing": "Pricing",
+    "industries": "Industries",
+    "about": "About",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "orderNow": "Order Now"
+  },
+  "footer": {
+    "product": "Product",
+    "company": "Company",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "copyright": "© 2026 Sentimento Technologies Limited. All rights reserved.",
+    "madeIn": "Made in Hong Kong",
+    "description": "MonoClaw deploys Mona, your AI-powered virtual employee, on dedicated Mac hardware running locally in Hong Kong."
+  },
+  "locale": {
+    "en": "English",
+    "zh-hant": "繁體中文",
+    "zh-hans": "简体中文",
+    "switchLocale": "Language"
+  },
+  "auth": {
+    "signInWithGoogle": "Sign in with Google",
+    "signInDescription": "Sign in to access your dashboard and order status.",
+    "welcomeBack": "Welcome back",
+    "newAccount": "New to MonoClaw?"
+  },
+  "hero": {
+    "title": "Meet Mona, Your AI Employee",
+    "subtitle": "A virtual employee powered by local LLMs, running on dedicated Mac hardware in Hong Kong. Private, fast, and always on.",
+    "cta": "Get Started",
+    "secondaryCta": "View Pricing"
+  },
+  "pricing": {
+    "title": "Simple, Transparent Pricing",
+    "subtitle": "One-time payment. No recurring fees. Your AI employee, forever.",
+    "softwareSuite": "OpenClaw Software Suite",
+    "hardware": "Hardware",
+    "addons": "Local LLM Add-ons",
+    "bundles": "Bundles",
+    "perModel": "per model",
+    "popular": "Most Popular",
+    "bestValue": "Best Value",
+    "includedFeatures": "What's Included",
+    "startingFrom": "Starting from"
+  },
+  "industries": {
+    "title": "Built for Your Industry",
+    "subtitle": "Pre-loaded software tailored to Hong Kong's key business sectors.",
+    "painPoints": "Pain Points We Solve",
+    "softwareStack": "Pre-loaded Software",
+    "viewAll": "View All Industries"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "orders": "My Orders",
+    "noOrders": "You don't have any orders yet.",
+    "orderDetails": "Order Details",
+    "testReport": "Device Test Report",
+    "statusTimeline": "Status Timeline",
+    "settings": "Settings",
+    "deviceInfo": "Device Information",
+    "overallStatus": "Overall Status",
+    "testCategories": "Test Categories",
+    "passed": "Passed",
+    "failed": "Failed",
+    "warnings": "Warnings",
+    "skipped": "Skipped"
+  },
+  "order": {
+    "title": "Order Your AI Employee",
+    "step1": "Select Hardware",
+    "step2": "Choose Add-ons",
+    "step3": "Select Industry",
+    "step4": "Review & Pay",
+    "hardwareNote": "You will purchase the hardware directly from Apple and ship it to our office for setup.",
+    "configNote": "SSD storage, iMac color, and Ethernet configuration are at your discretion.",
+    "review": "Review Order",
+    "pay": "Proceed to Payment",
+    "total": "Total",
+    "confirmation": "Order Confirmed",
+    "confirmationMessage": "Thank you for your order! Please follow the instructions below to purchase your hardware.",
+    "appleRedirect": "Purchase Hardware from Apple",
+    "shippingInstructions": "Ship to our office address for setup"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "totalOrders": "Total Orders",
+    "revenue": "Revenue",
+    "devicesInProgress": "Devices In Progress",
+    "avgTestPassRate": "Avg Test Pass Rate",
+    "orders": "Orders",
+    "devices": "Devices",
+    "clients": "Clients",
+    "updateStatus": "Update Status",
+    "assignTechnician": "Assign Technician"
+  }
+}
