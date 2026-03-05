@@ -1,7 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
-import { LandingContent } from "./landing-content";
+import { PricingContent } from "./pricing-content";
 
-export default async function HomePage({
+export default async function PricingPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
@@ -9,5 +9,5 @@ export default async function HomePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <LandingContent />;
+  return <PricingContent />;
 }
