@@ -28,6 +28,7 @@ Hong Kong estate agents and small landlords managing 5-50 residential tenancy ag
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | Notifications | Twilio WhatsApp Business API |
+| Telegram | `python-telegram-bot` |
 | Date calculations | `python-dateutil` |
 
 ## File Structure
@@ -69,6 +70,29 @@ Hong Kong estate agents and small landlords managing 5-50 residential tenancy ag
 - **Rating and Valuation Department (RVD)**: CR109 form specifications and filing requirements reference.
 - **Inland Revenue Department (IRD)**: Stamp duty rate tables (updated annually in Budget).
 - **Apple Calendar**: Create calendar events for renewal dates, handover dates, and filing deadlines.
+- **Telegram Bot API**: Secondary messaging channel for client communication. Supports the same booking/notification flows as WhatsApp.
+
+## GUI Specification
+
+Part of the **Real Estate Dashboard** (`http://mona.local:8001`) — TenancyDoc tab.
+
+### Views
+
+- **Agreement Wizard**: Step-by-step form (landlord details → tenant details → property → terms → special conditions) with live PDF preview updating as fields are filled.
+- **Stamp Duty Calculator**: Interactive widget that auto-updates as rent and term values change. Shows breakdown and total payable.
+- **Renewal Calendar**: Calendar view with color-coded urgency (green >90 days, amber 30-90 days, red <30 days). Click any tenancy to view details or trigger renewal workflow.
+- **Document Archive**: Table of all generated documents with version history, download links, and regeneration controls.
+- **CR109 Manager**: Form CR109 filing tracker showing which tenancies have been filed and which are pending.
+
+### Mona Integration
+
+- Mona monitors lease expiry dates and auto-generates renewal reminder sequences via WhatsApp.
+- Mona pre-fills agreement fields from previous tenancy data when renewals are detected.
+- Human reviews and approves all generated documents before they are sent to parties.
+
+### Manual Mode
+
+- Agent can manually create tenancy agreements, calculate stamp duty, generate CR109 forms, and manage the document archive without Mona.
 
 ## HK-Specific Requirements
 
@@ -126,6 +150,16 @@ CREATE TABLE renewal_alerts (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Agency name, EAA license number, office address, operating hours
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language (EN/TC)
+3. **Platform Credentials**: Apple Calendar access, IRD stamp duty rate source URL, and RVD CR109 filing portal details (where applicable)
+4. **Sample Data**: Option to seed demo data for testing before going live
+5. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Generated tenancy agreement contains all mandatory clauses per SAR standard form
@@ -145,3 +179,7 @@ CREATE TABLE renewal_alerts (
 - **Privacy**: Tenancy documents contain HKID numbers and personal data protected under the PDPO. Never log full HKID numbers — mask as `A1234XX(X)` in logs. Store database encrypted at rest using SQLCipher if available.
 - **Memory**: This tool is lightweight (<500MB RAM). No LLM needed for core functionality — all generation is template-based.
 - **Backup**: Auto-version documents. When regenerating, increment version number and keep previous versions in `backups/`.
+- **Logging**: All operations logged to `/var/log/openclaw/tenancy-doc.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state, and memory usage. Consumed by the Mona Hub launcher.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or migration.

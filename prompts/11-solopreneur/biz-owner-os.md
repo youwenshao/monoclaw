@@ -1,6 +1,6 @@
 # BizOwner OS
 
-## Tool Name & Overview
+## Overview
 
 BizOwner OS is a unified dashboard that integrates WhatsApp Business API, POS (Point of Sale) data, and basic accounting into a single pane of glass for Hong Kong small business owners. It provides a real-time view of daily sales, customer messages, inventory levels, and cash flow — replacing the fragmented spreadsheet-and-WhatsApp workflow that most HK SMEs rely on. Everything runs locally for data privacy and zero subscription costs.
 
@@ -19,17 +19,20 @@ Hong Kong small business owners — restaurant operators, retail shop owners, se
 
 ## Tech Stack
 
-- **Messaging**: Twilio WhatsApp Business API for customer communication management
-- **POS**: HTTP/webhook integrations with common HK POS APIs (Lightspeed, Square, iCHEF)
-- **LLM**: MLX local inference for auto-categorizing expenses and generating daily digest summaries
-- **Database**: SQLite for sales data, customer records, expenses, and inventory
-- **UI**: Streamlit dashboard with sales charts, message inbox, and accounting views
-- **Charts**: plotly for revenue trends, category breakdowns, and cash flow visualization
+| Component | Library / Tool |
+|-----------|---------------|
+| Messaging | Twilio WhatsApp Business API for customer communication management |
+| POS | HTTP/webhook integrations with common HK POS APIs (Lightspeed, Square, iCHEF) |
+| LLM | MLX local inference for auto-categorizing expenses and generating daily digest summaries |
+| Database | SQLite for sales data, customer records, expenses, and inventory |
+| UI | Streamlit dashboard with sales charts, message inbox, and accounting views |
+| Charts | plotly for revenue trends, category breakdowns, and cash flow visualization |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/biz-owner-os/
+/opt/openclaw/skills/local/biz-owner-os/
 ├── app.py                        # Streamlit unified dashboard
 ├── whatsapp/
 │   ├── inbox_manager.py          # WhatsApp message aggregation and management
@@ -59,12 +62,43 @@ Hong Kong small business owners — restaurant operators, retail shop owners, se
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/biz-owner-os/
+├── bizowner.db                       # SQLite database (sales, customers, expenses, inventory)
+├── receipts/                         # Uploaded receipt photos
+└── exports/                          # Generated P&L reports and data exports
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp Business API**: Customer message management and business digest delivery
 - **POS Systems**: REST API connectors for Lightspeed, Square, iCHEF (popular HK F&B POS)
 - **Local LLM (MLX)**: Expense categorization, daily digest narrative generation
 - **Receipt OCR** (optional): Tesseract for extracting amounts from photographed receipts
+- **Telegram Bot API**: Secondary channel for business alerts, customer communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Solopreneur Dashboard** (`http://mona.local:8506`) — BizOwner OS tab.
+
+### Views
+
+- **Boss Mode** (default): Three large KPI cards — today's revenue, pending WhatsApp messages, current cash position. Designed for at-a-glance morning check.
+- **Revenue Dashboard**: Daily/weekly/monthly revenue trend chart with toggle. Breakdown by payment method (cash, Octopus, FPS, credit card). Top-selling items.
+- **WhatsApp Inbox**: Unified customer message feed with auto-response status indicators (handled/pending/needs attention). Quick-reply templates.
+- **Quick Actions Bar**: One-click buttons for: record expense, add manual sale, broadcast WhatsApp message, generate daily report.
+- **Inventory Alerts**: Low-stock items displayed as warning cards with reorder suggestions and supplier quick-contact buttons.
+- **Customer CRM**: Lightweight customer cards built from WhatsApp contacts and POS data. Purchase frequency, total spend, last interaction.
+
+### Mona Integration
+
+- Mona syncs POS data automatically and updates revenue dashboards in real-time.
+- Mona handles routine WhatsApp customer inquiries (hours, menu, pricing) and escalates complex ones to the inbox.
+- Human reviews daily digest, records manual transactions, and composes promotional messages.
+
+### Manual Mode
+
+- Business owner can manually record sales/expenses, manage the WhatsApp inbox, view reports, and track inventory without Mona.
 
 ## HK-Specific Requirements
 
@@ -140,6 +174,19 @@ CREATE TABLE whatsapp_messages (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Business name, BR number, business type, operating hours, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **POS Integration**: Connect POS system (iCHEF, Lightspeed, Square) via API or configure CSV import
+4. **Payment Methods**: Configure accepted payment methods (cash, Octopus, FPS, credit card, AlipayHK, WeChat Pay)
+5. **MPF Trustee**: Select MPF trustee and upload remittance statement template
+6. **Social Accounts**: Connect Instagram Business, Facebook Page, and WhatsApp Business accounts
+7. **Sample Data**: Option to seed demo sales, expenses, and employees for testing
+8. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] WhatsApp auto-responder replies with business hours when customer sends "what time do you open?"
@@ -160,3 +207,7 @@ CREATE TABLE whatsapp_messages (
 - Memory budget: ~4GB (LLM for categorization + Streamlit dashboard); POS sync runs as periodic background task
 - Receipt OCR: optional feature — many HK small businesses still receive handwritten receipts; Tesseract + LLM extraction provides reasonable accuracy
 - Consider implementing a "boss mode" — simplified mobile-friendly view that shows only the 3 most important numbers: today's revenue, pending messages, cash position
+- **Logging**: All operations logged to `/var/log/openclaw/biz-owner-os.log` with daily rotation (7-day retention). Financial data and customer details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Business financial data protected under PDPO — zero cloud processing for transaction data.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, POS sync status, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all business data for backup or accountant handoff.

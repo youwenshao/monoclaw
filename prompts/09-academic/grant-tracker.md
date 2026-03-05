@@ -1,6 +1,6 @@
 # GrantTracker
 
-## Tool Name & Overview
+## Overview
 
 GrantTracker monitors research funding deadlines from Hong Kong's major grant bodies (RGC, ITF, NSFC), auto-populates common application form fields from researcher profiles, and tracks submission status through the review process. It serves as a centralized command center for academics managing multiple grant applications across different funding agencies with overlapping timelines.
 
@@ -19,17 +19,20 @@ Hong Kong university researchers, principal investigators, and departmental rese
 
 ## Tech Stack
 
-- **Web Scraping**: Playwright for monitoring RGC/ITF websites; BeautifulSoup4 for HTML parsing
-- **Scheduler**: APScheduler for deadline reminders and periodic website checks
-- **Notifications**: Twilio WhatsApp; smtplib for email reminders
-- **Database**: SQLite for researcher profiles, grant applications, deadlines, and publication records
-- **UI**: Streamlit dashboard with deadline calendar, application pipeline view, and budget editor
-- **Document Generation**: python-docx for populating Word-based application forms; openpyxl for Excel budget templates
+| Component | Library / Tool |
+|-----------|---------------|
+| Web Scraping | Playwright for monitoring RGC/ITF websites; BeautifulSoup4 for HTML parsing |
+| Scheduler | APScheduler for deadline reminders and periodic website checks |
+| Notifications | Twilio WhatsApp; smtplib for email reminders |
+| Database | SQLite for researcher profiles, grant applications, deadlines, and publication records |
+| UI | Streamlit dashboard with deadline calendar, application pipeline view, and budget editor |
+| Document Generation | python-docx for populating Word-based application forms; openpyxl for Excel budget templates |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/grant-tracker/
+/opt/openclaw/skills/local/grant-tracker/
 ├── app.py                        # Streamlit grant management dashboard
 ├── monitoring/
 │   ├── rgc_monitor.py            # RGC website scraper for deadlines
@@ -49,12 +52,15 @@ Hong Kong university researchers, principal investigators, and departmental rese
 │   ├── reminder_engine.py        # Deadline reminder scheduling
 │   ├── whatsapp.py               # Twilio WhatsApp alerts
 │   └── email_sender.py           # Email notifications
-├── data/
-│   ├── grants.db                 # SQLite database
-│   ├── budget_templates/         # Excel budget templates per scheme
-│   └── grant_schemes.json        # Grant scheme definitions and deadlines
 ├── requirements.txt
 └── README.md
+```
+
+```
+~/OpenClawWorkspace/grant-tracker/
+├── grants.db                     # SQLite database
+├── budget_templates/             # Excel budget templates per scheme
+└── grant_schemes.json            # Grant scheme definitions and deadlines
 ```
 
 ## Key Integrations
@@ -63,6 +69,29 @@ Hong Kong university researchers, principal investigators, and departmental rese
 - **ITF Portal**: Monitors Innovation and Technology Fund for funding calls
 - **Semantic Scholar / Google Scholar**: Fetches publication data for researcher profiles
 - **Twilio WhatsApp / Email**: Multi-channel deadline reminders
+- **Telegram Bot API**: Secondary channel for deadline reminders, paper alerts, and translation notifications.
+
+## GUI Specification
+
+Part of the **Academic Dashboard** (`http://mona.local:8505`) — GrantTracker tab.
+
+### Views
+
+- **Grant Deadline Calendar**: Full calendar view with deadlines for RGC, ITF, NSFC, ECS, GRF, and custom grants. Color-coded by funding body.
+- **Application Status Board**: Kanban-style board showing each grant application's progress (drafting → internal review → submitted → under review → awarded/rejected).
+- **Budget Calculator**: Interactive budget builder for grant applications with standard RGC categories (PI salary, RA, equipment, travel, consumables). Auto-totals and validates against scheme limits.
+- **Co-PI Management**: Track co-investigators across grants with effort allocation and contact details.
+- **Form Auto-Fill**: Select a grant scheme, enter project details, and auto-populate the application form template.
+
+### Mona Integration
+
+- Mona monitors funding body websites for deadline updates and scheme changes.
+- Mona sends WhatsApp reminders as deadlines approach (30/14/7 days).
+- Human manages applications, writes proposals, and tracks budgets.
+
+### Manual Mode
+
+- Researcher can manually track deadlines, manage applications, build budgets, and fill forms without Mona.
 
 ## HK-Specific Requirements
 
@@ -164,6 +193,19 @@ CREATE TABLE budget_items (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Researcher Profile**: Name, university affiliation, department, research areas, appointment date
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Grant Schemes**: Select relevant funding bodies (RGC, ITF, NSFC, etc.) and configure deadline monitoring
+4. **Institutional Settings**: Set internal deadline offsets, department review contacts
+5. **Budget Defaults**: RA salary norms, standard budget categories, institutional cost limits
+6. **Publication Import**: Connect Google Scholar or Semantic Scholar for publication list
+7. **Sample Data**: Option to seed demo grants and deadlines for testing
+8. **Connection Test**: Validates web scraping access, notification channels, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Scrapes RGC website and correctly identifies current GRF/ECS deadline dates
@@ -184,3 +226,7 @@ CREATE TABLE budget_items (
 - Memory budget: ~2GB (web scraping + scheduling; no LLM needed for this tool — it's primarily a tracking and form-filling application)
 - Consider adding a "success rate" tracker that helps researchers understand their historical success rate per scheme to guide future applications
 - Data backup: grant application data represents significant researcher effort — implement automatic SQLite backup to a configurable location
+- **Logging**: All operations logged to `/var/log/openclaw/grant-tracker.log` with daily rotation (7-day retention). Paper titles and researcher details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Research materials (unpublished papers, grant proposals) are sensitive — zero cloud processing.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/embedding model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all papers, citations, translations, and grant data.

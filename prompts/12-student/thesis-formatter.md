@@ -1,6 +1,6 @@
 # ThesisFormatter
 
-## Tool Name & Overview
+## Overview
 
 ThesisFormatter automates the tedious formatting requirements of university theses and dissertations for Hong Kong universities. It generates proper table of contents, figure lists, table lists, and bibliography sections, and enforces university-specific formatting guidelines (margins, fonts, heading styles, page numbering). Supports HKU, CUHK, HKUST, PolyU, CityU, and other HK university formats using python-docx for precise Word document manipulation.
 
@@ -19,17 +19,20 @@ Hong Kong postgraduate students (MPhil and PhD) and final-year undergraduates wr
 
 ## Tech Stack
 
-- **Document Processing**: python-docx for reading and manipulating Word documents (.docx)
-- **Bibliography**: citeproc-py for citation formatting; bibtexparser for BibTeX file handling
-- **PDF**: docx2pdf for converting formatted thesis to PDF; PyMuPDF for PDF validation
-- **Database**: SQLite for university formatting profiles, validation rules, and formatting history
-- **UI**: Streamlit with document upload, format preview, and validation report
-- **LLM**: MLX local inference (optional) for auto-detecting section types and suggesting heading structures
+| Component | Library / Tool |
+|-----------|---------------|
+| Document Processing | python-docx for reading and manipulating Word documents (.docx) |
+| Bibliography | citeproc-py for citation formatting; bibtexparser for BibTeX file handling |
+| PDF | docx2pdf for converting formatted thesis to PDF; PyMuPDF for PDF validation |
+| Database | SQLite for university formatting profiles, validation rules, and formatting history |
+| UI | Streamlit with document upload, format preview, and validation report |
+| LLM | MLX local inference (optional) for auto-detecting section types and suggesting heading structures |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/thesis-formatter/
+/opt/openclaw/skills/local/thesis-formatter/
 ├── app.py                        # Streamlit thesis formatting interface
 ├── formatting/
 │   ├── template_engine.py        # University template application
@@ -56,10 +59,14 @@ Hong Kong postgraduate students (MPhil and PhD) and final-year undergraduates wr
 │   ├── polyu.json                # PolyU thesis formatting rules
 │   ├── cityu.json                # CityU thesis formatting rules
 │   └── generic.json              # Generic fallback profile
-├── data/
-│   └── formatter.db              # SQLite database
 ├── requirements.txt
 └── README.md
+```
+
+```
+~/OpenClawWorkspace/thesis-formatter/
+├── formatter.db                  # SQLite database
+└── projects/                     # Thesis source and formatted files
 ```
 
 ## Key Integrations
@@ -68,6 +75,29 @@ Hong Kong postgraduate students (MPhil and PhD) and final-year undergraduates wr
 - **BibTeX**: Import references from .bib files for bibliography formatting
 - **PDF Conversion**: docx2pdf for final PDF output (many universities require PDF submission)
 - **Local LLM (MLX)**: Optional — for auto-detecting section types in unformatted documents
+- **Telegram Bot API**: Secondary channel for study reminders, interview notifications, and deadline alerts.
+
+## GUI Specification
+
+Part of the **Student Dashboard** (`http://mona.local:8507`) — ThesisFormatter tab.
+
+### Views
+
+- **University Template Selector**: Dropdown with HK university thesis templates (HKU, CUHK, HKUST, PolyU, CityU, HKBU, LingU, EdUHK). Each template shows required margins, fonts, and citation format.
+- **Document Upload & Validation**: Upload thesis .docx, run validation checks (margins, font, spacing, citation format, page numbering). Results shown as a checklist with pass/fail per rule.
+- **Table of Contents Generator**: Auto-generate ToC from document headings. Preview and customize.
+- **Formatting Fix Suggestions**: List of detected issues with "Fix" button to auto-correct each one. Preview changes before applying.
+- **Export Panel**: Download the formatted thesis as .docx or PDF. Version history with comparison.
+
+### Mona Integration
+
+- Mona auto-validates uploaded documents against the selected university template and flags issues.
+- Mona applies formatting fixes in batch with human approval.
+- Human selects the template, uploads the document, and approves fixes.
+
+### Manual Mode
+
+- Student can manually upload documents, validate formatting, apply fixes, and export without Mona.
 
 ## HK-Specific Requirements
 
@@ -144,6 +174,17 @@ CREATE TABLE sections (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Student Profile**: Name, university, programme, year of study, expected graduation date
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token (for formatting deadline reminders)
+3. **University Template**: Select thesis formatting template for your university (HKU, CUHK, HKUST, PolyU, CityU, HKBU, LingU, EdUHK)
+4. **Thesis Project Setup**: Title, supervisor, department, degree level
+5. **Sample Data**: Option to seed a sample thesis document for testing formatting
+6. **Connection Test**: Validates all API connections, document processing libraries, and PDF converter
+
 ## Testing Criteria
 
 - [ ] Applies HKU formatting profile with correct margins (25mm), font (Times New Roman 12pt), and 1.5 line spacing
@@ -165,3 +206,7 @@ CREATE TABLE sections (
 - Memory budget: ~2GB without LLM; ~5GB with LLM for auto-detection features; recommend running without LLM for pure formatting tasks
 - Consider adding a "format from scratch" mode that takes a plain text/markdown thesis and generates a fully formatted .docx from scratch, vs "fix existing" mode that adjusts formatting of an existing .docx
 - Testing approach: include sample thesis documents (anonymized) for each supported university to validate formatting profiles
+- **Logging**: All operations logged to `/var/log/openclaw/thesis-formatter.log` with daily rotation (7-day retention). Student personal data and academic content masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Course materials (copyrighted textbooks, exam papers) processed locally only — zero cloud processing.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/embedding model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all study data, flashcards, job applications, and exam attempts.

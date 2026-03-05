@@ -1,6 +1,6 @@
 # MedReminder Bot
 
-## Tool Name & Overview
+## Overview
 
 MedReminder Bot is a medication reminder and refill management system that communicates with patients via WhatsApp and SMS. It sends timely medication reminders, handles chronic medication refill requests with photo-based verification of empty bottles, and tracks patient adherence over time. Designed for Hong Kong clinics managing patients on long-term medication regimens.
 
@@ -19,17 +19,20 @@ Hong Kong GP clinics, chronic disease management centres, and pharmacies that pr
 
 ## Tech Stack
 
-- **Messaging**: Twilio WhatsApp Business API and Twilio SMS for patient communication
-- **OCR**: Tesseract OCR (pytesseract) for extracting drug names from bottle photos; MLX LLM as fallback for ambiguous text
-- **Scheduler**: APScheduler with SQLite job store for reliable reminder delivery
-- **Database**: SQLite for patient profiles, medication lists, compliance logs, refill requests
-- **UI**: Streamlit dashboard for clinic staff to manage reminders and review refill requests
-- **Drug Data**: Local JSON/SQLite database of common HK-prescribed medications with bilingual names
+| Component | Library / Tool |
+|-----------|---------------|
+| Messaging | Twilio WhatsApp Business API and Twilio SMS for patient communication |
+| OCR | Tesseract OCR (pytesseract) for extracting drug names from bottle photos; MLX LLM as fallback for ambiguous text |
+| Scheduler | APScheduler with SQLite job store for reliable reminder delivery |
+| Database | SQLite for patient profiles, medication lists, compliance logs, refill requests |
+| UI | Streamlit dashboard for clinic staff to manage reminders and review refill requests |
+| Drug Data | Local JSON/SQLite database of common HK-prescribed medications with bilingual names |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/med-reminder-bot/
+/opt/openclaw/skills/local/med-reminder-bot/
 ├── app.py                     # Streamlit clinic dashboard
 ├── bot/
 │   ├── whatsapp_handler.py    # Twilio webhook for patient messages
@@ -52,11 +55,44 @@ Hong Kong GP clinics, chronic disease management centres, and pharmacies that pr
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/med-reminder-bot/
+├── db/                        # SQLite database files
+├── photos/                    # Medication bottle photos
+├── logs/                      # Reminder and compliance logs
+└── reports/                   # Generated compliance reports
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp/SMS**: Dual-channel patient communication with automatic fallback from WhatsApp to SMS
 - **Tesseract OCR**: Extracts printed text from medication bottle photos for refill processing
 - **Local LLM (MLX)**: Fallback OCR interpretation and natural language understanding of patient messages
+- **Telegram Bot API**: Secondary patient communication channel for appointment reminders and medication alerts.
+
+## GUI Specification
+
+Part of the **Medical Dashboard** (`http://mona.local:8502`) — MedReminder tab.
+
+### Views
+
+- **Patient Medication Table**: List of patients with their active medications, dosage schedules, and overall compliance rates.
+- **Reminder Status Board**: Today's reminders with sent/acknowledged/missed status per patient per medication.
+- **Refill Management**: Queue of refill requests (from WhatsApp photo submissions) with OCR results, approval controls, and ready-for-pickup notifications.
+- **Compliance Reports**: Weekly/monthly adherence charts per patient with trend lines and clinic-wide averages.
+- **Drug Interaction Alerts**: Active warnings panel showing flagged interactions for current patient medication combinations.
+
+### Mona Integration
+
+- Mona sends medication reminders at scheduled times and tracks patient responses automatically.
+- Mona processes bottle photo refill requests via OCR and queues them for clinic staff review.
+- Human approves refill requests and reviews compliance trends for follow-up decisions.
+
+### Manual Mode
+
+- Clinic staff can manually manage medication lists, send reminders, process refills, and review compliance without Mona.
 
 ## HK-Specific Requirements
 
@@ -120,6 +156,19 @@ CREATE TABLE refill_requests (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Clinic Profile**: Clinic name, address, pharmacy license details, operating hours
+2. **Practitioners**: Add doctors with name, specialty, and prescribing privileges
+3. **Messaging Setup**: Twilio API credentials for WhatsApp/SMS, Telegram bot token
+4. **Medication Database**: Import or verify local drug database; add custom medications commonly prescribed at this clinic
+5. **Reminder Defaults**: Default reminder times (morning 08:00, afternoon 14:00, evening 20:00, bedtime 22:00), compliance response window (default 2 hours)
+6. **Refill Workflow**: Configure refill approval requirements, Part I poison authorization rules, pickup notification templates
+7. **Sample Data**: Option to seed demo patients and medication schedules for testing
+8. **Connection Test**: Validates all API connections, OCR engine availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Sends medication reminders at correct times for a patient with 3 daily medications across different time slots
@@ -139,3 +188,7 @@ CREATE TABLE refill_requests (
 - Compliance window: mark a dose as "taken" if patient responds within 2 hours of reminder; "missed" after 2 hours with no response
 - Memory budget: ~3GB (APScheduler is lightweight; OCR is invoked on-demand; LLM only for fallback)
 - Elderly patient consideration: support voice message responses — use Whisper for STT to detect "taken" confirmations from voice notes
+- **Logging**: All operations logged to `/var/log/openclaw/med-reminder-bot.log` with daily rotation (7-day retention). Patient names, phone numbers, and clinical data masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Health data is the most sensitive category under PDPO — explicit patient consent required for WhatsApp communication. Medication bottle photos auto-deleted after refill processing (configurable).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, OCR engine state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Exported records maintain medication history and compliance data.

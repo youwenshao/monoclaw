@@ -29,6 +29,7 @@ Hong Kong immigration consultants managing 10-30 active visa applications who ma
 | Data validation | `pydantic` |
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -69,7 +70,30 @@ Hong Kong immigration consultants managing 10-30 active visa applications who ma
 - **macOS Vision Framework**: Primary OCR engine. Leverages Apple's on-device ML for text recognition. Supports Chinese (Traditional + Simplified) and English natively on ARM64.
 - **Twilio WhatsApp Business API**: Receive document photos from clients via WhatsApp, process, and return extracted data summary.
 - **FormAutoFill (sibling tool)**: Feed extracted document data directly into the form population pipeline for ID990A/ID990B generation.
+- **Telegram Bot API**: Secondary messaging channel for client communication and status updates.
 - **Client database**: Store extracted data per client for cross-referencing across multiple application types.
+
+## GUI Specification
+
+Part of the **Immigration Dashboard** (`http://mona.local:8002`) — VisaDoc OCR tab.
+
+### Views
+
+- **Document Upload Zone**: Drag-drop area for scanned documents plus a queue of WhatsApp-received photos awaiting processing.
+- **Side-by-Side Viewer**: Original document image (zoomable, pannable) on the left; extracted structured data as editable form fields on the right.
+- **Confidence Indicators**: Per-field color coding — green (>85% confidence), amber (70-85%), red (<70%). Red fields are pre-highlighted for human correction.
+- **Batch Processing Queue**: Progress bars for multi-document uploads with per-document status (queued/processing/done/error).
+- **Action Bar**: "Approve and Send to FormAutoFill" button that pushes verified data to the sibling tool.
+
+### Mona Integration
+
+- Mona auto-processes documents received via WhatsApp and populates the queue with extracted results.
+- Human reviews extractions with low confidence scores, corrects errors, and approves before data flows downstream.
+- Mona learns from corrections to improve future extraction accuracy.
+
+### Manual Mode
+
+- Consultant can manually upload documents, review OCR results, correct fields, and export structured data without Mona.
 
 ## HK-Specific Requirements
 
@@ -120,6 +144,17 @@ CREATE TABLE scheme_applications (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Practice Profile**: Firm name, immigration consultant registration number, office address
+2. **OCR Settings**: Select primary OCR engine (Vision/Tesseract), confidence thresholds, supported document types
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language
+4. **Document Storage**: Configure incoming/processed/client file directories and retention policy
+5. **Sample Data**: Option to seed demo document images and OCR results for testing
+6. **Connection Test**: Validates OCR engine availability, API connections, and reports any issues
+
 ## Testing Criteria
 
 - [ ] HKID OCR extracts name, ID number, and DOB from 10 sample card images with >95% character accuracy
@@ -139,3 +174,7 @@ CREATE TABLE scheme_applications (
 - **Memory**: OCR processing is lightweight (<1GB). Can process documents in parallel using macOS Vision's batch API. Limit to 4 concurrent pages to stay within memory budget.
 - **Privacy-first architecture**: This tool handles the most sensitive personal data in the entire MonoClaw suite. Zero cloud processing. Encrypt the SQLite database. Implement audit logging for all data access. Auto-purge scanned images per configurable retention policy.
 - **Error recovery**: If Vision framework returns low confidence, automatically retry with Tesseract using `chi_tra+eng` language model. If both fail, return partial results with clear field-level error markers.
+- **Logging**: All operations logged to `/var/log/openclaw/visa-doc-ocr.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, passport numbers, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600). Immigration data is among the most sensitive in the MonoClaw suite — zero cloud processing for document content.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/OCR engine state, and memory usage.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or PDPO compliance.

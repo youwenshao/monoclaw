@@ -29,6 +29,7 @@ Hong Kong estate agents managing 10-30 active listings who currently spend 2-3 h
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | WhatsApp | Twilio WhatsApp Business API |
+| Telegram | `python-telegram-bot` |
 | File watching | `watchdog` |
 
 ## File Structure
@@ -73,6 +74,29 @@ Hong Kong estate agents managing 10-30 active listings who currently spend 2-3 h
 - **Twilio WhatsApp Business API**: Send formatted listing messages to group chats.
 - **Agent Website CMS**: Optional REST API integration for agent's own website if available.
 - **Google Drive / iCloud**: Watch folder for new listing photos, auto-trigger processing pipeline.
+- **Telegram Bot API**: Secondary messaging channel for client communication. Supports the same booking/notification flows as WhatsApp.
+
+## GUI Specification
+
+Part of the **Real Estate Dashboard** (`http://mona.local:8001`) — ListingSync tab.
+
+### Views
+
+- **Listing Editor**: Master listing creation form with image drag-drop gallery, field validation, and bilingual description editor.
+- **Platform Status Grid**: Rows = listings, columns = platforms (28Hse, Squarefoot, WhatsApp). Cells show post status with colored indicators (green=live, amber=pending, red=failed).
+- **Image Processing Preview**: Before/after comparison for watermark application and per-platform resize thumbnails.
+- **Performance Dashboard**: Views and inquiries per platform charted over time. Days-on-market counters. Stale listing flags.
+- **Lifecycle Controls**: One-click "Sync All" button, per-platform manual post/update/remove actions, and status change propagation.
+
+### Mona Integration
+
+- Mona auto-detects new listing photos in the watch folder and triggers the processing pipeline.
+- Mona auto-posts to all configured platforms at optimal times, showing progress in the Activity Feed.
+- Human reviews platform-adapted descriptions before posting, or configures auto-approve for trusted workflows.
+
+### Manual Mode
+
+- Agent can manually create listings, process images, write descriptions, and post to individual platforms without Mona.
 
 ## HK-Specific Requirements
 
@@ -130,6 +154,16 @@ CREATE TABLE images (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Agency name, EAA license number, office address, operating hours
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language (EN/TC)
+3. **Platform Credentials**: Login details for 28Hse, Squarefoot, agent website CMS, and Google Drive/iCloud watch folder paths (where applicable)
+4. **Sample Data**: Option to seed demo data for testing before going live
+5. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Description rewriting produces distinct, platform-appropriate text for 28Hse (Chinese-first) and Squarefoot (English-first)
@@ -149,3 +183,7 @@ CREATE TABLE images (
 - **Failure recovery**: If a platform post fails mid-upload, mark as `failed` with error details. Retry up to 3 times with exponential backoff. Alert agent via WhatsApp after 3 failures.
 - **Privacy**: Listing photos may contain tenant belongings. Never send images to external AI services. All image processing happens locally via Pillow.
 - **Scheduling**: Optimal posting times for HK property portals are 8-9am and 6-7pm HKT. Default scheduler targets these windows.
+- **Logging**: All operations logged to `/var/log/openclaw/listing-sync.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state, and memory usage. Consumed by the Mona Hub launcher.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or migration.

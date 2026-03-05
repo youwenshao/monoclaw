@@ -1,6 +1,6 @@
 # SafetyForm Bot
 
-## Tool Name & Overview
+## Overview
 
 SafetyForm Bot automates daily construction site safety checks with photo evidence upload, generates SSSS (Smart Site Safety System) compliance documentation, and manages toolbox talk records. It provides a WhatsApp-based interface for site safety officers to complete checks from the field and produces audit-ready safety documentation for regulatory inspection.
 
@@ -19,17 +19,20 @@ Hong Kong construction site safety officers, site agents, project managers, and 
 
 ## Tech Stack
 
-- **Messaging**: Twilio WhatsApp Business API for field-based safety check submission
-- **Image Processing**: Pillow for photo processing; exifread for GPS/timestamp extraction from photo metadata
-- **LLM**: MLX local inference for analyzing photo descriptions and auto-categorizing safety observations
-- **Database**: SQLite for safety records, checklists, incident reports, toolbox talk logs
-- **UI**: Streamlit dashboard for safety managers; PDF report generation
-- **PDF**: reportlab for generating formatted safety inspection reports and SSSS documentation
+| Component | Library / Tool |
+|-----------|---------------|
+| Messaging | Twilio WhatsApp Business API |
+| Image Processing | Pillow, exifread (GPS/timestamp extraction) |
+| LLM | MLX local inference |
+| Database | SQLite |
+| UI | Streamlit |
+| PDF | reportlab |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/safety-form-bot/
+/opt/openclaw/skills/local/safety-form-bot/
 ├── app.py                      # Streamlit safety management dashboard
 ├── bot/
 │   ├── whatsapp_handler.py     # Twilio webhook for field submissions
@@ -52,11 +55,45 @@ Hong Kong construction site safety officers, site agents, project managers, and 
 └── README.md
 ```
 
+## Workspace Data Directory
+
+```
+~/OpenClawWorkspace/safety-form-bot/
+├── safety.db                  # SQLite database (runtime data)
+├── photos/                    # Uploaded inspection and deficiency photos
+├── reports/                   # Generated SSSS compliance and monthly PDFs
+├── checklists/                # Customized checklist templates per site
+└── toolbox_talks/             # Completed toolbox talk records
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp**: Primary field interface for safety officers submitting daily checks from construction sites
 - **Local LLM (MLX)**: Analyzes free-text safety observations and helps categorize deficiencies
 - **Photo Storage**: Local filesystem with organized directory structure by date/site/category
+- **Telegram Bot API**: Secondary channel for permit alerts, safety reminders, and subcontractor dispatch.
+
+## GUI Specification
+
+Part of the **Construction Dashboard** (`http://mona.local:8503`) — SafetyForm tab.
+
+### Views
+
+- **Daily Checklist Interface**: Interactive safety checklist with checkboxes, photo attachment per item, and text notes. Pre-populated with date, site, and weather conditions.
+- **SSSS Report Generator**: One-click generation of Site Safety Supervision Scheme reports from completed checklists.
+- **Toolbox Talk Records**: Form for recording toolbox talk topics, attendee names (with signature capture), and duration.
+- **Compliance Calendar**: Calendar showing required inspection dates, audit deadlines, and training renewal dates.
+- **Photo Evidence Gallery**: Searchable gallery of all safety-related photos organized by date and checklist item.
+
+### Mona Integration
+
+- Mona sends morning reminders to site supervisors to complete daily checklists via WhatsApp.
+- Mona auto-generates SSSS reports from completed checklist data.
+- Human conducts inspections, takes photos, and signs off on checklists.
+
+### Manual Mode
+
+- Supervisor can manually fill checklists, upload photos, generate reports, and manage the compliance calendar without Mona.
 
 ## HK-Specific Requirements
 
@@ -155,6 +192,18 @@ CREATE TABLE toolbox_talks (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, CIC registration details, office address
+2. **Sites**: Add active construction sites with address, district, and project type
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, SMTP email for formal notifications
+4. **Safety Templates**: Upload or select standard safety checklist templates for the project type
+5. **Personnel Directory**: Import safety officer and site supervisor contact list with Green Card expiry dates
+6. **Sample Data**: Option to seed demo checklists and inspections for testing
+7. **Connection Test**: Validates all API connections and message delivery
+
 ## Testing Criteria
 
 - [ ] Daily checklist delivers all category items via WhatsApp and accepts photo + pass/fail responses
@@ -174,3 +223,7 @@ CREATE TABLE toolbox_talks (
 - Heat stress consideration: include automatic weather-based alerts when the Hong Kong Observatory issues Very Hot Weather Warning — trigger additional hydration checks
 - Memory budget: ~3GB (image processing is the heaviest operation; LLM only for free-text analysis)
 - Implement offline mode: safety officers may lose connectivity on site — queue submissions locally and sync when connection resumes
+- **Logging**: All operations logged to `/var/log/openclaw/safety-form-bot.log` with daily rotation (7-day retention). BD credentials and personal details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. BD portal credentials stored with restricted file permissions (600). Site safety records maintained for statutory retention period (minimum 7 years for construction records).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, Playwright browser state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Safety records and permit history maintained in export for compliance.

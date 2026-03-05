@@ -29,6 +29,7 @@ Popular Hong Kong restaurants with consistent walk-in queues (especially dim sum
 | Scheduling | `APScheduler` |
 | Database | `sqlite3` |
 | Real-time updates | Server-Sent Events (SSE) via `sse-starlette` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -69,6 +70,28 @@ Popular Hong Kong restaurants with consistent walk-in queues (especially dim sum
 - **Twilio Programmable SMS**: Fallback for customers without WhatsApp or when WhatsApp delivery fails.
 - **POS System**: Import historical transaction data (seating time, table, covers) for wait time estimation. Support CSV import from common HK POS systems (e-Pos, FoodZaps, Eats365).
 - **TableMaster AI (sibling tool)**: Share table status for coordinated queue-to-reservation flow. When a queue customer is seated, update the shared table inventory.
+- **Telegram Bot API**: Secondary channel for booking confirmations, queue updates, and guest communication.
+
+## GUI Specification
+
+Part of the **F&B Dashboard** (`http://mona.local:8003`) — QueueBot tab.
+
+### Views
+
+- **Live Queue Display**: Designed for waiting room TV — large-font display showing position, estimated wait time, and party size for each group. Auto-scrolling.
+- **QR Code Generator**: Generate and display the queue-joining QR code for placement at the restaurant entrance.
+- **Queue Management Controls**: Add walk-in, call next group, skip, remove, and adjust estimated wait times manually.
+- **Wait Time Analytics**: Chart showing average wait times by hour, day of week, and party size trends.
+
+### Mona Integration
+
+- Mona estimates wait times based on current table occupancy and average dining duration.
+- Mona sends WhatsApp notifications to queued guests when their table is nearly ready.
+- Human manages queue order overrides and VIP priority.
+
+### Manual Mode
+
+- Staff can manually manage the queue, add walk-ins, call guests, and display the queue board without Mona.
 
 ## HK-Specific Requirements
 
@@ -140,6 +163,18 @@ CREATE TABLE notifications (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Restaurant Profile**: Restaurant name, address, cuisine type, operating hours (lunch/dinner/dim sum sessions)
+2. **Table Configuration**: Define tables and seating capacity for queue wait time estimation
+3. **Messaging Setup**: Twilio API credentials for WhatsApp and SMS, Telegram bot token
+4. **POS Integration**: Import historical POS data (CSV) for wait time estimation baseline
+5. **Business Rules**: Default dining durations per meal period, notification timing, grace period for called guests
+6. **Sample Data**: Option to seed demo queue entries for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] QR code scan opens a mobile-optimized join form that works on iOS Safari and Android Chrome
@@ -160,3 +195,7 @@ CREATE TABLE notifications (
 - **Notification reliability**: Twilio callback webhooks confirm delivery. If undelivered after 60 seconds, escalate to SMS. If both fail, play an audio alert on the staff dashboard.
 - **POS data import**: Provide a CSV import tool for historical POS data. Map columns: table, covers, open_time, close_time. Run import nightly for the previous day's data. This feeds the wait time estimator.
 - **Privacy**: Phone numbers collected for queue notifications only. Auto-delete queue entries older than 24 hours. Don't build guest profiles from queue data (that's SommelierMemory's job).
+- **Logging**: All operations logged to `/var/log/openclaw/queue-bot.log` with daily rotation (7-day retention). Guest phone numbers masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication on first access. Guest personal data (phone, dietary/health info) protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data.

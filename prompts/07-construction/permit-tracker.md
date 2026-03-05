@@ -1,6 +1,6 @@
 # PermitTracker
 
-## Tool Name & Overview
+## Overview
 
 PermitTracker monitors Hong Kong Buildings Department (BD) approval status for building plans, occupation permits, and minor works submissions. It scrapes the BD online portal for status updates, sends alerts when submissions progress through approval stages, and maintains a centralized dashboard of all active permits across multiple projects. Essential for Authorized Persons (AP), Registered Structural Engineers (RSE), and construction project managers.
 
@@ -19,17 +19,20 @@ Hong Kong Authorized Persons (architects), Registered Structural Engineers, cons
 
 ## Tech Stack
 
-- **Web Scraping**: Playwright for headless browser automation of BD portal; BeautifulSoup4 for HTML parsing
-- **Scheduler**: APScheduler for periodic portal checks (every 4-6 hours)
-- **Notifications**: Twilio WhatsApp API; smtplib for email alerts
-- **Database**: SQLite for permit records, status history, and project associations
-- **UI**: Streamlit with Gantt-style timeline visualization using plotly
-- **PDF**: PyPDF2 for parsing BD correspondence letters
+| Component | Library / Tool |
+|-----------|---------------|
+| Web Scraping | Playwright (headless browser automation of BD portal), BeautifulSoup4 |
+| Scheduler | APScheduler (periodic portal checks every 4-6 hours) |
+| Notifications | Twilio WhatsApp API, smtplib |
+| Database | SQLite |
+| UI | Streamlit, Plotly (Gantt-style timeline visualization) |
+| PDF | PyPDF2 |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/permit-tracker/
+/opt/openclaw/skills/local/permit-tracker/
 ├── app.py                     # Streamlit multi-project dashboard
 ├── scrapers/
 │   ├── bd_portal.py           # Buildings Department BRAVO/BISNET scraper
@@ -51,12 +54,45 @@ Hong Kong Authorized Persons (architects), Registered Structural Engineers, cons
 └── README.md
 ```
 
+## Workspace Data Directory
+
+```
+~/OpenClawWorkspace/permit-tracker/
+├── permits.db                 # SQLite database (runtime data)
+├── documents/                 # Uploaded submission documents and BD correspondence
+├── scraped_cache/             # Cached BD portal HTML responses
+└── logs/                      # Scraper and alert engine logs
+```
+
 ## Key Integrations
 
 - **Buildings Department Portal (BRAVO/BISNET)**: Primary data source for building plan and occupation permit status
 - **Minor Works Control System**: BD's online system for Class I/II/III minor works submissions
 - **Twilio WhatsApp**: Real-time status change alerts to project stakeholders
 - **Email (SMTP)**: Backup notification channel and formal status update distribution
+- **Telegram Bot API**: Secondary channel for permit alerts, safety reminders, and subcontractor dispatch.
+
+## GUI Specification
+
+Part of the **Construction Dashboard** (`http://mona.local:8503`) — PermitTracker tab.
+
+### Views
+
+- **Gantt Timeline**: All submissions plotted against expected BD approval timelines. Actual progress overlaid with different colors. Submissions exceeding expected timelines highlighted in red.
+- **Submission Cards**: Per-submission detail cards showing BD reference, type, current status, last checked timestamp, and days elapsed vs expected.
+- **Alert History**: Chronological log of all status change alerts with timestamps and notification delivery status.
+- **Document Archive**: Per-submission file repository for correspondence, plans, amendment records, and BD response letters.
+- **Project Filter**: Dropdown to filter all views by project, submission type, or status.
+
+### Mona Integration
+
+- Mona scrapes BD portals on schedule and updates submission statuses automatically.
+- Mona sends WhatsApp/email alerts when status changes are detected, showing in the Alert History.
+- Human reviews and files BD correspondence; Mona tracks and organizes it.
+
+### Manual Mode
+
+- Project manager can manually add submissions, check status, upload documents, and review timelines without Mona.
 
 ## HK-Specific Requirements
 
@@ -127,6 +163,17 @@ CREATE TABLE documents (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, BD registered AP/RSE details, office address
+2. **Projects**: Add active projects with address, lot number, district, and submission types
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, SMTP email for formal notifications
+4. **BD Portal Credentials**: Login credentials for BRAVO/BISNET portal access (for authorized users)
+5. **Sample Data**: Option to seed demo submissions for testing
+6. **Connection Test**: Validates all API connections, BD portal access, and email delivery
+
 ## Testing Criteria
 
 - [ ] Successfully scrapes BD portal and extracts current status for a known submission reference number
@@ -146,3 +193,7 @@ CREATE TABLE documents (
 - Expected timelines are estimates based on BD service pledges — allow project managers to customize expected durations per submission
 - Memory budget: ~2GB (Playwright headless browser is the primary resource consumer; no LLM needed for this tool)
 - Implement credential rotation if multiple BD portal accounts are needed for different AP registrations
+- **Logging**: All operations logged to `/var/log/openclaw/permit-tracker.log` with daily rotation (7-day retention). BD credentials and personal details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. BD portal credentials stored with restricted file permissions (600). Site safety records maintained for statutory retention period (minimum 7 years for construction records).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, Playwright browser state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Safety records and permit history maintained in export for compliance.

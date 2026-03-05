@@ -1,6 +1,6 @@
 # FXInvoice
 
-## Tool Name & Overview
+## Overview
 
 FXInvoice is a multi-currency invoice generator with integrated FX rate tracking and basic hedging suggestions for Hong Kong trade businesses. It creates professional invoices in USD, CNH (offshore RMB), HKD, EUR, and other currencies, auto-converts between currencies at real-time or locked-in rates, and tracks payment status across multiple currencies. Designed for the multi-currency reality of Hong Kong's international trade hub.
 
@@ -19,17 +19,20 @@ Hong Kong import-export traders, trading company accountants, and finance manage
 
 ## Tech Stack
 
-- **FX Data**: httpx for fetching rates from exchangerate-api.com, HKMA API, or ECB reference rates
-- **Invoice Generation**: reportlab for PDF invoices; openpyxl for Excel format; Jinja2 for HTML invoice templates
-- **Database**: SQLite for invoices, payments, FX rate history, customer/supplier records
-- **UI**: Streamlit dashboard with FX rate charts, invoice management, and payment tracking
-- **Charts**: plotly for FX rate trend visualization and exposure analytics
-- **LLM**: MLX local inference for payment advice parsing and bank statement reconciliation assistance
+| Component | Library / Tool |
+|-----------|---------------|
+| FX Data | httpx for fetching rates from exchangerate-api.com, HKMA API, or ECB reference rates |
+| Invoice Generation | reportlab for PDF invoices; openpyxl for Excel format; Jinja2 for HTML invoice templates |
+| Database | SQLite for invoices, payments, FX rate history, customer/supplier records |
+| UI | Streamlit dashboard with FX rate charts, invoice management, and payment tracking |
+| Charts | plotly for FX rate trend visualization and exposure analytics |
+| LLM | MLX local inference for payment advice parsing and bank statement reconciliation assistance |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/fx-invoice/
+/opt/openclaw/skills/local/fx-invoice/
 ├── app.py                        # Streamlit finance dashboard
 ├── invoicing/
 │   ├── invoice_generator.py      # Multi-currency invoice creation
@@ -49,10 +52,20 @@ Hong Kong import-export traders, trading company accountants, and finance manage
 │   ├── llm_handler.py            # MLX inference wrapper
 │   └── prompts.py                # Payment parsing prompts
 ├── data/
-│   ├── fx_invoice.db             # SQLite database
 │   └── invoice_templates/        # Jinja2 HTML invoice templates
 ├── requirements.txt
 └── README.md
+```
+
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/fx-invoice/
+├── fx_invoice.db                 # SQLite database
+├── invoices/                     # Generated invoice PDFs and Excel files
+├── statements/                   # Monthly customer/supplier statements
+├── bank_statements/              # Uploaded bank statements for reconciliation
+└── exports/                      # Exported aging reports and FX summaries
 ```
 
 ## Key Integrations
@@ -61,6 +74,29 @@ Hong Kong import-export traders, trading company accountants, and finance manage
 - **Exchange Rate API / ECB**: Broader currency pair coverage for non-HKD conversions
 - **Local LLM (MLX)**: Assists with bank statement parsing and unstructured payment advice interpretation
 - **PDF Generation**: Professional invoice output suitable for sending to international trade partners
+- **Telegram Bot API**: Secondary channel for filing alerts, supplier communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Import/Export Dashboard** (`http://mona.local:8504`) — FXInvoice tab.
+
+### Views
+
+- **Invoice Builder**: Multi-currency invoice creator where each line item can be in a different currency. Live FX rate lookup for conversion. Professional PDF output.
+- **FX Rate Lookup**: Search and display current and historical exchange rates for any currency pair.
+- **Payment Tracker**: Per-invoice payment status (unpaid → partial → paid) with aging indicators and overdue highlights.
+- **FX Gain/Loss Calculator**: Automatic calculation of FX gains/losses on invoice settlement when payment currency differs from invoice currency.
+- **Monthly FX Summary**: Chart showing total FX exposure, gains, and losses for the accounting period.
+
+### Mona Integration
+
+- Mona auto-fetches daily FX rates and calculates gains/losses when payments are recorded.
+- Mona sends payment reminders to customers for overdue invoices via WhatsApp.
+- Human creates invoices, records payments, and reviews FX impact.
+
+### Manual Mode
+
+- Trader can manually create invoices, look up rates, record payments, and calculate FX impact without Mona.
 
 ## HK-Specific Requirements
 
@@ -153,6 +189,18 @@ CREATE TABLE bank_accounts (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, BR number, principal business (import/export/re-export), base currency
+2. **Banking Setup**: Bank accounts with currencies, SWIFT codes, and account numbers for invoice payment instructions
+3. **Currency Configuration**: Select frequently used currency pairs and rate data sources (HKMA, ECB, exchangerate-api.com)
+4. **Messaging Setup**: Twilio API credentials for WhatsApp payment reminders, Telegram bot token
+5. **Customer Directory**: Import customer and supplier contacts from CSV or manual entry
+6. **Sample Data**: Option to seed demo invoices, payments, and FX rate history for testing
+7. **Connection Test**: Validates FX rate APIs, messaging services, LLM availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Generates a professional PDF invoice in USD with correct HKD equivalent at current exchange rate
@@ -173,3 +221,7 @@ CREATE TABLE bank_accounts (
 - Memory budget: ~4GB (LLM for bank statement parsing; plotly charts for FX visualization; core invoice generation is lightweight)
 - HKD peg awareness: since USD/HKD fluctuates minimally, FX tracking for USD-denominated invoices can be simplified; focus hedging suggestions on CNH and EUR exposure
 - Consider adding a daily FX summary email/WhatsApp message showing rate movements for the trader's active currency pairs
+- **Logging**: All operations logged to `/var/log/openclaw/fx-invoice.log` with daily rotation (7-day retention). Trade values and supplier details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Trade documentation contains commercially sensitive data — zero cloud processing for classification and document generation.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Trade declarations and filing history included for audit compliance.

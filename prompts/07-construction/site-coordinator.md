@@ -1,6 +1,6 @@
 # SiteCoordinator
 
-## Tool Name & Overview
+## Overview
 
 SiteCoordinator is a multi-agent scheduling and logistics tool for construction companies managing subcontractors across multiple Hong Kong sites. It optimizes daily contractor assignments, plans efficient routes between sites accounting for HK geography and traffic, and coordinates 15+ trade schedules to minimize conflicts and maximize site productivity. Think of it as a dispatch center for construction workforce management.
 
@@ -19,17 +19,20 @@ Hong Kong construction project coordinators, site agents, and operations manager
 
 ## Tech Stack
 
-- **Scheduling**: Google OR-Tools for constraint-based scheduling optimization; custom dependency graph for trade sequencing
-- **Routing**: OSRM (Open Source Routing Machine) or Google Maps API for HK-specific routing; geopy for distance calculations
-- **Messaging**: Twilio WhatsApp Business API for contractor dispatch and progress reporting
-- **Database**: SQLite for sites, contractors, schedules, and progress logs
-- **UI**: Streamlit dashboard with calendar view and map visualization
-- **Maps**: folium for interactive HK map display of site locations and contractor routes
+| Component | Library / Tool |
+|-----------|---------------|
+| Scheduling | Google OR-Tools, custom dependency graph |
+| Routing | OSRM / Google Maps API, geopy |
+| Messaging | Twilio WhatsApp Business API |
+| Database | SQLite |
+| UI | Streamlit (calendar view, map visualization) |
+| Maps | folium |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/site-coordinator/
+/opt/openclaw/skills/local/site-coordinator/
 ├── app.py                      # Streamlit coordination dashboard
 ├── scheduling/
 │   ├── optimizer.py            # OR-Tools schedule optimization engine
@@ -52,11 +55,44 @@ Hong Kong construction project coordinators, site agents, and operations manager
 └── README.md
 ```
 
+## Workspace Data Directory
+
+```
+~/OpenClawWorkspace/site-coordinator/
+├── coordinator.db             # SQLite database (runtime data)
+├── routes/                    # Cached route calculations and polylines
+├── schedules/                 # Exported daily/weekly schedule snapshots
+└── maps/                      # Generated map visualizations
+```
+
 ## Key Integrations
 
 - **Google Maps API / OSRM**: Route calculation between HK construction sites with real-time traffic consideration
 - **Twilio WhatsApp**: Dispatch work assignments and collect completion reports from subcontractors in the field
 - **Google OR-Tools**: Constraint satisfaction solver for optimizing multi-site, multi-trade scheduling
+- **Telegram Bot API**: Secondary channel for permit alerts, safety reminders, and subcontractor dispatch.
+
+## GUI Specification
+
+Part of the **Construction Dashboard** (`http://mona.local:8503`) — SiteCoordinator tab.
+
+### Views
+
+- **Subcontractor Schedule**: Weekly grid view with subcontractors as rows and days as columns. Color-coded by activity type (demolition, structural, MEP, finishing).
+- **WhatsApp Dispatch Log**: History of all dispatched instructions with delivery/read status per subcontractor.
+- **Delivery Schedule**: Expected deliveries with ETA tracking, supplier contact, and site gate assignment.
+- **Site Access Log**: Digital sign-in/sign-out log for all site personnel with time tracking and company affiliation.
+- **Resource Dashboard**: Overview of active subcontractor teams, equipment on-site, and material delivery status.
+
+### Mona Integration
+
+- Mona sends daily schedule summaries and dispatch instructions to subcontractors via WhatsApp every morning.
+- Mona tracks delivery ETAs and alerts the coordinator when delays are detected.
+- Human adjusts schedules, resolves conflicts, and handles ad-hoc coordination.
+
+### Manual Mode
+
+- Coordinator can manually create schedules, dispatch instructions, log deliveries, and manage site access without Mona.
 
 ## HK-Specific Requirements
 
@@ -136,6 +172,19 @@ CREATE TABLE trade_dependencies (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, contractor registration details, office address
+2. **Sites**: Add active construction sites with address, district, coordinates, and maximum worker capacity
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, SMTP email for formal notifications
+4. **Subcontractor Directory**: Import subcontractor contact list with trade classifications
+5. **Trade Dependencies**: Review and customize trade sequencing rules
+6. **Maps API**: Google Maps API key or OSRM endpoint for route calculation
+7. **Sample Data**: Option to seed demo schedules and assignments for testing
+8. **Connection Test**: Validates all API connections, Maps API access, and message delivery
+
 ## Testing Criteria
 
 - [ ] Scheduler assigns 5 contractor teams across 3 sites without any double-booking conflicts
@@ -156,3 +205,7 @@ CREATE TABLE trade_dependencies (
 - Memory budget: ~2GB (OR-Tools is CPU-intensive but memory-light; no LLM needed for this tool)
 - For the map visualization, use folium with HK-centric default zoom level (~11) centered on Victoria Harbour
 - Consider adding a daily summary report that shows schedule utilization rate (hours assigned / hours available) per contractor
+- **Logging**: All operations logged to `/var/log/openclaw/site-coordinator.log` with daily rotation (7-day retention). BD credentials and personal details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. BD portal credentials stored with restricted file permissions (600). Site safety records maintained for statutory retention period (minimum 7 years for construction records).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, Playwright browser state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Safety records and permit history maintained in export for compliance.

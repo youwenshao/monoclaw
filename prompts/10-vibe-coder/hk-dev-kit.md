@@ -1,6 +1,6 @@
 # HKDevKit
 
-## Tool Name & Overview
+## Overview
 
 HKDevKit is a collection of pre-built connectors and boilerplate generators for Hong Kong-specific API integrations. It provides ready-to-use Python modules for FPS (Faster Payment System), Octopus card merchant SDK, GovHK Open Data API, and other HK digital infrastructure — saving developers hours of reading documentation and writing integration code from scratch. Think of it as "HK-specific npm/pip packages" with code generation.
 
@@ -19,18 +19,21 @@ Hong Kong software developers, startup CTOs, and freelance developers building a
 
 ## Tech Stack
 
-- **HTTP**: httpx for async API calls to HK services
-- **QR Code**: qrcode library for FPS QR code generation per HKMA EMV standard
-- **CLI**: Typer for the boilerplate generator command-line interface
-- **LLM**: MLX local inference for documentation generation and code snippet explanation
-- **Database**: SQLite for snippet library, project templates, and integration configuration
-- **Templates**: Jinja2 for project boilerplate code generation
-- **Testing**: pytest with VCR.py for recording and replaying API responses
+| Component | Library / Tool |
+|-----------|---------------|
+| HTTP | httpx for async API calls to HK services |
+| QR Code | qrcode library for FPS QR code generation per HKMA EMV standard |
+| CLI | Typer for the boilerplate generator command-line interface |
+| LLM | MLX local inference for documentation generation and code snippet explanation |
+| Database | SQLite for snippet library, project templates, and integration configuration |
+| Templates | Jinja2 for project boilerplate code generation |
+| Testing | pytest with VCR.py for recording and replaying API responses |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/hk-dev-kit/
+/opt/openclaw/skills/local/hk-dev-kit/
 ├── app.py                        # Streamlit snippet browser and documentation
 ├── cli.py                        # Boilerplate generator CLI (hkdevkit command)
 ├── connectors/
@@ -67,6 +70,15 @@ Hong Kong software developers, startup CTOs, and freelance developers building a
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/hk-dev-kit/
+├── data/
+│   └── hkdevkit.db              # SQLite database
+├── generated/                   # Generated boilerplate projects
+└── logs/
+    └── api_calls.log            # API call logs
+```
+
 ## Key Integrations
 
 - **HKMA FPS**: Faster Payment System integration via participating bank APIs (HSBC, Standard Chartered, Bank of China HK, Hang Seng)
@@ -74,6 +86,28 @@ Hong Kong software developers, startup CTOs, and freelance developers building a
 - **GovHK Open Data API**: Government open data including weather, transport, demographics
 - **HK Observatory API**: Real-time weather data, warnings, and forecasts
 - **Local LLM (MLX)**: Documentation generation and code explanation
+- **Telegram Bot API**: Secondary channel for build notifications and documentation alerts.
+
+## GUI Specification
+
+Part of the **Vibe Coder Dashboard** (`http://mona.local:8010`) — HKDevKit tab.
+
+### Views
+
+- **API Connector Gallery**: Visual cards for each HK-specific API (FPS, Octopus, GovHK, eTAX) with status indicator, documentation link, and "Generate Boilerplate" button.
+- **Boilerplate Generator**: Select framework (Flask, FastAPI, Express, Next.js) + target APIs → generate project scaffold with pre-configured connectors. Download as ZIP or open in editor.
+- **Integration Documentation Viewer**: Rendered markdown documentation for each API connector with code examples.
+- **API Testing Interface**: Send test requests to configured APIs, view request/response pairs, and debug integration issues.
+
+### Mona Integration
+
+- Mona auto-generates boilerplate code tailored to the developer's selected tech stack and APIs.
+- Mona provides contextual HK API documentation as the developer works.
+- Developer reviews and customizes generated code.
+
+### Manual Mode
+
+- Developer can browse API documentation, generate boilerplate, and test API connections without Mona.
 
 ## HK-Specific Requirements
 
@@ -128,6 +162,17 @@ CREATE TABLE generated_docs (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Developer Profile**: Name, preferred tech stack (Flask, FastAPI, Express, Next.js), and default project language
+2. **HK API Keys**: Register FPS, Octopus, and GovHK API access credentials (where applicable)
+3. **Project Setup**: Select default output directory for generated boilerplate projects
+4. **Telegram**: Configure Telegram bot token for build notifications (optional)
+5. **Sample Data**: Option to generate a demo project with pre-configured HK API connectors
+6. **Connection Test**: Validates API access, LLM loading, and Telegram bot connectivity
+
 ## Testing Criteria
 
 - [ ] FPS QR code generator produces a valid EMV QR code scannable by HSBC PayMe and Hang Seng mobile banking
@@ -148,3 +193,7 @@ CREATE TABLE generated_docs (
 - Memory budget: ~4GB when LLM is loaded for doc generation; ~500MB when running connectors only (no LLM needed for API calls)
 - Testing: use VCR.py to record API responses for reproducible tests without hitting live endpoints
 - Consider publishing the connectors as a standalone pip package (`pip install hkdevkit`) for the broader HK developer community
+- **Logging**: All operations logged to `/var/log/openclaw/hk-dev-kit.log` with daily rotation (7-day retention). Code snippets truncated in logs to avoid leaking proprietary source code.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Source code never leaves the local machine — zero cloud processing for all inference.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state (loaded/warm/cold), and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON archive of conversation history, generated documentation, and configuration.

@@ -29,6 +29,7 @@ Hong Kong immigration consultants who prepare 5-20 visa applications per month a
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | Notifications | Twilio WhatsApp Business API |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -71,7 +72,31 @@ Hong Kong immigration consultants who prepare 5-20 visa applications per month a
 - **VisaDoc OCR (sibling tool)**: Receive extracted client data from OCR pipeline. Auto-populate client database from scanned documents.
 - **Immigration Department website (immd.gov.hk)**: Download latest form templates. Monitor for form version changes.
 - **Twilio WhatsApp Business API**: Notify consultants when forms are ready, deliver PDF attachments, and alert on form version updates.
+- **Telegram Bot API**: Secondary messaging channel for client communication and status updates.
 - **Client Portal Bot (sibling tool)**: Share submission status updates with clients.
+
+## GUI Specification
+
+Part of the **Immigration Dashboard** (`http://mona.local:8002`) — FormAutoFill tab.
+
+### Views
+
+- **Client Selector**: Dropdown with client profile summary card showing name, nationality, scheme, and completeness status.
+- **Scheme/Form Selector**: Select from GEP, ASMTP, QMAS, IANG, ID990A/B with scheme-specific field requirements displayed.
+- **Field-by-Field Preview**: Every form field shown with its value, validation state (green checkmark / red X), and character count vs limit.
+- **PDF Preview Pane**: Live-rendered preview of the actual filled government form, updating as fields are edited.
+- **Submission Checklist**: Interactive checklist of required supporting documents with check-off states and missing document alerts.
+- **Batch View**: For corporate sponsors filing multiple visas — table of all applications with individual status columns.
+
+### Mona Integration
+
+- Mona auto-populates fields from VisaDoc OCR extractions and highlights any fields that need human verification.
+- Mona monitors form version changes on the ImmD website and alerts when field maps need updating.
+- Human reviews and approves every generated form before PDF output.
+
+### Manual Mode
+
+- Consultant can manually select clients, fill form fields, validate entries, generate PDFs, and manage checklists without Mona.
 
 ## HK-Specific Requirements
 
@@ -153,6 +178,17 @@ CREATE TABLE field_maps (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Practice Profile**: Firm name, immigration consultant registration number, office address
+2. **Form Templates**: Download latest ImmD form PDFs, configure field map source, select active schemes
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language
+4. **Client Database**: Import existing client records from CSV or start fresh
+5. **Sample Data**: Option to seed demo client profiles and sample form outputs for testing
+6. **Connection Test**: Validates ImmD website access, API connections, and reports any issues
+
 ## Testing Criteria
 
 - [ ] ID990A form populates all mandatory fields from client database and produces valid PDF
@@ -172,3 +208,7 @@ CREATE TABLE field_maps (
 - **No LLM needed**: This tool is entirely rule-based. All intelligence comes from the field mapping and validation logic. Memory footprint <500MB.
 - **Privacy**: Client data includes HKID, passport numbers, salary, and immigration history. Encrypt database at rest. Mask sensitive fields in all logs. Implement access audit trail.
 - **Form updates**: Immigration Department updates forms periodically. The version checker should scrape the download page monthly and compare file hashes. When a new version is detected, alert the consultant and invalidate the old field map until a new one is created.
+- **Logging**: All operations logged to `/var/log/openclaw/form-autofill.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, passport numbers, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600). Immigration data is among the most sensitive in the MonoClaw suite — zero cloud processing for document content.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/OCR engine state, and memory usage.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or PDPO compliance.

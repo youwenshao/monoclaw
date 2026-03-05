@@ -31,6 +31,7 @@ Hong Kong accounting firms and in-house bookkeepers who perform monthly bank rec
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | FX rates | `httpx` for HKMA API |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -76,6 +77,29 @@ Hong Kong accounting firms and in-house bookkeepers who perform monthly bank rec
 - **Accounting Software Export**: Import ledger data from Xero (CSV export), ABSS (CSV), and QuickBooks (IIF/CSV). Provide a standardized import template for manual exports.
 - **InvoiceOCR Pro (sibling tool)**: Cross-reference matched transactions with OCR-extracted invoice data for additional validation.
 - **FXTracker (sibling tool)**: Share exchange rate data to avoid duplicate API calls.
+- **Telegram Bot API**: Secondary channel for deadline reminders, invoice notifications, and rate alerts.
+
+## GUI Specification
+
+Part of the **Accounting Dashboard** (`http://mona.local:8004`) — ReconcileAgent tab.
+
+### Views
+
+- **Statement Upload**: Drag-drop area for bank statement CSV/PDF files with format auto-detection.
+- **Three-Pane Matching**: Left pane (unmatched bank entries) | center (auto-matched pairs for review) | right (unmatched book entries). Drag a bank entry onto a book entry to create a manual match.
+- **Reconciliation Summary**: Matched total, unmatched total, variance, and reconciliation status (balanced/unbalanced).
+- **Historical Reports**: Monthly reconciliation history with trend of unmatched items over time.
+- **Bank Format Selector**: Dropdown for supported HK banks (HSBC, Hang Seng, BOC, Standard Chartered) to apply correct parsing templates.
+
+### Mona Integration
+
+- Mona auto-matches bank entries to book entries using amount, date, and reference matching algorithms.
+- Mona surfaces uncertain matches (close but not exact) in the review pane for human judgment.
+- Human resolves unmatched items and approves the final reconciliation.
+
+### Manual Mode
+
+- Bookkeeper can manually upload statements, create matches by drag-drop, and generate reconciliation reports without Mona.
 
 ## HK-Specific Requirements
 
@@ -156,6 +180,18 @@ CREATE TABLE fx_rates (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Company name, BR number, financial year-end date, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Accounting Software**: Connect Xero/ABSS/QuickBooks and configure ledger export format
+4. **Bank Accounts**: Configure bank statement formats for each HK bank account (HSBC, Hang Seng, BOC, etc.)
+5. **Matching Rules**: Set date tolerance, amount tolerance, and fuzzy matching thresholds
+6. **Sample Data**: Option to seed demo bank statements and ledger entries for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] HSBC CSV parser correctly imports 100 transactions with correct dates, amounts, and descriptions
@@ -175,3 +211,7 @@ CREATE TABLE fx_rates (
 - **Performance**: Matching 1,000 bank transactions against 1,200 ledger entries should complete in <10 seconds. Use pandas merge operations for exact matching; iterate only for fuzzy and aggregate strategies.
 - **Privacy**: Bank statements contain account numbers and financial data. All processing is local. Mask account numbers in reports (show only last 4 digits). Delete imported statement files after reconciliation is complete (configurable).
 - **Idempotency**: Re-importing the same bank statement should not create duplicate transactions. Use a composite key of (bank, date, description, amount, running_balance) for deduplication.
+- **Logging**: All operations logged to `/var/log/openclaw/reconcile-agent.log` with daily rotation (7-day retention). Financial data and client details masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Accounting API credentials stored with restricted file permissions (600). Financial data protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, OCR/LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data for backup or audit purposes.

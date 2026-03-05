@@ -1,6 +1,6 @@
 # LegalDoc Analyzer
 
-## Tool Name & Overview
+## Overview
 
 LegalDoc Analyzer is a local AI-powered clause extraction and review tool for Hong Kong standard contracts. It parses tenancy agreements, employment contracts, and NDAs to identify, classify, and flag unusual or non-standard terms. The tool combines local LLM inference with regex pattern matching to provide fast, privacy-preserving contract analysis without sending sensitive legal documents to external servers.
 
@@ -19,17 +19,19 @@ Hong Kong solicitors, paralegals, and in-house counsel who regularly review stan
 
 ## Tech Stack
 
-- **LLM**: MLX-based local inference (Qwen-2.5-7B or Llama-3-8B quantized to 4-bit)
-- **Document Parsing**: python-docx, PyPDF2, pdfplumber for extracting text from .docx and .pdf
-- **NLP**: regex patterns for clause boundary detection; spaCy (en_core_web_sm) for named entity recognition
-- **Database**: SQLite for clause library, flagging rules, and analysis history
-- **UI**: Streamlit web interface with clause highlighting and annotation
-- **Export**: python-docx for generating annotated Word documents with tracked changes
+| Component | Library / Tool |
+|-----------|---------------|
+| LLM | MLX-based local inference (Qwen-2.5-7B or Llama-3-8B quantized to 4-bit) |
+| Document Parsing | python-docx, PyPDF2, pdfplumber for extracting text from .docx and .pdf |
+| NLP | regex patterns for clause boundary detection; spaCy (en_core_web_sm) for named entity recognition |
+| Database | SQLite for clause library, flagging rules, and analysis history |
+| UI | Streamlit web interface with clause highlighting and annotation |
+| Export | python-docx for generating annotated Word documents with tracked changes |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/legal-doc-analyzer/
+/opt/openclaw/skills/local/legal-doc-analyzer/
 ├── app.py                  # Streamlit main application
 ├── analyzer/
 │   ├── clause_extractor.py # Regex + LLM clause segmentation
@@ -50,11 +52,44 @@ Hong Kong solicitors, paralegals, and in-house counsel who regularly review stan
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/legal-doc-analyzer/
+├── contracts/              # Uploaded contracts for analysis
+├── analysis_results/       # Saved analysis outputs
+├── exports/                # Annotated .docx exports
+└── templates/              # User-customized reference templates
+```
+
 ## Key Integrations
 
 - **Local LLM**: MLX framework for on-device inference — no API calls for core analysis
 - **File System**: Watches a designated intake folder for new contracts to analyze
 - **Export**: Generates annotated .docx files compatible with Microsoft Word track changes
+- **Telegram Bot API**: Secondary messaging channel for client intake, deadline reminders, and status updates.
+
+## GUI Specification
+
+Part of the **Legal Dashboard** (`http://mona.local:8501`) — LegalDoc Analyzer tab.
+
+### Views
+
+- **Document Upload**: Upload area with contract type selector (tenancy, employment, NDA, service agreement, other).
+- **Clause-by-Clause View**: Each extracted clause shown with a colored sidebar indicator (green=standard, amber=unusual, red=anomalous). Click any clause to expand analysis details.
+- **Anomaly Detail Panel**: When a flagged clause is selected, shows the reference standard clause side-by-side with a plain-language explanation of the deviation and risk assessment.
+- **Comparison Mode**: Two-document side-by-side view with diff highlighting (additions in green, deletions in red, modifications in amber).
+- **Export Controls**: Generate annotated .docx with track-changes formatting, or PDF summary report of all flagged clauses.
+
+### Mona Integration
+
+- Mona auto-analyzes contracts dropped into the intake folder and presents results in the clause view.
+- Mona flags anomalies with confidence scores; human reviews and overrides classifications as needed.
+- Mona tracks patterns across analyzed contracts to improve anomaly detection over time.
+
+### Manual Mode
+
+- Solicitor can manually upload contracts, browse clause analysis, compare documents, and export annotated reports without Mona.
 
 ## HK-Specific Requirements
 
@@ -97,6 +132,18 @@ CREATE TABLE reference_clauses (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Firm Profile**: Firm name, SFC/HKLS registration details, office address, practice areas
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, WeChat Official Account credentials (if applicable)
+3. **Document Templates**: Upload standard-form contract templates for tenancy, employment, NDA, and service agreements
+4. **Clause Reference Library**: Import or review the default clause library; customize standard terms for firm's practice areas
+5. **HK Legislation References**: Confirm Employment Ordinance (Cap 57) provisions, Landlord and Tenant Ordinance (Cap 7) references, and Stamp Duty Ordinance (Cap 117) rules are current
+6. **Sample Data**: Option to seed demo cases and contracts for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Correctly segments a standard HK tenancy agreement into individual clauses with >90% accuracy
@@ -115,3 +162,7 @@ CREATE TABLE reference_clauses (
 - Regex-first approach for clause boundary detection reduces LLM calls — use LLM only for semantic classification and anomaly reasoning
 - Keep the clause reference library as a versioned SQLite DB so firms can customize standard terms for their practice area
 - Limit context window to individual clauses (not full documents) to stay within model context limits and improve accuracy
+- **Logging**: All operations logged to `/var/log/openclaw/legal-doc-analyzer.log` with daily rotation (7-day retention). Client names, case details, and privileged content masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Legal documents are highly sensitive — zero cloud processing. Implement audit trail for all data access.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Privilege-tagged documents must maintain their tags in the export.

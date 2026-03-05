@@ -28,6 +28,7 @@ Hong Kong restaurant owners and managers losing 10-20% of dinner revenue to no-s
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | Analytics | `pandas` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -68,6 +69,29 @@ Hong Kong restaurant owners and managers losing 10-20% of dinner revenue to no-s
 - **Twilio Programmable SMS**: Fallback when WhatsApp message is undelivered or unread after 2 hours.
 - **TableMaster AI (sibling tool)**: Receive new bookings, push cancellations and no-show flags. Shared guest database for unified history.
 - **Payment gateway (optional)**: For deposit collection from blacklisted guests. Stripe HK or PayMe deep link.
+- **Telegram Bot API**: Secondary channel for booking confirmations, queue updates, and guest communication.
+
+## GUI Specification
+
+Part of the **F&B Dashboard** (`http://mona.local:8003`) — NoShowShield tab.
+
+### Views
+
+- **Confirmation Pipeline**: Visual board showing each booking's confirmation stage (sent → delivered → confirmed/unconfirmed) with time-since-sent counters.
+- **Guest Reliability Cards**: Searchable guest directory with reliability grade (A/B/C/D), booking history, no-show count, and manual override controls.
+- **Waitlist Queue**: Ranked waitlist with party size, preferred time, flexibility range, and "Offer Table" manual trigger button.
+- **Prediction Dashboard**: Today's bookings ranked by no-show risk score with explainable risk factors (e.g., "large party + short lead time + no prior visits").
+- **Blacklist Manager**: Configure blacklist thresholds, view blacklisted guests, manage cooldown periods and deposit requirements.
+
+### Mona Integration
+
+- Mona sends confirmation sequences automatically and updates the pipeline board in real-time.
+- Mona triggers waitlist offers when cancellations or no-shows are detected.
+- Human reviews and overrides guest reliability scores and blacklist decisions.
+
+### Manual Mode
+
+- Manager can manually send confirmations, manage the waitlist, adjust reliability scores, and configure no-show policies without Mona.
 
 ## HK-Specific Requirements
 
@@ -133,6 +157,18 @@ CREATE TABLE no_show_predictions (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Restaurant Profile**: Restaurant name, address, cuisine type, operating hours (lunch/dinner/dim sum sessions)
+2. **Confirmation Settings**: Default message templates (Chinese/English), timing intervals (T-24hr, T-2hr), escalation rules (WhatsApp → SMS → manual)
+3. **Messaging Setup**: Twilio API credentials for WhatsApp and SMS, Telegram bot token
+4. **Sibling Connections**: Link to TableMaster AI for booking data sync
+5. **Business Rules**: No-show thresholds for blacklisting, deposit amounts, reliability scoring weights, cooldown periods
+6. **Sample Data**: Option to seed demo guest history and bookings for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Confirmation sequence sends at booking, T-24hr, and T-2hr with correct message content
@@ -152,3 +188,7 @@ CREATE TABLE no_show_predictions (
 - **WhatsApp template messages**: Twilio requires pre-approved templates for messages sent >24 hours after last customer message. Register confirmation and reminder templates with Twilio. Use freeform messages only within the 24-hour window.
 - **Deposit handling**: If integrating payment, generate a Stripe Checkout link or PayMe QR code. Track payment status. Release deposit 24 hours after completed dining. Non-refundable for no-shows.
 - **Privacy**: Guest phone numbers and dining history are personal data under PDPO. Provide opt-out mechanism. Delete guest data after 24 months of inactivity. Never share individual guest data outside the restaurant group.
+- **Logging**: All operations logged to `/var/log/openclaw/no-show-shield.log` with daily rotation (7-day retention). Guest phone numbers masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication on first access. Guest personal data (phone, dietary/health info) protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data.

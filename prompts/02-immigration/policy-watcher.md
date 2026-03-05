@@ -30,6 +30,7 @@ Hong Kong immigration consultants and law firms who need to stay current on rapi
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | Notifications | Twilio WhatsApp Business API, `smtplib` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -70,7 +71,29 @@ Hong Kong immigration consultants and law firms who need to stay current on rapi
 - **Legislative Council (legco.gov.hk)**: Panel on Security papers, bills committee reports, and government responses to questions on immigration policy.
 - **Talent List (talentlist.gov.hk)**: Updates to the list of professions eligible for streamlined visa processing.
 - **Twilio WhatsApp Business API**: Deliver alert summaries to consultants' WhatsApp.
+- **Telegram Bot API**: Secondary messaging channel for client communication and status updates.
 - **SMTP**: Email delivery for formal policy change notifications.
+
+## GUI Specification
+
+Part of the **Immigration Dashboard** (`http://mona.local:8002`) — PolicyWatcher tab.
+
+### Views
+
+- **Policy Feed**: Chronological timeline of detected policy changes with severity badges (critical/important/informational).
+- **Diff Viewer**: Side-by-side comparison showing previous vs new policy text with red/green highlighting for deletions/additions.
+- **Alert Configuration**: Panel to select which immigration schemes to monitor, notification channels, and escalation preferences.
+- **Impact Assessment**: Cards showing which active client cases are potentially affected by a policy change, with recommended actions.
+
+### Mona Integration
+
+- Mona scrapes the Government Gazette and ImmD website on schedule, detecting and classifying changes automatically.
+- Mona cross-references changes against active client cases and generates impact assessments.
+- Human reviews impact assessments and decides which clients to notify.
+
+### Manual Mode
+
+- Consultant can manually browse policy history, run impact assessments, and configure monitoring preferences without Mona.
 
 ## HK-Specific Requirements
 
@@ -145,6 +168,17 @@ CREATE TABLE alert_log (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Practice Profile**: Firm name, immigration consultant registration number, office address
+2. **Monitoring Sources**: Select government sources to monitor (Gazette, ImmD, LegCo, Talent List), set scrape frequency
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, SMTP credentials, default alert language
+4. **Alert Preferences**: Configure alert recipients, urgency thresholds, and notification channels
+5. **Sample Data**: Option to seed historical policy archive with recent gazette entries for testing
+6. **Connection Test**: Validates source website access, messaging API connections, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Gazette scraper retrieves all Legal Notices from the current week's Government Gazette
@@ -164,3 +198,7 @@ CREATE TABLE alert_log (
 - **FTS5 for search**: SQLite FTS5 extension provides fast full-text search over the policy archive. Create a virtual table covering document titles, content, and summaries. Supports Chinese tokenization with the `unicode61` tokenizer.
 - **Scheduling**: Default scrape schedule: Gazette (Fridays 10am HKT), ImmD news (daily 8am), LegCo papers (Mondays 9am). Use `APScheduler` with persistent job store backed by SQLite.
 - **Privacy**: This tool processes only public government documents. No personal data. The only PII is consultant contact info for alerts — store encrypted and respect unsubscribe requests.
+- **Logging**: All operations logged to `/var/log/openclaw/policy-watcher.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, passport numbers, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600). Immigration data is among the most sensitive in the MonoClaw suite — zero cloud processing for document content.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/OCR engine state, and memory usage.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or PDPO compliance.

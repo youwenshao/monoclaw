@@ -1,6 +1,6 @@
 # TradeDoc AI
 
-## Tool Name & Overview
+## Overview
 
 TradeDoc AI automates the classification of goods under the Harmonized System (HS) code framework and generates Hong Kong trade documentation including TDEC (Trade Declaration), export/import licenses, commercial invoices, and certificates of origin. It handles Hong Kong's unique re-export documentation requirements, which account for the majority of HK's trade volume. All classification runs locally via MLX for speed and data privacy.
 
@@ -19,16 +19,19 @@ Hong Kong import-export traders, customs brokers, logistics coordinators, and tr
 
 ## Tech Stack
 
-- **LLM**: MLX local inference (Qwen-2.5-7B) for HS code classification and document field extraction
-- **Document Generation**: python-docx for Word templates; reportlab for PDF invoices; openpyxl for Excel-format TDEC data
-- **Database**: SQLite for product catalog, HS code reference, trade history, and document archive
-- **UI**: Streamlit dashboard for document preparation and filing status tracking
-- **API**: httpx for electronic filing submission to TDEC service providers (Tradelink, BECS)
+| Component | Library / Tool |
+|-----------|---------------|
+| LLM | MLX local inference (Qwen-2.5-7B) for HS code classification and document field extraction |
+| Document Generation | python-docx for Word templates; reportlab for PDF invoices; openpyxl for Excel-format TDEC data |
+| Database | SQLite for product catalog, HS code reference, trade history, and document archive |
+| UI | Streamlit dashboard for document preparation and filing status tracking |
+| API | httpx for electronic filing submission to TDEC service providers (Tradelink, BECS) |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/trade-doc-ai/
+/opt/openclaw/skills/local/trade-doc-ai/
 ├── app.py                       # Streamlit trade documentation dashboard
 ├── classification/
 │   ├── hs_classifier.py         # LLM + lookup-based HS code classification
@@ -46,11 +49,21 @@ Hong Kong import-export traders, customs brokers, logistics coordinators, and tr
 │   ├── llm_handler.py           # MLX inference wrapper
 │   └── prompts.py               # HS classification and extraction prompts
 ├── data/
-│   ├── trade.db                 # SQLite database
 │   ├── hs_codes_hk.json         # HK Harmonized System code schedule
 │   └── strategic_list.json      # Strategic Commodities Control List
 ├── requirements.txt
 └── README.md
+```
+
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/trade-doc-ai/
+├── trade.db                     # SQLite database
+├── documents/                   # Generated trade documents (TDEC, invoices, COs)
+├── uploads/                     # Uploaded source documents for processing
+├── templates/                   # Custom document templates
+└── exports/                     # Exported reports and filed declarations
 ```
 
 ## Key Integrations
@@ -58,6 +71,30 @@ Hong Kong import-export traders, customs brokers, logistics coordinators, and tr
 - **Tradelink / BECS**: Electronic TDEC filing service providers — submit declarations electronically as required by HK law
 - **Local LLM (MLX)**: HS code classification and product description analysis without sending trade data to external services
 - **HK Census & Statistics Department**: Reference data for HS code schedule updates
+- **Telegram Bot API**: Secondary channel for filing alerts, supplier communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Import/Export Dashboard** (`http://mona.local:8504`) — TradeDoc AI tab.
+
+### Views
+
+- **HS Code Classifier**: Product description input field with suggested 8-digit HK HS codes ranked by confidence. Manual override with searchable HS code database. "Quick Classify" mode for instant lookups.
+- **TDEC Form Builder**: Guided declaration form with auto-populated fields from product catalog. Supports import, export, and re-export types with linked declaration view.
+- **Commercial Invoice Builder**: Professional invoice template with Incoterms dropdown, multi-currency line items, and HS code per item.
+- **CO Application Form**: Certificate of Origin form with CEPA eligibility auto-check and preferential CO type selector.
+- **Strategic Commodities Alert**: Prominent red warning banner when a product matches the Strategic Commodities Control List, with license requirement details.
+- **Filing Status Tracker**: Dashboard showing all declarations with status (draft/filed/accepted/rejected/amended) and filing deadlines.
+
+### Mona Integration
+
+- Mona auto-classifies HS codes for new products using LLM semantic matching and presents suggestions for human confirmation.
+- Mona monitors TDEC filing deadlines (14-day rule) and sends alerts before they expire.
+- Mona auto-fills declaration forms from the product catalog; human reviews and approves before filing.
+
+### Manual Mode
+
+- Trader can manually classify products, build declarations, create invoices, and track filing status without Mona.
 
 ## HK-Specific Requirements
 
@@ -138,6 +175,18 @@ CREATE TABLE filing_history (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, BR number, principal business (import/export/re-export), base currency
+2. **Trade Filing**: Tradelink/BECS account credentials for electronic TDEC filing
+3. **Product Catalog**: Import existing product list with HS codes or start fresh
+4. **Messaging Setup**: Telegram bot token for filing deadline alerts and status notifications
+5. **Currency Configuration**: Select base currency for trade declarations and invoicing
+6. **Sample Data**: Option to seed demo products, HS codes, declarations, and invoices for testing
+7. **Connection Test**: Validates Tradelink/BECS connectivity, LLM availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] HS classifier correctly identifies code for common products (e.g., "cotton t-shirt" → 6109.10) with >80% top-3 accuracy
@@ -157,3 +206,7 @@ CREATE TABLE filing_history (
 - Memory budget: ~4GB (LLM for classification + application); HS code database fits easily in SQLite
 - TDEC filing deadline: 14 days for imports, 14 days for exports/re-exports — tool should auto-calculate and alert approaching deadlines
 - Consider a "quick classify" mode where the user pastes a product description and gets an instant HS code suggestion without creating a full declaration
+- **Logging**: All operations logged to `/var/log/openclaw/trade-doc-ai.log` with daily rotation (7-day retention). Trade values and supplier details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Trade documentation contains commercially sensitive data — zero cloud processing for classification and document generation.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Trade declarations and filing history included for audit compliance.

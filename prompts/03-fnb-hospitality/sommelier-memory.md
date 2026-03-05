@@ -28,6 +28,7 @@ Hong Kong fine dining restaurants, high-end casual venues, and members' clubs wh
 | PDF reports | `reportlab` |
 | Notifications | Twilio WhatsApp Business API |
 | Data analysis | `pandas` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -71,6 +72,28 @@ Hong Kong fine dining restaurants, high-end casual venues, and members' clubs wh
 - **POS System**: Import order history for spending tracking and preference inference. Support CSV/API integration with Eats365, e-Pos, and FoodZaps.
 - **TableMaster AI (sibling tool)**: When a reservation is confirmed, pull guest profile and generate a briefing card. Attach VIP tag to the booking for special treatment.
 - **NoShowShield (sibling tool)**: Share guest reliability scores. VIP guests should never be blacklisted without manager override.
+- **Telegram Bot API**: Secondary channel for booking confirmations, queue updates, and guest communication.
+
+## GUI Specification
+
+Part of the **F&B Dashboard** (`http://mona.local:8003`) — SommelierMemory tab.
+
+### Views
+
+- **Guest CRM Cards**: Expandable cards with guest photo (optional), dietary restrictions, favorite dishes, wine/drink preferences, celebration dates, and visit history.
+- **Celebrations Calendar**: Monthly calendar view highlighting upcoming birthdays, anniversaries, and special occasions for regular guests.
+- **Guest Tagging & Search**: Tag guests with custom labels (VIP, wine lover, vegetarian, etc.) and search/filter by any attribute.
+- **Visit Timeline**: Per-guest chronological log of visits with order details and special requests noted.
+
+### Mona Integration
+
+- Mona auto-captures guest preferences from WhatsApp conversations and booking notes.
+- Mona sends celebration reminders to the restaurant team before upcoming guest occasions.
+- Human adds personal observations and preference notes after service.
+
+### Manual Mode
+
+- Staff can manually create guest profiles, record preferences, manage celebrations, and browse the CRM without Mona.
 
 ## HK-Specific Requirements
 
@@ -149,6 +172,18 @@ CREATE TABLE preferences (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Restaurant Profile**: Restaurant name, address, cuisine type, operating hours (lunch/dinner/dim sum sessions)
+2. **VIP Configuration**: Define VIP tier thresholds (visit count, total spend), custom guest tags
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+4. **Sibling Connections**: Link to TableMaster AI for booking data and NoShowShield for reliability scores
+5. **Celebration Settings**: Default celebration types (birthday, anniversary), lookahead period, gesture suggestions per VIP tier
+6. **Sample Data**: Option to seed demo guest profiles for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Guest profile CRUD operations work: create, read, update, and soft-delete
@@ -168,3 +203,7 @@ CREATE TABLE preferences (
 - **Memory**: Steady-state <300MB without LLM. Briefing card generation loads LLM temporarily (~5GB). Schedule briefing generation before service (e.g., 5pm for dinner service).
 - **Guest photos**: Optional feature. Store photos locally in `~/OpenClawWorkspace/sommelier-memory/guest_photos/` with filename = guest ID. Encrypt at rest. Only accessible through the authenticated dashboard.
 - **Data portability**: Provide CSV export for all guest data to comply with PDPO data access requests. Include a data deletion function that removes all traces of a guest from all tables.
+- **Logging**: All operations logged to `/var/log/openclaw/sommelier-memory.log` with daily rotation (7-day retention). Guest phone numbers masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication on first access. Guest personal data (phone, dietary/health info) protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data.

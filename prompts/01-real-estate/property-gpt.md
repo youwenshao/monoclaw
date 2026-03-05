@@ -31,6 +31,7 @@ Hong Kong licensed estate agents (EAA holders) who handle 20-50 property inquiri
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` (stdlib) |
 | WhatsApp | Twilio WhatsApp Business API |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -70,6 +71,29 @@ Hong Kong licensed estate agents (EAA holders) who handle 20-50 property inquiri
 - **Centadata / Midland Realty**: Market price references (public pages)
 - **Twilio WhatsApp Business API**: Receive client questions, send formatted answers
 - **28Hse / Squarefoot**: Target platforms for listing description output formats
+- **Telegram Bot API**: Secondary messaging channel for client communication. Supports the same booking/notification flows as WhatsApp.
+
+## GUI Specification
+
+Part of the **Real Estate Dashboard** (`http://mona.local:8001`) — PropertyGPT tab.
+
+### Views
+
+- **Semantic Search**: Search bar with district/price/bedroom filters. Results displayed as property cards with transaction history sparklines.
+- **Property Comparison**: Side-by-side comparison table for selected properties with key metrics (price/sqft, building age, MTR distance, management fee).
+- **Chat Panel**: Natural language Q&A interface with streaming LLM responses. Inline citations link back to source data.
+- **Floor Plan Viewer**: Uploaded floor plan images with OCR-extracted room dimensions overlaid.
+- **Price Trend Briefing**: Daily digest view with district-level price movement charts.
+
+### Mona Integration
+
+- Mona auto-answers incoming WhatsApp property queries and displays them in the Activity Feed.
+- Human can review Mona's answers before they are sent, or let them auto-send after a configurable approval window.
+- Mona surfaces new Land Registry transactions relevant to the agent's focus districts as alert cards.
+
+### Manual Mode
+
+- Agent can manually search properties, generate listing descriptions, run comparable analysis, and export reports — all without Mona running.
 
 ## HK-Specific Requirements
 
@@ -128,6 +152,16 @@ CREATE TABLE query_log (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Agency name, EAA license number, office address, operating hours
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language (EN/TC)
+3. **Platform Credentials**: Land Registry IRIS Online login, Centadata/Midland Realty access, and RVD data portal credentials (where applicable)
+4. **Sample Data**: Option to seed demo data for testing before going live
+5. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Semantic search returns relevant properties for natural language queries in both English and Chinese
@@ -147,3 +181,7 @@ CREATE TABLE query_log (
 - **Rate limiting**: Scraping Land Registry and RVD should respect robots.txt and use 2-second delays between requests. Cache aggressively — building data changes infrequently.
 - **Startup**: Pre-load the LLM and embedding model on application start. Use lazy loading for ChromaDB collections to reduce cold start time.
 - **Error handling**: If LLM inference fails (OOM), fall back to template-based responses for common query types. Log all failures to `/var/log/openclaw/property-gpt.log`.
+- **Logging**: All operations logged to `/var/log/openclaw/property-gpt.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state, and memory usage. Consumed by the Mona Hub launcher.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or migration.

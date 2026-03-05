@@ -1,6 +1,6 @@
 # ClinicScheduler
 
-## Tool Name & Overview
+## Overview
 
 ClinicScheduler is a 24/7 WhatsApp-based appointment booking system for Hong Kong medical and dental clinics. It provides real-time availability checking across doctors, rooms, and equipment, handles booking confirmations and rescheduling, and maintains a waitlist for popular time slots. The system is designed to reduce front-desk phone volume and enable after-hours appointment booking.
 
@@ -19,17 +19,20 @@ Hong Kong private clinic owners, practice managers, and front-desk staff at GP c
 
 ## Tech Stack
 
-- **Messaging**: Twilio WhatsApp Business API for patient communication
-- **LLM**: MLX local inference for natural language understanding of patient messages
-- **Scheduler**: Python `datetime` + custom scheduling engine; APScheduler for reminders
-- **Database**: SQLite for appointments, doctor schedules, patient records
-- **UI**: Streamlit dashboard for clinic staff; simple HTML page for waiting room display
-- **Calendar**: icalendar for .ics export; optional Google Calendar sync
+| Component | Library / Tool |
+|-----------|---------------|
+| Messaging | Twilio WhatsApp Business API for patient communication |
+| LLM | MLX local inference for natural language understanding of patient messages |
+| Scheduler | Python `datetime` + custom scheduling engine; APScheduler for reminders |
+| Database | SQLite for appointments, doctor schedules, patient records |
+| UI | Streamlit dashboard for clinic staff; simple HTML page for waiting room display |
+| Calendar | icalendar for .ics export; optional Google Calendar sync |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/clinic-scheduler/
+/opt/openclaw/skills/local/clinic-scheduler/
 ├── app.py                     # Streamlit clinic staff dashboard
 ├── bot/
 │   ├── whatsapp_handler.py    # Twilio webhook for patient messages
@@ -52,11 +55,43 @@ Hong Kong private clinic owners, practice managers, and front-desk staff at GP c
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/clinic-scheduler/
+├── db/                        # SQLite database files
+├── logs/                      # Booking and reminder logs
+└── exports/                   # Calendar .ics exports
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp Business API**: Primary patient-facing communication channel
 - **Google Calendar API** (optional): Two-way sync for doctors who manage schedules in Google Calendar
 - **Local LLM (MLX)**: Understanding freeform patient messages (e.g., "Can I see Dr. Wong next Tuesday afternoon?")
+- **Telegram Bot API**: Secondary patient communication channel for appointment reminders and medication alerts.
+
+## GUI Specification
+
+Part of the **Medical Dashboard** (`http://mona.local:8502`) — ClinicScheduler tab.
+
+### Views
+
+- **Doctor Schedule Grid**: Time slots as rows, doctors as columns. Cells show appointments (click to view/edit). Color-coded by status (booked=blue, confirmed=green, arrived=amber, in-progress=orange, completed=grey).
+- **Appointment Booking Form**: Manual entry form for phone/walk-in bookings with doctor, service type, date/time, and patient details.
+- **Waitlist Panel**: Priority-ranked waitlist with patient name, preferred slot, and "Notify" button to send availability offers.
+- **Walk-In Queue View**: Full-screen mode for waiting room display — large fonts showing queue position, estimated wait, and currently-serving number.
+- **Today's Statistics**: Cards showing total appointments, completed, no-shows, walk-ins, and average wait time.
+
+### Mona Integration
+
+- Mona handles WhatsApp booking conversations and populates the schedule with confirmed appointments.
+- Mona sends 24-hour and 2-hour reminders automatically and updates confirmation status in the grid.
+- Human manages walk-ins, overrides scheduling conflicts, and handles waitlist prioritization.
+
+### Manual Mode
+
+- Front desk can manually book appointments, manage the schedule, handle walk-ins, and display the queue without Mona.
 
 ## HK-Specific Requirements
 
@@ -125,6 +160,19 @@ CREATE TABLE waitlist (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Clinic Profile**: Clinic name, HKMA registration number, address, operating hours (morning/afternoon/evening sessions), Saturday hours
+2. **Practitioners**: Add doctors with name, specialty, registration number, and default slot durations
+3. **Messaging Setup**: Twilio API credentials for WhatsApp/SMS, Telegram bot token
+4. **Service Types**: Define appointment types with durations (GP 15min, specialist 30min, dental cleaning 45min, etc.)
+5. **Insurance Panels**: Configure supported insurers and upload fee schedules
+6. **Room & Equipment**: Define consultation rooms and shared equipment for scheduling constraints
+7. **Sample Data**: Option to seed demo appointments and patients for testing
+8. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] WhatsApp booking flow completes appointment creation in under 6 messages
@@ -144,3 +192,7 @@ CREATE TABLE waitlist (
 - Walk-in queue estimation: calculate based on remaining appointment durations plus average walk-in consultation time
 - Total memory budget: ~4GB for this tool (webhook server + LLM + Streamlit), leaving room for other tools on 16GB M4
 - Consider implementing a simple SMS fallback via Twilio for patients who don't use WhatsApp (common among elderly patients in HK)
+- **Logging**: All operations logged to `/var/log/openclaw/clinic-scheduler.log` with daily rotation (7-day retention). Patient names, phone numbers, and clinical data masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Health data is the most sensitive category under PDPO — explicit patient consent required for WhatsApp communication.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Exported appointment records maintain full booking history and audit trail.

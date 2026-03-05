@@ -1,6 +1,6 @@
 # JobTracker
 
-## Tool Name & Overview
+## Overview
 
 JobTracker is a job search management tool that parses job descriptions from Hong Kong job platforms (CTgoodjobs, JobsDB, LinkedIn), matches job requirements against the student's CV keywords and skills, tracks application status through the hiring pipeline, and provides analytics on the student's job search progress. It centralizes the typically chaotic graduate job hunt into an organized, data-driven workflow.
 
@@ -19,18 +19,21 @@ Hong Kong university students (final year and recent graduates), career changers
 
 ## Tech Stack
 
-- **Web Scraping**: Playwright for parsing job listings from CTgoodjobs, JobsDB; httpx for LinkedIn API/scraping
-- **LLM**: MLX local inference (Qwen-2.5-7B) for keyword matching, cover letter generation, and job description analysis
-- **NLP**: rapidfuzz for skill matching; sentence-transformers for semantic similarity between CV and JD
-- **Database**: SQLite for job listings, applications, CV data, and analytics
-- **UI**: Streamlit with Kanban board, analytics dashboard, and CV review interface
-- **Notifications**: Twilio WhatsApp for interview reminders; APScheduler for scheduling
-- **Charts**: plotly for application funnel and response rate visualization
+| Component | Library / Tool |
+|-----------|---------------|
+| Web Scraping | Playwright for parsing job listings from CTgoodjobs, JobsDB; httpx for LinkedIn API/scraping |
+| LLM | MLX local inference (Qwen-2.5-7B) for keyword matching, cover letter generation, and job description analysis |
+| NLP | rapidfuzz for skill matching; sentence-transformers for semantic similarity between CV and JD |
+| Database | SQLite for job listings, applications, CV data, and analytics |
+| UI | Streamlit with Kanban board, analytics dashboard, and CV review interface |
+| Notifications | Twilio WhatsApp for interview reminders; APScheduler for scheduling |
+| Charts | plotly for application funnel and response rate visualization |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/job-tracker/
+/opt/openclaw/skills/local/job-tracker/
 ├── app.py                        # Streamlit job search dashboard
 ├── parsing/
 │   ├── ctgoodjobs_parser.py      # CTgoodjobs job listing scraper
@@ -52,10 +55,14 @@ Hong Kong university students (final year and recent graduates), career changers
 ├── models/
 │   ├── llm_handler.py            # MLX inference wrapper
 │   └── prompts.py                # JD parsing, cover letter, and matching prompts
-├── data/
-│   └── jobtracker.db             # SQLite database
 ├── requirements.txt
 └── README.md
+```
+
+```
+~/OpenClawWorkspace/job-tracker/
+├── jobtracker.db                 # SQLite database
+└── cvs/                          # Uploaded CV/resume files
 ```
 
 ## Key Integrations
@@ -65,6 +72,30 @@ Hong Kong university students (final year and recent graduates), career changers
 - **LinkedIn**: Professional network job listings — parser with rate limiting
 - **Twilio WhatsApp**: Interview reminders sent to the student's phone
 - **Local LLM (MLX)**: JD analysis, cover letter generation, and keyword matching
+- **Telegram Bot API**: Secondary channel for study reminders, interview notifications, and deadline alerts.
+
+## GUI Specification
+
+Part of the **Student Dashboard** (`http://mona.local:8507`) — JobTracker tab.
+
+### Views
+
+- **Kanban Board**: Drag-drop columns — Saved | Applied | Phone Screen | Assessment | Interview | Final Round | Offer | Accepted/Rejected. Job cards with company logo, title, and days-in-stage.
+- **Job Detail Panel**: Parsed job description, match score gauge, missing keywords list, salary range, benefits summary, and deadline.
+- **Cover Letter Editor**: AI-generated draft based on JD + CV with rich text editing. Side-by-side view with the job description.
+- **Interview Calendar**: Upcoming interviews with date, type (phone/video/in-person/assessment centre), location, and preparation notes. WhatsApp reminders.
+- **Analytics Dashboard**: Application funnel chart, response rate trend, time-to-response distribution, and applications per week.
+- **CV Match View**: Upload CV, select a job listing, see keyword match percentage with specific gaps highlighted.
+
+### Mona Integration
+
+- Mona auto-parses job listings from CTgoodjobs and JobsDB URLs pasted into the tracker.
+- Mona generates tailored cover letter drafts based on job requirements and the student's CV.
+- Human manages the pipeline, edits cover letters, and prepares for interviews.
+
+### Manual Mode
+
+- Student can manually add jobs, manage the Kanban board, write cover letters, and track interviews without Mona.
 
 ## HK-Specific Requirements
 
@@ -152,6 +183,18 @@ CREATE TABLE analytics_snapshots (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Student Profile**: Name, university, programme, year of study, expected graduation date
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token (for interview reminders and deadline alerts)
+3. **CV Upload**: Upload current CV for job matching and cover letter generation
+4. **Job Platform Preferences**: Select which platforms to track (CTgoodjobs, JobsDB, LinkedIn)
+5. **Graduate Programme Calendar**: Pre-load HK graduate programme application deadlines
+6. **Sample Data**: Option to seed demo job listings and sample applications for testing
+7. **Connection Test**: Validates all API connections, Playwright browser, and LLM availability
+
 ## Testing Criteria
 
 - [ ] Parses a CTgoodjobs listing URL and extracts title, company, salary range, and requirements correctly
@@ -172,3 +215,7 @@ CREATE TABLE analytics_snapshots (
 - Memory budget: ~5GB (LLM for analysis + Playwright for scraping + Streamlit dashboard)
 - Application data privacy: job search data is personal — all data stays local in SQLite; never sync to external services
 - Consider adding a "networking tracker" feature to log informational interviews, coffee chats, and referral contacts — networking is critical in HK's relationship-driven job market
+- **Logging**: All operations logged to `/var/log/openclaw/job-tracker.log` with daily rotation (7-day retention). Student personal data and academic content masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Course materials (copyrighted textbooks, exam papers) processed locally only — zero cloud processing.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/embedding model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all study data, flashcards, job applications, and exam attempts.

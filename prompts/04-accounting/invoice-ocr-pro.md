@@ -32,6 +32,7 @@ Hong Kong accounting firms and bookkeepers processing 200-500 invoices per month
 | Database | `sqlite3` |
 | WhatsApp | Twilio WhatsApp Business API |
 | Excel output | `openpyxl` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -79,6 +80,30 @@ Hong Kong accounting firms and bookkeepers processing 200-500 invoices per month
 - **QuickBooks Online**: `python-quickbooks` SDK for expense entry creation. OAuth2 flow.
 - **Twilio WhatsApp Business API**: Receive receipt photos, send extraction summaries for confirmation.
 - **macOS Vision Framework**: On-device OCR with Chinese and English support. No cloud API needed.
+- **Telegram Bot API**: Secondary channel for deadline reminders, invoice notifications, and rate alerts.
+
+## GUI Specification
+
+Part of the **Accounting Dashboard** (`http://mona.local:8004`) — InvoiceOCR tab.
+
+### Views
+
+- **Three-Column Layout**: Incoming queue (left) | OCR result editor (center) | accounting push controls (right).
+- **Invoice Viewer**: Zoomable original image alongside extracted fields (supplier, date, amount, line items) as editable form fields.
+- **Auto-Categorization**: Dropdown category selector pre-filled by AI; overridable. Historical pattern shown as hint text.
+- **Duplicate Detection Banner**: Amber warning when invoice number + supplier matches an existing record, with link to the duplicate.
+- **Batch Action Bar**: Select multiple invoices, approve all, and push to Xero/ABSS/QuickBooks in one action.
+- **Processing Statistics**: Today's processed count, OCR accuracy rate, estimated time saved vs manual entry.
+
+### Mona Integration
+
+- Mona auto-processes invoices from the watched folder and WhatsApp receipts, populating the queue with extracted data.
+- Mona auto-categorizes expenses based on supplier history and description patterns.
+- Human reviews extractions, corrects any errors, and approves before data is pushed to accounting software.
+
+### Manual Mode
+
+- Bookkeeper can manually upload invoices, review OCR results, categorize expenses, and push to accounting software without Mona.
 
 ## HK-Specific Requirements
 
@@ -147,6 +172,18 @@ CREATE TABLE category_rules (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Company name, BR number, financial year-end date, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Accounting Software**: Connect Xero/ABSS/QuickBooks OAuth credentials and select chart of accounts
+4. **OCR Settings**: Configure watched folder path, OCR accuracy level, supported document formats
+5. **Expense Categories**: Import or define chart of accounts categories for auto-categorization
+6. **Sample Data**: Option to seed demo invoices for testing OCR extraction and categorization
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] OCR extracts supplier name, invoice number, date, and total from 10 sample HK invoices with >90% accuracy
@@ -167,3 +204,7 @@ CREATE TABLE category_rules (
 - **Accounting API rate limits**: Xero: 60 calls/minute. QuickBooks: 500 calls/minute. ABSS: varies. Batch invoice creation where possible. Queue entries and push during off-peak hours.
 - **Privacy**: Invoices contain business financial data. All processing is local. Never send invoice images to cloud OCR. Accounting API integration sends only structured data (not images) to the cloud accounting platform with client authorization.
 - **Faded receipts**: Thermal receipts fade over time. Apply adaptive thresholding and contrast stretching before OCR. If confidence is below threshold, flag for manual entry rather than guessing.
+- **Logging**: All operations logged to `/var/log/openclaw/invoice-ocr-pro.log` with daily rotation (7-day retention). Financial data and client details masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Accounting API credentials stored with restricted file permissions (600). Financial data protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, OCR/LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data for backup or audit purposes.

@@ -1,6 +1,6 @@
 # StudyBuddy
 
-## Tool Name & Overview
+## Overview
 
 StudyBuddy is a privacy-first local document Q&A system for university students that indexes course materials (PDFs, lecture slides, readings, notes) and answers study questions using RAG (Retrieval-Augmented Generation) with ChromaDB and a local LLM. All processing happens on-device — no course materials or queries are ever sent to cloud services, making it safe for use with copyrighted textbooks and exam prep materials.
 
@@ -19,18 +19,21 @@ University students in Hong Kong (undergraduate and postgraduate) who accumulate
 
 ## Tech Stack
 
-- **Vector DB**: ChromaDB for embedding storage and semantic retrieval
-- **Embeddings**: sentence-transformers (multilingual model for EN/TC support)
-- **LLM**: MLX local inference (Qwen-2.5-7B quantized to 4-bit) for Q&A, summarization, and flashcard generation
-- **Document Parsing**: PyMuPDF for PDFs, python-pptx for slides, python-docx for Word files
-- **Database**: SQLite for document metadata, course organization, flashcard decks, and study history
-- **UI**: Streamlit with search interface, document browser, and flashcard review mode
-- **Export**: genanki for Anki flashcard export
+| Component | Library / Tool |
+|-----------|---------------|
+| Vector DB | ChromaDB for embedding storage and semantic retrieval |
+| Embeddings | sentence-transformers (multilingual model for EN/TC support) |
+| LLM | MLX local inference (Qwen-2.5-7B quantized to 4-bit) for Q&A, summarization, and flashcard generation |
+| Document Parsing | PyMuPDF for PDFs, python-pptx for slides, python-docx for Word files |
+| Database | SQLite for document metadata, course organization, flashcard decks, and study history |
+| UI | Streamlit with search interface, document browser, and flashcard review mode |
+| Export | genanki for Anki flashcard export |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/study-buddy/
+/opt/openclaw/skills/local/study-buddy/
 ├── app.py                        # Streamlit study interface
 ├── ingestion/
 │   ├── pdf_parser.py             # PDF text extraction with page tracking
@@ -54,11 +57,15 @@ University students in Hong Kong (undergraduate and postgraduate) who accumulate
 ├── models/
 │   ├── llm_handler.py            # MLX inference wrapper
 │   └── prompts.py                # QA, summary, and flashcard generation prompts
-├── data/
-│   ├── studybuddy.db             # SQLite database
-│   └── chroma_db/                # ChromaDB vector store
 ├── requirements.txt
 └── README.md
+```
+
+```
+~/OpenClawWorkspace/study-buddy/
+├── studybuddy.db                 # SQLite database
+├── chroma_db/                    # ChromaDB vector store
+└── imports/                      # Imported course documents
 ```
 
 ## Key Integrations
@@ -66,6 +73,31 @@ University students in Hong Kong (undergraduate and postgraduate) who accumulate
 - **ChromaDB**: Local vector database — no cloud dependency; data stays on the student's machine
 - **Local LLM (MLX)**: All Q&A and generation runs on-device for complete privacy
 - **Anki**: Export flashcards in .apkg format compatible with the popular Anki spaced repetition app
+- **ExamGenerator (sibling tool)**: Shares the ChromaDB index and course database. ExamGenerator generates practice exam questions from the same indexed content. Exam performance data feeds back into StudyBuddy's flashcard generation — weak topics identified by exam results get prioritized in spaced repetition.
+- **Telegram Bot API**: Secondary channel for study reminders, interview notifications, and deadline alerts.
+
+## GUI Specification
+
+Part of the **Student Dashboard** (`http://mona.local:8507`) — StudyBuddy tab.
+
+### Views
+
+- **Course Organizer**: Hierarchical browser showing semester → course → topic structure. Add courses, organize materials by topic.
+- **Document Uploader**: Drag-drop area for PDFs, .pptx, .docx files. Batch import from course folders. Progress indicators for indexing.
+- **Semantic Search**: Search bar with course/topic scope filters. Results show relevant passages with page-level citations. Click to view in context.
+- **Q&A Chat**: RAG-powered chat with streaming responses. Inline citations link to source documents. "Show Sources" panel for verification.
+- **Flashcard Review Mode**: Spaced repetition flashcards with flip animation. Difficulty rating (easy/medium/hard) after each card. Progress bar and streak counter.
+- **Summary Viewer**: Chapter and lecture summaries at configurable detail levels (brief overview, detailed, key concepts only). Generate on demand.
+
+### Mona Integration
+
+- Mona auto-indexes documents added to watched course folders.
+- Mona generates flashcards from newly indexed materials, prioritizing topics where exam performance is weak.
+- Human studies, reviews materials, and rates flashcard difficulty.
+
+### Manual Mode
+
+- Student can manually upload documents, search materials, use flashcards, and generate summaries without Mona.
 
 ## HK-Specific Requirements
 
@@ -137,6 +169,17 @@ CREATE TABLE flashcards (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Student Profile**: Name, university, programme, year of study, expected graduation date
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token (for study reminders and deadline alerts)
+3. **Course Setup**: Add current semester courses with course codes, names, and topics
+4. **Document Library**: Import existing course materials from folders or start fresh
+5. **Sample Data**: Option to seed demo courses, sample documents, and flashcards for testing
+6. **Connection Test**: Validates all API connections, ChromaDB status, and embedding model availability
+
 ## Testing Criteria
 
 - [ ] Ingests a 50-page PDF textbook chapter and creates searchable chunks with correct page references
@@ -151,9 +194,13 @@ CREATE TABLE flashcards (
 
 - Embedding model: use paraphrase-multilingual-MiniLM-L12-v2 for bilingual (EN/TC) embedding support; fits in ~500MB RAM
 - Chunking for slides: each slide becomes one chunk (natural content boundary); for PDFs, use 500-token chunks with section awareness
-- ChromaDB: use persistent mode with course-level collections for efficient scoped searches; metadata filtering by course_code
+- ChromaDB: use persistent mode with course-level collections for efficient scoped searches; metadata filtering by course_code. The `~/OpenClawWorkspace/study-buddy/chroma_db/` directory is shared with ExamGenerator via symlink — StudyBuddy is the sole writer; ExamGenerator reads only.
 - Q&A pipeline: retrieve top 8 chunks → pass to LLM with "answer based only on the provided context" instruction → generate answer with citations
 - Flashcard generation: for each document section, prompt the LLM to generate 3-5 question-answer pairs covering key concepts; tag with difficulty based on Bloom's taxonomy level
 - Exam prep: OCR past papers if scanned (Tesseract), extract questions, classify by topic, then retrieve relevant indexed material per topic
 - Memory budget: ~7GB (embedding model + LLM + ChromaDB + application); tight on 16GB — advise students to close other LLM tools when using StudyBuddy intensively
 - Consider implementing a "study session" mode with a Pomodoro timer and integrated flashcard reviews between study blocks
+- **Logging**: All operations logged to `/var/log/openclaw/study-buddy.log` with daily rotation (7-day retention). Student personal data and academic content masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Course materials (copyrighted textbooks, exam papers) processed locally only — zero cloud processing.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/embedding model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all study data, flashcards, job applications, and exam attempts.

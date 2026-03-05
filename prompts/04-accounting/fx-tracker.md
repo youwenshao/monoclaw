@@ -29,6 +29,7 @@ Hong Kong accounting firms and CFOs of import/export businesses that hold multi-
 | Database | `sqlite3` |
 | Charts | `matplotlib` for exposure charts |
 | Notifications | Twilio WhatsApp Business API |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -79,6 +80,29 @@ Hong Kong accounting firms and CFOs of import/export businesses that hold multi-
 - **InvoiceOCR Pro (sibling tool)**: When invoices in foreign currencies are processed, auto-log the transaction with the day's rate.
 - **Accounting Software**: Export revaluation journal entries as CSV/IIF for import into Xero, ABSS, or QuickBooks.
 - **Twilio WhatsApp Business API**: Send daily rate summary and alert on significant rate movements.
+- **Telegram Bot API**: Secondary channel for deadline reminders, invoice notifications, and rate alerts.
+
+## GUI Specification
+
+Part of the **Accounting Dashboard** (`http://mona.local:8004`) — FXTracker tab.
+
+### Views
+
+- **Rate Dashboard**: Live exchange rate display for HKD/USD/CNY/EUR/GBP sourced from HKMA Treasury Markets Association. Historical rate charts with configurable time ranges.
+- **Transaction Log**: Multi-currency transaction table with auto-converted HKD equivalents and source rate citations.
+- **Gains & Losses Report**: Realized and unrealized FX gains/losses calculated per transaction with accounting period summaries.
+- **Rate Alerts**: Configuration panel to set threshold alerts (e.g., notify when USD/HKD exceeds 7.85) via WhatsApp.
+- **Currency Exposure Summary**: Pie chart showing the business's currency exposure breakdown.
+
+### Mona Integration
+
+- Mona fetches rates daily from HKMA and logs them automatically.
+- Mona sends rate alerts when configured thresholds are crossed.
+- Mona auto-calculates FX gains/losses when transactions are settled.
+
+### Manual Mode
+
+- Accountant can manually log transactions, look up rates, calculate gains/losses, and configure alerts without Mona.
 
 ## HK-Specific Requirements
 
@@ -169,6 +193,18 @@ CREATE TABLE rate_alerts (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Company name, BR number, financial year-end date, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Currency Configuration**: Select active currency pairs and set FX gain/loss calculation method (FIFO/weighted average)
+4. **Rate Sources**: Configure HKMA API access and any supplementary rate feeds
+5. **Rate Alerts**: Set initial threshold alerts for key currency pairs (e.g., USD/HKD, CNH/HKD)
+6. **Sample Data**: Option to seed demo transactions and historical rates for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] HKMA rate fetcher retrieves today's USD, CNH, EUR, GBP rates and stores correctly
@@ -189,3 +225,7 @@ CREATE TABLE rate_alerts (
 - **Rate interpolation**: If a rate is missing for a specific date (e.g., data gap), interpolate linearly from the nearest available dates. Flag interpolated rates in reports.
 - **Privacy**: FX transaction data reveals business relationships and trade volumes. All data stays local. Reports shared only via secure channels.
 - **Alerting**: Configurable rate alerts — e.g., notify if CNH/HKD moves more than 0.5% in a day. Useful for import/export businesses with large CNH exposure. Alert via WhatsApp.
+- **Logging**: All operations logged to `/var/log/openclaw/fx-tracker.log` with daily rotation (7-day retention). Financial data and client details masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Accounting API credentials stored with restricted file permissions (600). Financial data protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, OCR/LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data for backup or audit purposes.

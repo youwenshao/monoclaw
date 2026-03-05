@@ -1,6 +1,6 @@
 # SocialSync
 
-## Tool Name & Overview
+## Overview
 
 SocialSync is a one-click social media distribution tool that publishes content simultaneously to Instagram, Facebook, and WhatsApp Status from a single interface. It optimizes posts for each platform's format requirements, schedules content for optimal engagement times in the HK market, and provides basic analytics. Designed for Hong Kong solopreneurs and small businesses who manage their own social media without a dedicated marketing team.
 
@@ -19,18 +19,21 @@ Hong Kong solopreneurs, small business owners, freelancers, and micro-influencer
 
 ## Tech Stack
 
-- **Social APIs**: Instagram Graph API (via Facebook), Facebook Pages API, WhatsApp Business API (via Twilio)
-- **Image Processing**: Pillow for image resizing, cropping, and optimization; moviepy for basic video processing
-- **LLM**: MLX local inference for caption optimization, hashtag suggestions, and CTA generation
-- **Scheduler**: APScheduler for scheduled post publication
-- **Database**: SQLite for content calendar, post history, and analytics data
-- **UI**: Streamlit dashboard with content editor, calendar view, and analytics charts
-- **Charts**: plotly for engagement analytics visualization
+| Component | Library / Tool |
+|-----------|---------------|
+| Social APIs | Instagram Graph API (via Facebook), Facebook Pages API, WhatsApp Business API (via Twilio) |
+| Image Processing | Pillow for image resizing, cropping, and optimization; moviepy for basic video processing |
+| LLM | MLX local inference for caption optimization, hashtag suggestions, and CTA generation |
+| Scheduler | APScheduler for scheduled post publication |
+| Database | SQLite for content calendar, post history, and analytics data |
+| UI | Streamlit dashboard with content editor, calendar view, and analytics charts |
+| Charts | plotly for engagement analytics visualization |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/social-sync/
+/opt/openclaw/skills/local/social-sync/
 ├── app.py                        # Streamlit social media dashboard
 ├── publishing/
 │   ├── instagram_publisher.py    # Instagram Graph API posting
@@ -59,12 +62,44 @@ Hong Kong solopreneurs, small business owners, freelancers, and micro-influencer
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/social-sync/
+├── socialsync.db                     # SQLite database (posts, analytics, calendar)
+├── media/
+│   ├── originals/                    # Original uploaded images and videos
+│   └── optimized/                    # Platform-specific optimized media
+└── exports/                          # Analytics reports and data exports
+```
+
 ## Key Integrations
 
 - **Instagram Graph API**: Publishing feed posts, stories, and reels; reading insights
 - **Facebook Pages API**: Publishing page posts and stories; reading page insights
 - **Twilio WhatsApp Business API**: WhatsApp Status updates and click-to-chat link generation
 - **Local LLM (MLX)**: Caption optimization, hashtag generation, and CTA suggestions
+- **Telegram Bot API**: Secondary channel for business alerts, customer communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Solopreneur Dashboard** (`http://mona.local:8506`) — SocialSync tab.
+
+### Views
+
+- **Post Composer**: Rich text editor with image/video upload. Multi-platform preview showing how the post will appear on Instagram, Facebook, and WhatsApp simultaneously.
+- **Content Calendar**: Monthly calendar with drag-drop post scheduling. Scheduled posts shown as colored cards. Edit or reschedule by dragging.
+- **Platform Connections**: Status indicators for connected social accounts (IG Business, FB Page, WhatsApp Business) with reconnect controls.
+- **Engagement Analytics**: Per-platform metrics (likes, comments, shares, reach) charted over time. Best posting time recommendations.
+- **Template Gallery**: Reusable post templates for common promotions (new product, holiday special, seasonal sale).
+
+### Mona Integration
+
+- Mona suggests optimal posting times based on historical engagement data.
+- Mona auto-posts scheduled content at the configured times across all platforms.
+- Human creates content, reviews scheduling, and responds to engagement.
+
+### Manual Mode
+
+- Business owner can manually compose posts, schedule content, connect platforms, and view analytics without Mona.
 
 ## HK-Specific Requirements
 
@@ -137,6 +172,18 @@ CREATE TABLE hashtag_library (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Business name, BR number, business type, operating hours, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Social Accounts**: Connect Instagram Business account, Facebook Page, and WhatsApp Business account; verify API permissions
+4. **Content Preferences**: Default posting language (English/Traditional Chinese/bilingual), preferred hashtag categories, brand tone
+5. **Scheduling Preferences**: Configure optimal posting times or use HK market defaults (lunch, evening, late night)
+6. **Sample Data**: Option to seed demo posts, calendar events, and analytics for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] One-click publish sends the same content to Instagram feed, Facebook page, and WhatsApp Status successfully
@@ -157,3 +204,7 @@ CREATE TABLE hashtag_library (
 - Analytics API rate limits: Instagram Graph API has strict rate limits — fetch analytics for each post once daily rather than in real-time
 - Memory budget: ~4GB (LLM for caption optimization; image processing is done on-demand and released; video processing may spike memory temporarily)
 - Consider a "content inspiration" feature that generates post ideas based on upcoming HK events, trending topics, and the business's past top-performing content
+- **Logging**: All operations logged to `/var/log/openclaw/social-sync.log` with daily rotation (7-day retention). Financial data and customer details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Business financial data protected under PDPO — zero cloud processing for transaction data.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, POS sync status, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all business data for backup or accountant handoff.

@@ -1,6 +1,6 @@
 # CodeQwen
 
-## Tool Name & Overview
+## Overview
 
 CodeQwen is a local coding assistant powered by Qwen-2.5-Coder-7B running on MLX. It provides code completion, explanation, refactoring, and debugging assistance for Python, JavaScript, React, and other languages — all running entirely on-device. It operates as both a CLI tool for terminal-based workflows and a lightweight editor plugin server, giving developers a private, zero-latency coding companion without cloud API dependencies.
 
@@ -19,17 +19,19 @@ Software developers, indie hackers, and technical founders in Hong Kong who want
 
 ## Tech Stack
 
-- **LLM**: Qwen-2.5-Coder-7B via MLX (4-bit quantized for 16GB RAM); mlx-lm for model loading and inference
-- **CLI**: Click or Typer for command-line interface construction
-- **Server**: FastAPI for the LSP-compatible HTTP server; uvicorn for async serving
-- **Streaming**: Server-Sent Events (SSE) for streaming code completions to editor clients
-- **Database**: SQLite for conversation history, completion cache, and usage analytics
-- **Editor Integration**: VS Code extension (if needed) or compatible with existing Continue/Copilot-style extension protocols
+| Component | Library / Tool |
+|-----------|---------------|
+| LLM | Qwen-2.5-Coder-7B via MLX (4-bit quantized for 16GB RAM); mlx-lm for model loading and inference |
+| CLI | Click or Typer for command-line interface construction |
+| Server | FastAPI for the LSP-compatible HTTP server; uvicorn for async serving |
+| Streaming | Server-Sent Events (SSE) for streaming code completions to editor clients |
+| Database | SQLite for conversation history, completion cache, and usage analytics |
+| Editor Integration | VS Code extension (if needed) or compatible with existing Continue/Copilot-style extension protocols |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/code-qwen/
+/opt/openclaw/skills/local/code-qwen/
 ├── app.py                       # FastAPI server for editor integration
 ├── cli.py                       # CLI entry point (codeqwen command)
 ├── inference/
@@ -53,11 +55,43 @@ Software developers, indie hackers, and technical founders in Hong Kong who want
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/code-qwen/
+├── data/
+│   ├── codeqwen.db              # SQLite database
+│   └── prompts/                 # System prompts per feature
+└── logs/
+    └── inference.log            # Inference request logs
+```
+
 ## Key Integrations
 
 - **MLX Framework**: Apple Silicon-optimized LLM inference — critical for acceptable latency on M4 hardware
 - **Editor Plugins**: Compatible with VS Code extension protocols for inline code completion
 - **Terminal**: CLI tool integrates with shell workflows (pipe code in, get completions out)
+
+## GUI Specification
+
+Part of the **Vibe Coder Dashboard** (`http://mona.local:8010`) — CodeQwen tab.
+
+### Views
+
+- **Code Editor**: Monaco-based editor with syntax highlighting, inline completions, and fill-in-middle suggestions. Supports Python, JavaScript, TypeScript, React, and Go.
+- **Explanation Panel**: Paste code and receive a structured explanation. Syntax-highlighted code alongside plain-language (or Chinese) walkthrough.
+- **Refactoring Sidebar**: Suggestions for improved structure, naming, and performance displayed alongside the current code with diff previews.
+- **Bug Detection**: Highlighted potential issues in the code with fix suggestions. Click to apply.
+- **Chat Interface**: Code Q&A with streaming LLM responses. Conversation history with replayable sessions.
+- **Performance Stats**: Tokens generated, latency per request, cache hit rate, and model memory usage.
+
+### Mona Integration
+
+- Mona provides proactive code suggestions as the developer types (via the LSP server).
+- Mona explains code blocks and suggests refactoring improvements in the sidebar.
+- Developer accepts or rejects suggestions; Mona adapts to coding style over time.
+
+### Manual Mode
+
+- Developer can use the editor, paste code for explanation, request refactoring, and chat about code without Mona's proactive suggestions.
 
 ## HK-Specific Requirements
 
@@ -105,6 +139,17 @@ CREATE TABLE usage_stats (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Developer Profile**: Name, preferred languages (Python, JS, TypeScript, Go), and coding style preferences
+2. **Model Configuration**: Verify Qwen-2.5-Coder-7B is loaded; configure warm/cold mode and context window settings
+3. **Project Setup**: Select default project directories for code analysis and completion context
+4. **Editor Integration**: Configure LSP server connection for VS Code, Cursor, or Neovim
+5. **Sample Data**: Option to seed demo code snippets for testing completions and explanations
+6. **Connection Test**: Validates model loading, editor LSP connection, and inference latency
+
 ## Testing Criteria
 
 - [ ] Code completion generates syntactically valid Python for a 5-line function prefix within 2 seconds
@@ -125,3 +170,7 @@ CREATE TABLE usage_stats (
 - Memory budget: ~5GB (model ~4GB + inference overhead ~1GB); this is one of the heavier tools — avoid running alongside other LLM-intensive tools
 - Latency target: <500ms for short completions (single line); <2s for multi-line completions; <5s for full explanations/refactoring
 - Consider implementing a "warm" mode where the model stays loaded in memory between requests vs a "cold" mode that unloads after inactivity to free RAM
+- **Logging**: All operations logged to `/var/log/openclaw/code-qwen.log` with daily rotation (7-day retention). Code snippets truncated in logs to avoid leaking proprietary source code.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Source code never leaves the local machine — zero cloud processing for all inference.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state (loaded/warm/cold), and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON archive of conversation history, generated documentation, and configuration.

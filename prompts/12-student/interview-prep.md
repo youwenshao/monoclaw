@@ -1,6 +1,6 @@
 # InterviewPrep
 
-## Tool Name & Overview
+## Overview
 
 InterviewPrep is a local coding practice and interview preparation tool that presents LeetCode-style algorithmic problems, provides progressive hints, generates detailed explanations of solutions, and tracks the student's performance to identify weak areas. It uses the local LLM for personalized explanations and adaptive difficulty, ensuring students can practice coding interviews without an internet connection or subscription fees.
 
@@ -19,16 +19,19 @@ Computer science students, coding bootcamp graduates, and junior developers in H
 
 ## Tech Stack
 
-- **LLM**: MLX local inference (Qwen-2.5-Coder-7B) for hint generation, solution explanation, and code review
-- **Code Execution**: subprocess with timeout and memory limits for running Python/JavaScript solutions safely
-- **Database**: SQLite for problem library, student progress, and performance analytics
-- **UI**: Streamlit with code editor (streamlit-ace), problem display, and progress dashboard
-- **Testing**: Custom test case runner with input/output comparison and edge case generation
+| Component | Library / Tool |
+|-----------|---------------|
+| LLM | MLX local inference (Qwen-2.5-Coder-7B) for hint generation, solution explanation, and code review |
+| Code Execution | subprocess with timeout and memory limits for running Python/JavaScript solutions safely |
+| Database | SQLite for problem library, student progress, and performance analytics |
+| UI | Streamlit with code editor (streamlit-ace), problem display, and progress dashboard |
+| Testing | Custom test case runner with input/output comparison and edge case generation |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/interview-prep/
+/opt/openclaw/skills/local/interview-prep/
 ├── app.py                        # Streamlit interview prep interface
 ├── problems/
 │   ├── problem_loader.py         # Problem library management
@@ -46,17 +49,20 @@ Computer science students, coding bootcamp graduates, and junior developers in H
 ├── models/
 │   ├── llm_handler.py            # MLX inference wrapper
 │   └── prompts.py                # Hint, explanation, and review prompts
-├── data/
-│   ├── interview_prep.db         # SQLite database
-│   └── problems/                 # Problem definitions (JSON)
-│       ├── arrays.json
-│       ├── strings.json
-│       ├── trees.json
-│       ├── graphs.json
-│       ├── dp.json
-│       └── sorting.json
 ├── requirements.txt
 └── README.md
+```
+
+```
+~/OpenClawWorkspace/interview-prep/
+├── interview_prep.db             # SQLite database
+└── problems/                     # Problem definitions (JSON)
+    ├── arrays.json
+    ├── strings.json
+    ├── trees.json
+    ├── graphs.json
+    ├── dp.json
+    └── sorting.json
 ```
 
 ## Key Integrations
@@ -64,6 +70,30 @@ Computer science students, coding bootcamp graduates, and junior developers in H
 - **Local LLM (MLX)**: Hint generation, solution explanations, and code review — all on-device
 - **Code Execution**: Local Python/JavaScript subprocess for running and testing student solutions
 - **No external dependencies**: Works fully offline — no LeetCode subscription needed
+- **Telegram Bot API**: Secondary channel for study reminders, interview notifications, and deadline alerts.
+
+## GUI Specification
+
+Part of the **Student Dashboard** (`http://mona.local:8507`) — InterviewPrep tab.
+
+### Views
+
+- **Problem Browser**: Filterable list of problems by topic (arrays, strings, trees, graphs, DP, sorting) and difficulty (easy/medium/hard). Search by title or keyword.
+- **Code Editor**: streamlit-ace editor with syntax highlighting for Python and JavaScript. Test case runner with pass/fail results and edge case display.
+- **Progressive Hint System**: Three-level hint reveal buttons (strategy → algorithm → implementation). Hints locked during mock interview mode.
+- **Solution Explanation Panel**: After solving or viewing the answer, a detailed walkthrough with time/space complexity analysis and alternative approaches.
+- **Mock Interview Mode**: 45-minute timed session with 2 problems. No hints, no solution view. Timer bar at top. Post-session scorecard with performance review.
+- **Progress Dashboard**: Solve rate per topic as a radar chart. Weak area identification. Daily streak counter. Historical performance trend line.
+
+### Mona Integration
+
+- Mona generates personalized practice plans based on weak areas identified from attempt history.
+- Mona provides solution explanations tailored to the student's specific (incorrect) approach.
+- Human practices problems, requests hints, and reviews solutions.
+
+### Manual Mode
+
+- Student can browse problems, write code, run tests, and review solutions without Mona.
 
 ## HK-Specific Requirements
 
@@ -139,6 +169,17 @@ CREATE TABLE study_plans (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Student Profile**: Name, university, programme, year of study, expected graduation date
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token (for practice reminders and interview alerts)
+3. **Language Preference**: Select preferred coding languages (Python, JavaScript) for problem solving
+4. **Problem Library**: Choose problem categories and difficulty range to focus on
+5. **Sample Data**: Option to seed the full problem library with 200 problems for immediate practice
+6. **Connection Test**: Validates all API connections, code runner sandbox, and LLM availability
+
 ## Testing Criteria
 
 - [ ] Problem display renders markdown description, examples, and constraints correctly in Streamlit
@@ -159,3 +200,7 @@ CREATE TABLE study_plans (
 - Memory budget: ~5GB (Qwen-2.5-Coder-7B for explanations + Streamlit + code execution overhead)
 - Mock interview scoring: weight correctness (60%), time efficiency (20%), and code quality (20%) — use LLM to assess code quality (naming, structure, edge case handling)
 - Consider adding a "system design" question bank for more senior interview preparation, using the LLM for interactive discussion-based practice
+- **Logging**: All operations logged to `/var/log/openclaw/interview-prep.log` with daily rotation (7-day retention). Student personal data and academic content masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Course materials (copyrighted textbooks, exam papers) processed locally only — zero cloud processing.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/embedding model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all study data, flashcards, job applications, and exam attempts.

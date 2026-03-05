@@ -1,6 +1,6 @@
 # DeadlineGuardian
 
-## Tool Name & Overview
+## Overview
 
 DeadlineGuardian is a court deadline and limitation period tracking tool purpose-built for Hong Kong litigation practice. It auto-calculates limitation periods under the Limitation Ordinance, tracks filing deadlines for CFI and DCT proceedings, and sends escalating reminders to ensure no critical date is missed. The tool integrates with the HK Judiciary's e-Litigation portal concepts for deadline synchronization.
 
@@ -19,17 +19,19 @@ Hong Kong litigation solicitors, litigation clerks, and practice managers who ma
 
 ## Tech Stack
 
-- **Scheduler**: APScheduler with SQLite job store for persistent, crash-resilient scheduling
-- **Notifications**: Twilio WhatsApp API for mobile alerts; smtplib for email notifications
-- **Calendar**: icalendar library for .ics generation; caldav library for optional CalDAV sync
-- **Database**: SQLite for cases, deadlines, and reminder history
-- **UI**: Streamlit with calendar view and countdown timers
-- **Date Handling**: python-dateutil for business day calculation, HK public holiday awareness
+| Component | Library / Tool |
+|-----------|---------------|
+| Scheduler | APScheduler with SQLite job store for persistent, crash-resilient scheduling |
+| Notifications | Twilio WhatsApp API for mobile alerts; smtplib for email notifications |
+| Calendar | icalendar library for .ics generation; caldav library for optional CalDAV sync |
+| Database | SQLite for cases, deadlines, and reminder history |
+| UI | Streamlit with calendar view and countdown timers |
+| Date Handling | python-dateutil for business day calculation, HK public holiday awareness |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/deadline-guardian/
+/opt/openclaw/skills/local/deadline-guardian/
 ├── app.py                    # Streamlit dashboard
 ├── calculator/
 │   ├── limitation.py         # Cap 347 limitation period logic
@@ -52,12 +54,44 @@ Hong Kong litigation solicitors, litigation clerks, and practice managers who ma
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/deadline-guardian/
+├── calendar_exports/         # Generated .ics files
+├── reminder_logs/            # Notification delivery history
+└── case_data/                # Case-specific deadline snapshots
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp**: Sends deadline reminders to solicitors' mobile devices
 - **Email (SMTP)**: Backup notification channel for all deadline alerts
 - **Calendar (iCal/CalDAV)**: Exports deadlines to standard calendar applications
 - **HK e-Litigation**: Stub integration for future connection to Judiciary's electronic filing system
+- **Telegram Bot API**: Secondary messaging channel for client intake, deadline reminders, and status updates.
+
+## GUI Specification
+
+Part of the **Legal Dashboard** (`http://mona.local:8501`) — DeadlineGuardian tab.
+
+### Views
+
+- **Matter List**: Active cases with their most urgent upcoming deadline, days remaining, and urgency indicator.
+- **Calendar View**: Full calendar with deadlines color-coded by type (court filing=blue, limitation period=red, contractual=green). Click to view details.
+- **Limitation Calculator**: Interactive form — select ordinance provision, enter trigger/accrual date, and instantly see the calculated deadline with business day adjustments.
+- **Reminder Configuration**: Per-matter escalation settings (which channels, at what intervals, who receives).
+- **Audit Trail**: Complete log of when each deadline was created, modified, reminded, acknowledged, and completed.
+
+### Mona Integration
+
+- Mona sends escalating reminders via WhatsApp/email/desktop notification as deadlines approach.
+- Mona auto-calculates procedural deadlines from case events (e.g., writ issued → AoS due in 14 days).
+- Human creates and acknowledges deadlines; Mona handles the reminder pipeline.
+
+### Manual Mode
+
+- Solicitor can manually create deadlines, calculate limitation periods, export to calendar, and review audit trails without Mona.
 
 ## HK-Specific Requirements
 
@@ -108,6 +142,18 @@ CREATE TABLE reminders (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Firm Profile**: Firm name, SFC/HKLS registration details, office address, practice areas
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, WeChat Official Account credentials (if applicable)
+3. **Calendar Integration**: Google Calendar or Microsoft 365 API credentials for solicitor availability and deadline sync
+4. **Court Configuration**: Select active court tracks (CFI, DCT, Lands Tribunal, Labour Tribunal); import existing case/deadline data
+5. **HK Legal Rules**: Confirm Limitation Ordinance (Cap 347) periods and court deadline rules are current; upload updated HK public holiday schedule
+6. **Sample Data**: Option to seed demo cases and contracts for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Correctly calculates 6-year limitation period from a given accrual date, excluding HK public holidays for the final day
@@ -127,3 +173,7 @@ CREATE TABLE reminders (
 - macOS desktop notifications use `osascript -e 'display notification'` — no additional dependencies needed on M4 Mac
 - Memory footprint should remain under 500MB since this tool is primarily date computation and scheduling, not LLM-heavy
 - Consider adding a "what-if" calculator that lets solicitors explore limitation scenarios before formally creating a deadline
+- **Logging**: All operations logged to `/var/log/openclaw/deadline-guardian.log` with daily rotation (7-day retention). Client names, case details, and privileged content masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Legal documents are highly sensitive — zero cloud processing. Implement audit trail for all data access.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Privilege-tagged documents must maintain their tags in the export.

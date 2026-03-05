@@ -1,6 +1,6 @@
 # SupplierLedger
 
-## Tool Name & Overview
+## Overview
 
 SupplierLedger is a payables and receivables tracking tool designed for Hong Kong small businesses that manage multiple supplier relationships. It tracks outstanding invoices, auto-sends monthly statements, generates aging reports, and provides cash flow forecasting based on expected payment timelines. It replaces the spreadsheet-based supplier tracking that most HK SMEs use, with automated reminders and reconciliation.
 
@@ -19,18 +19,21 @@ Hong Kong small business owners, bookkeepers, and accounts payable/receivable cl
 
 ## Tech Stack
 
-- **Database**: SQLite for invoices, payments, supplier/customer records, and transaction history
-- **Document Generation**: reportlab for PDF statements and aging reports; openpyxl for Excel exports
-- **Notifications**: Twilio WhatsApp for payment reminders and statement delivery; smtplib for email
-- **LLM**: MLX local inference for parsing bank statements and matching transactions to invoices
-- **UI**: Streamlit dashboard with ledger views, aging charts, and cash flow forecast
-- **Charts**: plotly for aging distribution and cash flow visualization
-- **Scheduler**: APScheduler for monthly statement generation and overdue payment reminders
+| Component | Library / Tool |
+|-----------|---------------|
+| Database | SQLite for invoices, payments, supplier/customer records, and transaction history |
+| Document Generation | reportlab for PDF statements and aging reports; openpyxl for Excel exports |
+| Notifications | Twilio WhatsApp for payment reminders and statement delivery; smtplib for email |
+| LLM | MLX local inference for parsing bank statements and matching transactions to invoices |
+| UI | Streamlit dashboard with ledger views, aging charts, and cash flow forecast |
+| Charts | plotly for aging distribution and cash flow visualization |
+| Telegram | `python-telegram-bot` |
+| Scheduler | APScheduler for monthly statement generation and overdue payment reminders |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/supplier-ledger/
+/opt/openclaw/skills/local/supplier-ledger/
 ├── app.py                        # Streamlit ledger dashboard
 ├── ledger/
 │   ├── invoice_manager.py        # Invoice CRUD with partial payment support
@@ -57,12 +60,45 @@ Hong Kong small business owners, bookkeepers, and accounts payable/receivable cl
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/supplier-ledger/
+├── ledger.db                         # SQLite database (invoices, payments, contacts)
+├── invoices/                         # Uploaded invoice PDFs
+├── statements/                       # Generated monthly statements
+├── bank_imports/                     # Imported bank statement CSVs/PDFs
+└── backups/                          # Automatic daily database backups
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp**: Payment reminders and monthly statement delivery to suppliers/customers
 - **Email (SMTP)**: Backup channel for statement delivery and formal payment requests
 - **Local LLM (MLX)**: Bank statement parsing and transaction matching
 - **Bank Statement Import**: CSV/PDF import from major HK banks (HSBC, Hang Seng, Standard Chartered, BOC HK)
+- **Telegram Bot API**: Secondary channel for business alerts, customer communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Solopreneur Dashboard** (`http://mona.local:8506`) — SupplierLedger tab.
+
+### Views
+
+- **Supplier Directory**: Searchable list of suppliers with outstanding balance, payment terms, and last transaction date.
+- **Payables Aging Report**: Visual aging table (current, 30 days, 60 days, 90+ days) with total outstanding and overdue highlights.
+- **Receivables Tracker**: Customer invoices with payment status (paid/partial/overdue), aging, and follow-up actions.
+- **Cash Flow Forecast**: Chart projecting inflows (receivables due) and outflows (payables due) for the next 30/60/90 days. Net position highlighted.
+- **Transaction Log**: Chronological record of all payable/receivable transactions with supplier/customer, amount, date, and payment method.
+- **Payment Reminders**: Configure and send payment reminder messages to customers via WhatsApp.
+
+### Mona Integration
+
+- Mona auto-imports supplier invoices from the InvoiceOCR pipeline (if accounting tools are installed).
+- Mona sends payment reminders to customers and follow-ups on overdue receivables.
+- Human records payments, approves outgoing invoices, and manages supplier relationships.
+
+### Manual Mode
+
+- Business owner can manually manage suppliers, track payables/receivables, forecast cash flow, and send reminders without Mona.
 
 ## HK-Specific Requirements
 
@@ -148,6 +184,18 @@ CREATE TABLE bank_transactions (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Business name, BR number, business type, operating hours, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Supplier/Customer Import**: Import supplier and customer list from CSV/Excel or enter manually; set payment terms per contact
+4. **Bank Configuration**: Select primary business bank (HSBC, Hang Seng, Standard Chartered, BOC HK) and configure statement import format
+5. **Payment Terms**: Set default payment terms (30/60/90 days) and overdue reminder intervals (7/14/30 days)
+6. **Sample Data**: Option to seed demo invoices, payments, and contacts for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Creates a payable invoice with 60-day terms and correctly calculates due date
@@ -169,3 +217,7 @@ CREATE TABLE bank_transactions (
 - Memory budget: ~3GB (LLM only needed for bank statement parsing; core ledger operations are pure computation)
 - Data backup: financial records are critical — implement automatic daily SQLite backup with 30-day retention
 - Consider adding support for recurring invoices (e.g., monthly rent payable) that auto-generate each month
+- **Logging**: All operations logged to `/var/log/openclaw/supplier-ledger.log` with daily rotation (7-day retention). Financial data and customer details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Business financial data protected under PDPO — zero cloud processing for transaction data.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, POS sync status, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all business data for backup or accountant handoff.

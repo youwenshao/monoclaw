@@ -1,6 +1,6 @@
 # ScribeAI
 
-## Tool Name & Overview
+## Overview
 
 ScribeAI is a voice-to-text clinical note transcription system that converts doctor-patient consultations into structured medical records. It supports English and Traditional Chinese speech input, auto-structures notes into the SOAP format adapted for Hong Kong medical practice, and integrates extracted clinical data (diagnoses, medications, follow-up plans) into a queryable record. All processing runs locally via Whisper and MLX for complete patient privacy.
 
@@ -19,17 +19,20 @@ Hong Kong private practice doctors, dentists, and clinic nurses who spend signif
 
 ## Tech Stack
 
-- **STT**: OpenAI Whisper (medium or small model) via whisper.cpp / MLX-whisper for M4-optimized inference
-- **LLM**: MLX local inference (Qwen-2.5-7B) for SOAP structuring and clinical entity extraction
-- **Audio**: PyAudio for microphone capture; soundfile for audio file processing
-- **Database**: SQLite for patient records, consultation notes, template library
-- **UI**: Streamlit with real-time transcription display and SOAP note editor
-- **Export**: python-docx for Word export; HL7 FHIR JSON for standards-compliant export
+| Component | Library / Tool |
+|-----------|---------------|
+| STT | OpenAI Whisper (medium or small model) via whisper.cpp / MLX-whisper for M4-optimized inference |
+| LLM | MLX local inference (Qwen-2.5-7B) for SOAP structuring and clinical entity extraction |
+| Audio | PyAudio for microphone capture; soundfile for audio file processing |
+| Database | SQLite for patient records, consultation notes, template library |
+| UI | Streamlit with real-time transcription display and SOAP note editor |
+| Export | python-docx for Word export; HL7 FHIR JSON for standards-compliant export |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/scribe-ai/
+/opt/openclaw/skills/local/scribe-ai/
 ├── app.py                     # Streamlit main interface
 ├── transcription/
 │   ├── whisper_engine.py      # Whisper STT wrapper (MLX-optimized)
@@ -54,11 +57,45 @@ Hong Kong private practice doctors, dentists, and clinic nurses who spend signif
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/scribe-ai/
+├── db/                        # SQLite database files
+├── audio/                     # Temporary consultation recordings
+├── exports/                   # Word and FHIR JSON exports
+└── logs/                      # Transcription and structuring logs
+```
+
 ## Key Integrations
 
 - **Whisper (local)**: Speech-to-text running entirely on M4 hardware — no audio sent to cloud services
 - **Local LLM (MLX)**: SOAP structuring and clinical NER without external API dependency
 - **Export**: HL7 FHIR-compatible JSON for potential eHRSS integration; Word format for printing/filing
+- **Telegram Bot API**: Secondary patient communication channel for appointment reminders and medication alerts.
+
+## GUI Specification
+
+Part of the **Medical Dashboard** (`http://mona.local:8502`) — ScribeAI tab.
+
+### Views
+
+- **Recording Interface**: Start/stop recording button with live audio waveform display and real-time transcription text stream scrolling below.
+- **SOAP Note Editor**: Four collapsible sections (Subjective, Objective, Assessment, Plan) with rich text editing. Auto-populated from transcription; fully editable.
+- **Entity Extraction Sidebar**: Auto-detected medications, diagnoses, and procedures displayed as clickable tag chips. Click to highlight the source text in the transcription.
+- **ICD-10 Code Panel**: Suggested ICD-10 codes with search. Click to add to the note's assessment section.
+- **Template Selector**: Quick-access dropdown for common consultation types (URTI, hypertension follow-up, diabetes review, dental check-up) that pre-fill SOAP sections.
+- **Finalization Workflow**: Review → Approve → Lock flow with immutable audit trail. Locked notes cannot be edited (only amended).
+
+### Mona Integration
+
+- Mona transcribes consultations in real-time and auto-structures notes into SOAP format.
+- Mona extracts clinical entities and suggests ICD-10 codes from the transcription.
+- Doctor reviews, corrects, and finalizes all notes — Mona never auto-finalizes clinical records.
+
+### Manual Mode
+
+- Doctor can manually type consultation notes, use templates, add ICD-10 codes, and finalize records without Mona's transcription.
 
 ## HK-Specific Requirements
 
@@ -121,6 +158,19 @@ CREATE TABLE custom_vocabulary (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Clinic Profile**: Clinic name, HKMA registration number, practitioner names and specialties
+2. **Audio Settings**: Select microphone input device, test recording level, configure noise threshold for consultation room environment
+3. **Speech Model**: Choose Whisper model size (small/medium) based on available RAM; download and verify model weights
+4. **Language Preferences**: Default transcription language (English, Cantonese, or auto-detect), import custom vocabulary file for HK medical Cantonese terms
+5. **Templates**: Review and customize built-in consultation templates (URTI, hypertension, diabetes, dental check-up)
+6. **Export Settings**: Default export format (Word/FHIR JSON), clinic letterhead for Word exports
+7. **Sample Data**: Option to load a demo audio recording for testing the transcription pipeline
+8. **Connection Test**: Validates microphone input, STT model loading, LLM availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Transcribes a 5-minute English consultation audio with >90% word accuracy
@@ -141,3 +191,7 @@ CREATE TABLE custom_vocabulary (
 - Memory budget: Whisper small (~1GB) + Qwen-2.5-7B 4-bit (~4GB) + application (~1GB) = ~6GB, leaving headroom on 16GB M4
 - Audio files: store temporarily during consultation, auto-delete after note finalization (configurable retention for clinics that want to keep recordings)
 - Consider implementing a "dictation mode" for post-consultation use where the doctor dictates a summary rather than recording the full conversation
+- **Logging**: All operations logged to `/var/log/openclaw/scribe-ai.log` with daily rotation (7-day retention). Patient names, phone numbers, and clinical data masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Health data is the most sensitive category under PDPO — explicit patient consent required for WhatsApp communication. Audio recordings auto-deleted after note finalization (configurable).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, STT/LLM model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Exported clinical records maintain SOAP structure and audit trail.

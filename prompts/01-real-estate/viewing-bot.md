@@ -29,6 +29,7 @@ Hong Kong estate agents who coordinate 5-15 property viewings daily across multi
 | Geolocation | Haversine distance calculation for district routing |
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -68,6 +69,29 @@ Hong Kong estate agents who coordinate 5-15 property viewings daily across multi
 - **Apple Calendar (EventKit)**: Read/write agent's macOS Calendar to check availability and create viewing appointments. Support multiple calendars (personal + work).
 - **Google Maps / Apple Maps**: Distance and travel time estimation between viewing locations (optional, can use straight-line Haversine as fallback).
 - **Property database**: Cross-reference with PropertyGPT's building database for property details, access instructions, and landlord contacts.
+- **Telegram Bot API**: Secondary messaging channel for client communication. Supports the same booking/notification flows as WhatsApp.
+
+## GUI Specification
+
+Part of the **Real Estate Dashboard** (`http://mona.local:8001`) — ViewingBot tab.
+
+### Views
+
+- **Viewing Calendar**: Weekly calendar view with viewing appointments color-coded by status (pending=yellow, confirmed=green, completed=blue, cancelled=grey).
+- **District Route Map**: Map showing today's viewings as pins with suggested route optimization lines and estimated travel times between locations.
+- **Coordination Board**: Three-party status board for each viewing — viewer confirmed? landlord confirmed? agent available? — with quick-action buttons to send reminders.
+- **Follow-Up Tracker**: Post-viewing response log with interest level tags (hot/warm/cold) and next-action suggestions.
+- **Weather Alert Banner**: Live typhoon/rainstorm warning banner from HK Observatory API. Auto-cancellation controls for affected viewings.
+
+### Mona Integration
+
+- Mona parses incoming WhatsApp viewing requests and presents parsed data for human confirmation before scheduling.
+- Mona handles the three-way confirmation flow automatically, showing progress in real-time on the Coordination Board.
+- Mona sends reminders and follow-ups on schedule; human can override or add personal notes before sending.
+
+### Manual Mode
+
+- Agent can manually create viewings, manage confirmations, optimize routes, and track follow-ups without Mona.
 
 ## HK-Specific Requirements
 
@@ -129,6 +153,16 @@ CREATE TABLE message_log (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Agency name, EAA license number, office address, operating hours
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language (EN/TC)
+3. **Platform Credentials**: Apple Calendar access, Google Maps/Apple Maps API key, and HK Observatory weather API endpoint (where applicable)
+4. **Sample Data**: Option to seed demo data for testing before going live
+5. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Intent parser correctly extracts property, date, and time from 10 sample WhatsApp messages in both English and Chinese
@@ -148,3 +182,7 @@ CREATE TABLE message_log (
 - **Memory**: LLM loads only when parsing is needed, then can be unloaded. Steady-state memory <1GB without LLM loaded.
 - **Rate limiting**: Twilio WhatsApp has a per-number rate limit. Queue outgoing messages with 1-second spacing to avoid throttling.
 - **Privacy**: Phone numbers and viewing history are sensitive. Store in local SQLite only. Mask phone numbers in logs (`+852 9XXX XX89`). Never share viewer details with other viewers.
+- **Logging**: All operations logged to `/var/log/openclaw/viewing-bot.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state, and memory usage. Consumed by the Mona Hub launcher.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or migration.

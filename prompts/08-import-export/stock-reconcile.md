@@ -1,6 +1,6 @@
 # StockReconcile
 
-## Tool Name & Overview
+## Overview
 
 StockReconcile automates the matching of shipping manifests with warehouse receipts to identify quantity discrepancies, missing items, and damaged goods. It handles both Full Container Load (FCL) and Less-than-Container Load (LCL) reconciliation workflows, tracks goods from port arrival through warehouse receipt to inventory posting. Built for the high-volume container throughput of Hong Kong's port logistics.
 
@@ -19,17 +19,20 @@ Hong Kong warehouse operators, logistics coordinators, import-export companies, 
 
 ## Tech Stack
 
-- **Document Parsing**: PyPDF2, pdfplumber for PDF extraction; openpyxl for Excel parsing; Tesseract OCR for scanned documents
-- **LLM**: MLX local inference for interpreting unstructured packing lists and matching ambiguous product descriptions
-- **Matching**: rapidfuzz for fuzzy string matching of product descriptions; pandas for tabular data reconciliation
-- **Database**: SQLite for shipments, manifest data, warehouse receipts, and discrepancy records
-- **UI**: Streamlit dashboard with side-by-side manifest vs receipt comparison view
-- **Export**: openpyxl for Excel reconciliation reports; reportlab for PDF claim documentation
+| Component | Library / Tool |
+|-----------|---------------|
+| Document Parsing | PyPDF2, pdfplumber for PDF extraction; openpyxl for Excel parsing; Tesseract OCR for scanned documents |
+| LLM | MLX local inference for interpreting unstructured packing lists and matching ambiguous product descriptions |
+| Matching | rapidfuzz for fuzzy string matching of product descriptions; pandas for tabular data reconciliation |
+| Database | SQLite for shipments, manifest data, warehouse receipts, and discrepancy records |
+| UI | Streamlit dashboard with side-by-side manifest vs receipt comparison view |
+| Export | openpyxl for Excel reconciliation reports; reportlab for PDF claim documentation |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/stock-reconcile/
+/opt/openclaw/skills/local/stock-reconcile/
 ├── app.py                        # Streamlit reconciliation dashboard
 ├── ingestion/
 │   ├── manifest_parser.py        # Shipping manifest / B/L parsing
@@ -50,10 +53,20 @@ Hong Kong warehouse operators, logistics coordinators, import-export companies, 
 ├── models/
 │   ├── llm_handler.py            # MLX inference wrapper
 │   └── prompts.py                # Description matching prompts
-├── data/
-│   └── reconcile.db              # SQLite database
 ├── requirements.txt
 └── README.md
+```
+
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/stock-reconcile/
+├── reconcile.db                  # SQLite database
+├── manifests/                    # Uploaded shipping manifests and B/Ls
+├── receipts/                     # Uploaded warehouse receipts
+├── scans/                        # Scanned documents for OCR processing
+├── reports/                      # Generated reconciliation reports
+└── claims/                       # Generated claim documentation
 ```
 
 ## Key Integrations
@@ -61,6 +74,29 @@ Hong Kong warehouse operators, logistics coordinators, import-export companies, 
 - **Local LLM (MLX)**: Interprets ambiguous product descriptions and matches semantically similar items across documents
 - **Tesseract OCR**: Processes scanned shipping documents that arrive as image PDFs
 - **File System**: Watches a designated import folder for new shipping documents to process
+- **Telegram Bot API**: Secondary channel for filing alerts, supplier communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Import/Export Dashboard** (`http://mona.local:8504`) — StockReconcile tab.
+
+### Views
+
+- **Manifest Upload**: Drag-drop area for shipping manifests (PDF, Excel, CSV) with format auto-detection and parsed preview.
+- **Receipt Matching View**: Side-by-side comparison of manifest items vs warehouse receipts. Matched items in green, discrepancies highlighted in red with shortage/overage quantities.
+- **Discrepancy Report**: Detailed report of all mismatches with item description, expected vs actual quantities, and suggested resolution actions.
+- **Historical Reconciliation**: Trend chart showing reconciliation accuracy over time with drill-down by shipment/supplier.
+- **Inventory Summary**: Current stock levels aggregated from reconciled receipts.
+
+### Mona Integration
+
+- Mona auto-parses uploaded manifests and matches against received goods records.
+- Mona flags discrepancies immediately and generates shortage/overage reports for human review.
+- Human resolves disputes, contacts suppliers for shortages, and approves reconciliation.
+
+### Manual Mode
+
+- Logistics coordinator can manually upload manifests, match items, resolve discrepancies, and generate reports without Mona.
 
 ## HK-Specific Requirements
 
@@ -143,6 +179,18 @@ CREATE TABLE reconciliation_results (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, BR number, warehouse locations, base currency
+2. **Warehouse Setup**: Warehouse names, addresses, and receiving staff contacts
+3. **Document Formats**: Configure expected manifest and receipt formats (PDF, Excel, CSV column mappings)
+4. **Messaging Setup**: Telegram bot token for discrepancy alerts and reconciliation notifications
+5. **Supplier Directory**: Import supplier contacts for shortage/damage claim communication
+6. **Sample Data**: Option to seed demo shipments, manifests, and warehouse receipts for testing
+7. **Connection Test**: Validates OCR engine, LLM availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Parses a standard shipping manifest PDF and extracts all line items with quantities
@@ -163,3 +211,7 @@ CREATE TABLE reconciliation_results (
 - Memory budget: ~4GB (LLM for description matching; pandas DataFrames for batch reconciliation)
 - For high-volume operations, implement batch processing: queue incoming documents and reconcile in background with status tracking
 - Consider adding a barcode/QR scanning feature for warehouse staff to scan items during receipt for real-time reconciliation
+- **Logging**: All operations logged to `/var/log/openclaw/stock-reconcile.log` with daily rotation (7-day retention). Trade values and supplier details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Trade documentation contains commercially sensitive data — zero cloud processing for classification and document generation.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Trade declarations and filing history included for audit compliance.

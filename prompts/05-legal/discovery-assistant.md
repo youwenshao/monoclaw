@@ -1,6 +1,6 @@
 # DiscoveryAssistant
 
-## Tool Name & Overview
+## Overview
 
 DiscoveryAssistant is an e-discovery tool for Hong Kong litigation support that identifies privileged communications within email archives, auto-categorizes documents by relevance, and generates privilege logs. It uses local LLM inference for document classification and privilege detection, ensuring that sensitive legal materials never leave the local machine during review.
 
@@ -19,18 +19,20 @@ Hong Kong litigation lawyers, discovery reviewers, and paralegals who need to pr
 
 ## Tech Stack
 
-- **LLM**: MLX local inference (Qwen-2.5-7B quantized) for privilege classification and relevance scoring
-- **Email Parsing**: Python `email` module, `imaplib` for live mailbox connection, `libpff` bindings for .pst files
-- **Text Extraction**: PyPDF2, python-docx, openpyxl for attachment content extraction
-- **Search**: Whoosh full-text search index for keyword queries
-- **Database**: SQLite for document metadata, tags, privilege log entries
-- **UI**: Streamlit with paginated document review interface
-- **Export**: openpyxl for Excel privilege log export, python-docx for Word format
+| Component | Library / Tool |
+|-----------|---------------|
+| LLM | MLX local inference (Qwen-2.5-7B quantized) for privilege classification and relevance scoring |
+| Email Parsing | Python `email` module, `imaplib` for live mailbox connection, `libpff` bindings for .pst files |
+| Text Extraction | PyPDF2, python-docx, openpyxl for attachment content extraction |
+| Search | Whoosh full-text search index for keyword queries |
+| Database | SQLite for document metadata, tags, privilege log entries |
+| UI | Streamlit with paginated document review interface |
+| Export | openpyxl for Excel privilege log export, python-docx for Word format |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/discovery-assistant/
+/opt/openclaw/skills/local/discovery-assistant/
 ├── app.py                    # Streamlit main review interface
 ├── ingestion/
 │   ├── email_parser.py       # .pst, .mbox, .eml parsing
@@ -52,11 +54,44 @@ Hong Kong litigation lawyers, discovery reviewers, and paralegals who need to pr
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/discovery-assistant/
+├── email_archives/           # Imported .pst, .mbox, .eml files
+├── document_corpus/          # Extracted documents and attachments
+├── privilege_logs/           # Exported privilege log spreadsheets
+└── review_exports/           # Case review summary reports
+```
+
 ## Key Integrations
 
 - **Email Systems**: IMAP connection for live mailbox scanning; file-based import for .pst/.mbox archives
 - **Local LLM**: MLX for all classification — no external API calls for document content analysis
 - **Export**: Excel-formatted privilege logs for filing with court; CSV export for litigation support platforms
+- **Telegram Bot API**: Secondary messaging channel for client intake, deadline reminders, and status updates.
+
+## GUI Specification
+
+Part of the **Legal Dashboard** (`http://mona.local:8501`) — DiscoveryAssistant tab.
+
+### Views
+
+- **Document Collection Browser**: Paginated list of all ingested documents with search, filter by type/date/author, and tag display.
+- **Privilege Tagger**: Per-document privilege status controls (privileged / not privileged / partial / needs review) with one-click tagging. Batch tagging for multi-select.
+- **Keyword Search**: Boolean and proximity search with highlighted results in document preview. Search history sidebar.
+- **Timeline View**: Documents plotted on a chronological timeline for discovery narrative construction.
+- **Privilege Log Export**: One-click generation of the HK High Court compliant privilege log spreadsheet.
+
+### Mona Integration
+
+- Mona auto-classifies documents by relevance and privilege status upon ingestion.
+- Low-confidence classifications are surfaced first in a review queue for human judgment.
+- Human makes final privilege determinations; Mona's suggestions serve as a first pass.
+
+### Manual Mode
+
+- Reviewer can manually ingest documents, tag privilege status, run keyword searches, and generate privilege logs without Mona.
 
 ## HK-Specific Requirements
 
@@ -115,6 +150,18 @@ CREATE TABLE tags (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Firm Profile**: Firm name, SFC/HKLS registration details, office address, practice areas
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, WeChat Official Account credentials (if applicable)
+3. **Email Archive Setup**: Configure IMAP connection for live mailbox scanning, or set up file import paths for .pst/.mbox archives
+4. **Reference Data**: Import existing client/matter database for privilege detection context; upload prior privilege log templates
+5. **HK Court Rules**: Confirm Practice Direction 5.2 (Discovery) requirements; configure privilege log format for HK High Court compliance
+6. **Sample Data**: Option to seed demo cases and contracts for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Successfully parses a .pst archive with 1,000+ emails and extracts all body text and attachments
@@ -134,3 +181,7 @@ CREATE TABLE tags (
 - For .pst parsing, use `libpff` Python bindings or fall back to converting via `readpst` CLI tool
 - Implement a review queue where the LLM's low-confidence classifications are surfaced first for human review
 - Keep all processing strictly local — this tool must never transmit document content to external services
+- **Logging**: All operations logged to `/var/log/openclaw/discovery-assistant.log` with daily rotation (7-day retention). Client names, case details, and privileged content masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Legal documents are highly sensitive — zero cloud processing. Implement audit trail for all data access.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Privilege-tagged documents must maintain their tags in the export.

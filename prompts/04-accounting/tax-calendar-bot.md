@@ -30,6 +30,7 @@ Hong Kong accounting firms managing tax compliance for 20-200 SME clients. Missi
 | API layer | `fastapi`, `uvicorn` |
 | Database | `sqlite3` |
 | Web dashboard | `jinja2` templates, `htmx` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -78,6 +79,28 @@ Hong Kong accounting firms managing tax compliance for 20-200 SME clients. Missi
 - **Apple Calendar**: Export deadlines as .ics files for import into macOS Calendar. Support CalDAV subscription for live updates.
 - **HKICPA Block Extension System**: Reference HKICPA's block extension dates published annually. Auto-populate extended deadlines for firms that participate.
 - **IRD eTAX**: Reference IRD's published filing timetable and form versions.
+- **Telegram Bot API**: Secondary channel for deadline reminders, invoice notifications, and rate alerts.
+
+## GUI Specification
+
+Part of the **Accounting Dashboard** (`http://mona.local:8004`) — TaxCalendar tab.
+
+### Views
+
+- **Calendar View**: Full-year calendar with all HK tax deadlines (Profits Tax, Employer's Return BIR56A, MPF, Business Registration renewal, stamp duty) as colored pins.
+- **Countdown Cards**: The next 3 upcoming deadlines displayed as large countdown cards with days remaining and urgency color.
+- **Per-Deadline Checklist**: Expandable checklist for each deadline showing required documents, preparation steps, and completion status.
+- **Filing Status Tracker**: Board showing each filing obligation's status (not started → in progress → filed → acknowledged by IRD).
+
+### Mona Integration
+
+- Mona sends escalating WhatsApp reminders as deadlines approach (30/14/7/3/1 days).
+- Mona auto-detects when filings are due based on the client's financial year-end and registration dates.
+- Human updates filing status as work is completed.
+
+### Manual Mode
+
+- Accountant can manually browse deadlines, manage checklists, track filing status, and configure reminders without Mona.
 
 ## HK-Specific Requirements
 
@@ -166,6 +189,18 @@ CREATE TABLE checklists (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Company name, BR number, financial year-end date, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Client Portfolio**: Import client list with company names, BR numbers, and financial year-end dates
+4. **Tax Calendar**: Set financial year-end to auto-populate all relevant HK tax deadlines and block extension dates
+5. **Reminder Preferences**: Configure reminder intervals (60/30/7 days), escalation contacts, and notification channels
+6. **Sample Data**: Option to seed demo clients and deadlines for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Deadline calculator produces correct due dates for "D", "M", and "N" code companies
@@ -186,3 +221,7 @@ CREATE TABLE checklists (
 - **Calendar subscription**: Generate an .ics file per client and a combined .ics for the firm. Support CalDAV subscription URL so macOS Calendar auto-updates when deadlines change.
 - **Audit trail**: Log all status changes (reminder sent, filing marked submitted, extension applied) with timestamps. This creates a defensible record if IRD questions compliance.
 - **Privacy**: Client tax information is confidential. All data stored locally. Mask BR numbers and IRD file numbers in logs. WhatsApp messages should reference client by code name, not full company name.
+- **Logging**: All operations logged to `/var/log/openclaw/tax-calendar-bot.log` with daily rotation (7-day retention). Financial data and client details masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Accounting API credentials stored with restricted file permissions (600). Financial data protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, OCR/LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data for backup or audit purposes.

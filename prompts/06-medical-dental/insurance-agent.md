@@ -1,6 +1,6 @@
 # InsuranceAgent
 
-## Tool Name & Overview
+## Overview
 
 InsuranceAgent is a pre-authorization and insurance verification tool for Hong Kong medical and dental clinics. It checks patient coverage with major HK insurers (Bupa, AXA, Cigna, and others), estimates patient co-pay amounts before the consultation, and handles pre-authorization submissions for procedures requiring prior approval. This reduces billing surprises and streamlines the front-desk insurance workflow.
 
@@ -19,17 +19,20 @@ Hong Kong private clinic administrators, front-desk staff, and practice managers
 
 ## Tech Stack
 
-- **Web Automation**: Playwright for headless browser interaction with insurer portals that lack APIs
-- **HTTP**: httpx/requests for API-based insurer integrations
-- **LLM**: MLX local inference for parsing unstructured portal responses and extracting coverage details
-- **Database**: SQLite for patient insurance records, claim history, fee schedules
-- **UI**: Streamlit dashboard with patient insurance status overview and claim tracking
-- **PDF**: PyPDF2 and reportlab for parsing insurer EOB (Explanation of Benefits) documents and generating claim forms
+| Component | Library / Tool |
+|-----------|---------------|
+| Web Automation | Playwright for headless browser interaction with insurer portals that lack APIs |
+| HTTP | httpx/requests for API-based insurer integrations |
+| LLM | MLX local inference for parsing unstructured portal responses and extracting coverage details |
+| Database | SQLite for patient insurance records, claim history, fee schedules |
+| UI | Streamlit dashboard with patient insurance status overview and claim tracking |
+| PDF | PyPDF2 and reportlab for parsing insurer EOB (Explanation of Benefits) documents and generating claim forms |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/insurance-agent/
+/opt/openclaw/skills/local/insurance-agent/
 ├── app.py                      # Streamlit clinic dashboard
 ├── verification/
 │   ├── bupa_connector.py       # Bupa HK portal/API integration
@@ -57,6 +60,17 @@ Hong Kong private clinic administrators, front-desk staff, and practice managers
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/insurance-agent/
+├── db/                        # SQLite database files
+├── forms/                     # Generated pre-authorization forms
+├── eob/                       # Parsed EOB documents
+├── screenshots/               # Portal automation debug screenshots
+└── logs/                      # Verification and claim logs
+```
+
 ## Key Integrations
 
 - **Bupa HK**: Provider portal automation or API for real-time eligibility checks and pre-authorization
@@ -64,6 +78,29 @@ Hong Kong private clinic administrators, front-desk staff, and practice managers
 - **Cigna Hong Kong**: Group medical insurance verification
 - **HA Gazette Rates**: Reference lookup for Hospital Authority public rates (for patient cost comparison)
 - **Local LLM (MLX)**: Parsing unstructured insurer portal responses into structured coverage data
+- **Telegram Bot API**: Secondary patient communication channel for appointment reminders and medication alerts.
+
+## GUI Specification
+
+Part of the **Medical Dashboard** (`http://mona.local:8502`) — InsuranceAgent tab.
+
+### Views
+
+- **Verification Form**: Patient and policy lookup form with insurer selector. Results display coverage status, benefit limits, and remaining balance.
+- **Co-Pay Estimator**: Calculator showing expected patient out-of-pocket cost based on planned procedure, insurer schedule, and clinic fee schedule.
+- **Pre-Authorization Builder**: Form to create and submit pre-auth requests with auto-populated patient and procedure details. Status tracking (draft → submitted → approved/denied).
+- **Claim Tracker**: Board showing all submitted claims with status (pending/approved/partial/rejected/paid) and insurer reference numbers. Overdue payment flags.
+- **Batch Verification**: One-click verification for all next-day appointments with summary of coverage issues flagged.
+
+### Mona Integration
+
+- Mona runs batch verification for next-day appointments overnight and flags coverage issues in the morning.
+- Mona submits pre-authorization requests through insurer portals and tracks response status.
+- Human reviews coverage exceptions and handles patient-facing cost discussions.
+
+### Manual Mode
+
+- Admin can manually verify coverage, estimate co-pays, submit pre-authorizations, and track claims without Mona.
 
 ## HK-Specific Requirements
 
@@ -145,6 +182,19 @@ CREATE TABLE preauthorizations (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Clinic Profile**: Clinic name, provider registration numbers for each insurer panel, clinic address
+2. **Insurer Portal Credentials**: Login credentials for Bupa, AXA, Cigna, and other supported insurer provider portals
+3. **Messaging Setup**: Twilio API credentials for WhatsApp/SMS, Telegram bot token (for patient cost notifications)
+4. **Fee Schedule**: Import or configure the clinic's fee schedule for common procedures
+5. **Insurance Panels**: Configure supported insurers, plan types, and benefit schedule documents
+6. **HA Rate Reference**: Verify Hospital Authority public rate data is current (GP $50, Specialist $135, A&E $180)
+7. **Sample Data**: Option to seed demo patients, policies, and claims for testing
+8. **Connection Test**: Validates insurer portal connectivity, LLM availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Successfully verifies coverage status for a Bupa HK policy via portal automation
@@ -164,3 +214,7 @@ CREATE TABLE preauthorizations (
 - LLM is used primarily for parsing semi-structured portal responses (HTML tables, PDF EOBs) into structured data — not for decision-making on coverage
 - Memory budget: ~3GB (Playwright browser instance is the heaviest component; LLM only invoked for parsing tasks)
 - Consider rate-limiting portal requests to avoid being blocked by insurer websites
+- **Logging**: All operations logged to `/var/log/openclaw/insurance-agent.log` with daily rotation (7-day retention). Patient names, phone numbers, and clinical data masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Health data is the most sensitive category under PDPO — explicit patient consent required for WhatsApp communication. Insurer portal credentials stored in encrypted configuration.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, insurer portal reachability, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Exported records maintain claim history and pre-authorization audit trail.

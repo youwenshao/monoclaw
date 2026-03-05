@@ -1,6 +1,6 @@
 # CiteBot
 
-## Tool Name & Overview
+## Overview
 
 CiteBot is an automated reference formatting and validation tool for academic researchers. It converts raw citations into properly formatted references for any major citation style (APA 7th, Harvard, MLA 9th, IEEE, Chicago, Vancouver), validates DOIs and retrieves complete metadata, and handles Chinese academic citation formats. It eliminates the tedious manual work of bibliography formatting and ensures citation accuracy.
 
@@ -19,17 +19,20 @@ Academic researchers, graduate students, and research assistants at Hong Kong un
 
 ## Tech Stack
 
-- **Citation Data**: httpx for querying DOI.org, CrossRef API, and Semantic Scholar API
-- **LLM**: MLX local inference for parsing unstructured citation text into structured fields
-- **Citation Formatting**: citeproc-py for CSL-based formatting; custom formatters for GB/T 7714
-- **Database**: SQLite for citation library, formatting history, and user preferences
-- **UI**: Streamlit with citation input, preview, and batch management interface
-- **Export**: BibTeX and RIS generation; python-docx for Word bibliography export
+| Component | Library / Tool |
+|-----------|---------------|
+| Citation Data | httpx for querying DOI.org, CrossRef API, and Semantic Scholar API |
+| LLM | MLX local inference for parsing unstructured citation text into structured fields |
+| Citation Formatting | citeproc-py for CSL-based formatting; custom formatters for GB/T 7714 |
+| Database | SQLite for citation library, formatting history, and user preferences |
+| UI | Streamlit with citation input, preview, and batch management interface |
+| Export | BibTeX and RIS generation; python-docx for Word bibliography export |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/cite-bot/
+/opt/openclaw/skills/local/cite-bot/
 ├── app.py                       # Streamlit citation management interface
 ├── parsing/
 │   ├── citation_parser.py       # Parse unstructured citation text into fields
@@ -50,11 +53,14 @@ Academic researchers, graduate students, and research assistants at Hong Kong un
 ├── models/
 │   ├── llm_handler.py           # MLX inference wrapper
 │   └── prompts.py               # Citation parsing prompts
-├── data/
-│   ├── citebot.db               # SQLite database
-│   └── csl_styles/              # CSL style definition files
 ├── requirements.txt
 └── README.md
+```
+
+```
+~/OpenClawWorkspace/cite-bot/
+├── citebot.db                   # SQLite database
+└── csl_styles/                  # CSL style definition files
 ```
 
 ## Key Integrations
@@ -63,6 +69,29 @@ Academic researchers, graduate students, and research assistants at Hong Kong un
 - **Semantic Scholar API**: Additional metadata source and citation count data
 - **Local LLM (MLX)**: Parses unstructured plain-text citations into structured fields (author, title, journal, year, etc.)
 - **CSL (Citation Style Language)**: Leverages the open CSL ecosystem for broad style coverage
+- **Telegram Bot API**: Secondary channel for deadline reminders, paper alerts, and translation notifications.
+
+## GUI Specification
+
+Part of the **Academic Dashboard** (`http://mona.local:8505`) — CiteBot tab.
+
+### Views
+
+- **Bibliography Manager**: Table of all references with add/edit/delete controls. Import from PaperSieve or manual entry via DOI/title.
+- **Citation Style Selector**: Dropdown to choose output format (APA 7th, IEEE, Harvard, GB/T 7714, Vancouver, Chicago, MLA) with live preview.
+- **Formatted Bibliography Preview**: Rendered bibliography with copy-to-clipboard buttons for individual entries or the full list.
+- **In-Text Citation Generator**: Type a query or select a paper, get the formatted in-text citation in the selected style. Supports narrative and parenthetical forms.
+- **Export Panel**: Export to BibTeX, RIS, Word (.docx with formatted references), or plain text.
+
+### Mona Integration
+
+- Mona auto-detects citation format from the student's existing document and suggests the matching style.
+- Mona reformats entire bibliographies when the student switches citation styles.
+- Human adds and verifies references; Mona handles formatting and consistency.
+
+### Manual Mode
+
+- Researcher can manually add references, format citations, and export bibliographies without Mona.
 
 ## HK-Specific Requirements
 
@@ -124,6 +153,18 @@ CREATE TABLE project_citations (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Researcher Profile**: Name, university affiliation, department, research areas
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **Citation Preferences**: Default citation style (APA 7th, Harvard, IEEE, GB/T 7714, etc.), preferred export format, DOI validation settings
+4. **Reference Library**: Import existing references from BibTeX, RIS, or Zotero export
+5. **Language Settings**: Enable bilingual citation formatting (GB/T 7714 for Chinese entries, Western style for English)
+6. **Sample Data**: Option to seed demo references for testing formatting and export
+7. **Connection Test**: Validates DOI.org/CrossRef connectivity, LLM, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Formats a journal article citation correctly in APA 7th, Harvard, and IEEE styles
@@ -143,3 +184,7 @@ CREATE TABLE project_citations (
 - Memory budget: ~4GB (LLM for parsing; the rest of the tool is lightweight text processing)
 - DOI validation: batch-check DOIs with a 100ms delay between requests to respect CrossRef rate limits
 - Consider implementing a browser extension or clipboard monitor that auto-detects citations copied from Google Scholar and formats them instantly
+- **Logging**: All operations logged to `/var/log/openclaw/cite-bot.log` with daily rotation (7-day retention). Paper titles and researcher details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Research materials (unpublished papers, grant proposals) are sensitive — zero cloud processing.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/embedding model state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all papers, citations, translations, and grant data.

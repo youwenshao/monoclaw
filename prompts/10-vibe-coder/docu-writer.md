@@ -1,6 +1,6 @@
 # DocuWriter
 
-## Tool Name & Overview
+## Overview
 
 DocuWriter is a local AI-powered documentation generator that analyzes codebases and produces comprehensive technical documentation including README files, API documentation, inline code documentation, and architecture overviews. It uses the local LLM to understand code structure and generate clear, well-organized explanations — all without sending proprietary code to external services.
 
@@ -19,18 +19,21 @@ Software developers, open-source maintainers, and development teams who need to 
 
 ## Tech Stack
 
-- **LLM**: MLX local inference (Qwen-2.5-Coder-7B or Qwen-2.5-7B) for code understanding and documentation generation
-- **Code Parsing**: ast module (Python), tree-sitter for multi-language parsing (JS/TS/Go/Rust)
-- **Git**: GitPython for commit history analysis and changelog generation
-- **Markdown**: mdformat for consistent markdown formatting; Jinja2 for documentation templates
-- **Database**: SQLite for documentation snapshots, freshness tracking, and generation history
-- **UI**: Streamlit with documentation preview and editing interface
-- **CLI**: Typer for command-line documentation generation
+| Component | Library / Tool |
+|-----------|---------------|
+| LLM | MLX local inference (Qwen-2.5-Coder-7B or Qwen-2.5-7B) for code understanding and documentation generation |
+| Code Parsing | ast module (Python), tree-sitter for multi-language parsing (JS/TS/Go/Rust) |
+| Git | GitPython for commit history analysis and changelog generation |
+| Markdown | mdformat for consistent markdown formatting; Jinja2 for documentation templates |
+| Database | SQLite for documentation snapshots, freshness tracking, and generation history |
+| UI | Streamlit with documentation preview and editing interface |
+| CLI | Typer for command-line documentation generation |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/docu-writer/
+/opt/openclaw/skills/local/docu-writer/
 ├── app.py                        # Streamlit documentation dashboard
 ├── cli.py                        # CLI entry point (docuwriter command)
 ├── analyzers/
@@ -58,11 +61,43 @@ Software developers, open-source maintainers, and development teams who need to 
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/docu-writer/
+├── data/
+│   └── docuwriter.db            # SQLite database
+├── output/                      # Generated documentation output
+└── logs/
+    └── generation.log           # Documentation generation logs
+```
+
 ## Key Integrations
 
 - **Local LLM (MLX)**: All code analysis and documentation generation runs on-device — safe for proprietary codebases
 - **Git**: Reads repository history for changelog generation and documentation freshness tracking
 - **File System**: Analyzes project directory structure and reads source files directly
+- **Telegram Bot API**: Secondary channel for build notifications and documentation alerts.
+
+## GUI Specification
+
+Part of the **Vibe Coder Dashboard** (`http://mona.local:8010`) — DocuWriter tab.
+
+### Views
+
+- **Project File Tree**: Browse the project directory structure. Select files or folders to document.
+- **Generated Docs Viewer**: Rendered markdown documentation with table of contents, function signatures, and usage examples.
+- **Style Configuration**: Select documentation style (API reference, user guide, README, inline comments) and detail level.
+- **Diff View**: Side-by-side comparison of current documentation vs newly regenerated version. Accept individual changes or apply all.
+- **Export Panel**: Export as Markdown, HTML, or PDF.
+
+### Mona Integration
+
+- Mona auto-generates documentation when new code is committed or files change.
+- Mona detects undocumented functions and suggests documentation additions.
+- Developer reviews and approves documentation changes.
+
+### Manual Mode
+
+- Developer can manually select files, generate documentation, configure styles, and export without Mona.
 
 ## HK-Specific Requirements
 
@@ -120,6 +155,18 @@ CREATE TABLE freshness_checks (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Developer Profile**: Name, preferred documentation style (API reference, user guide, README), and default output language (English / Chinese / bilingual)
+2. **Model Configuration**: Verify LLM is loaded; configure generation parameters (temperature, detail level)
+3. **Project Setup**: Select default project directories for code analysis and documentation output
+4. **Git Configuration**: Configure Git repositories for changelog generation
+5. **Telegram**: Configure Telegram bot token for documentation alerts (optional)
+6. **Sample Data**: Option to analyze a demo project and generate sample documentation
+7. **Connection Test**: Validates model loading, file system access, Git integration, and Telegram bot connectivity
+
 ## Testing Criteria
 
 - [ ] Generates a complete README.md for a Python project with correct installation instructions from requirements.txt
@@ -140,3 +187,7 @@ CREATE TABLE freshness_checks (
 - Memory budget: ~5GB (LLM + code parsing); for large codebases, analyze files incrementally rather than loading everything into memory
 - Template-based generation: use Jinja2 templates as the skeleton and fill in LLM-generated content — this ensures consistent formatting even if the LLM output varies
 - Consider implementing a "documentation CI" mode that runs on git pre-commit to ensure documentation stays current
+- **Logging**: All operations logged to `/var/log/openclaw/docu-writer.log` with daily rotation (7-day retention). Code snippets truncated in logs to avoid leaking proprietary source code.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Source code never leaves the local machine — zero cloud processing for all inference.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state (loaded/warm/cold), and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON archive of conversation history, generated documentation, and configuration.

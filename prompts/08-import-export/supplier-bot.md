@@ -1,6 +1,6 @@
 # SupplierBot
 
-## Tool Name & Overview
+## Overview
 
 SupplierBot is a WeChat-integrated communication agent that manages ongoing conversations with Mainland Chinese factories on behalf of Hong Kong import-export traders. It pings suppliers in the Pearl River Delta (Shenzhen, Dongguan, Guangzhou) for production updates, translates responses between Chinese (Mandarin/Cantonese) and English, and maintains a structured record of all supplier communications for easy reference. Designed to bridge the HK-Mainland supply chain communication gap.
 
@@ -19,16 +19,19 @@ Hong Kong trading company sourcing managers, procurement officers, and small imp
 
 ## Tech Stack
 
-- **WeChat**: wechatpy library for WeChat Official Account API; WeChat Work API for enterprise messaging
-- **LLM**: MLX local inference (Qwen-2.5-7B — strong Chinese language capability) for translation and information extraction
-- **Database**: SQLite for supplier contacts, order tracking, conversation history, and extracted data
-- **UI**: Streamlit dashboard for conversation management and order overview
-- **Scheduler**: APScheduler for automated status ping scheduling
+| Component | Library / Tool |
+|-----------|---------------|
+| WeChat | wechatpy library for WeChat Official Account API; WeChat Work API for enterprise messaging |
+| LLM | MLX local inference (Qwen-2.5-7B — strong Chinese language capability) for translation and information extraction |
+| Database | SQLite for supplier contacts, order tracking, conversation history, and extracted data |
+| UI | Streamlit dashboard for conversation management and order overview |
+| Scheduler | APScheduler for automated status ping scheduling |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/supplier-bot/
+/opt/openclaw/skills/local/supplier-bot/
 ├── app.py                       # Streamlit supplier management dashboard
 ├── messaging/
 │   ├── wechat_handler.py        # WeChat Official Account API integration
@@ -46,10 +49,19 @@ Hong Kong trading company sourcing managers, procurement officers, and small imp
 │   ├── llm_handler.py           # MLX inference wrapper
 │   └── prompts.py               # Translation and extraction prompts
 ├── data/
-│   ├── supplier.db              # SQLite database
 │   └── glossary.json            # Trade terminology glossary (EN/SC/TC)
 ├── requirements.txt
 └── README.md
+```
+
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/supplier-bot/
+├── supplier.db                  # SQLite database
+├── conversations/               # Archived conversation logs
+├── attachments/                 # Downloaded voice messages, images, and files
+└── exports/                     # Exported reports and communication summaries
 ```
 
 ## Key Integrations
@@ -57,6 +69,29 @@ Hong Kong trading company sourcing managers, procurement officers, and small imp
 - **WeChat Official Account API**: Primary communication channel with Mainland Chinese factory contacts
 - **WeChat Work (企業微信)**: Enterprise messaging alternative for suppliers using WeChat Work
 - **Local LLM (MLX)**: Translation and information extraction running entirely on-device — no sensitive order data sent to cloud translation services
+- **Telegram Bot API**: Secondary channel for filing alerts, supplier communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Import/Export Dashboard** (`http://mona.local:8504`) — SupplierBot tab.
+
+### Views
+
+- **Supplier Directory**: Searchable list of suppliers with contact details, preferred communication channel, primary products, and payment terms.
+- **Message Composer**: Rich text message editor with auto-translation toggle (English ↔ Simplified Chinese) and platform selector (WeChat/WhatsApp/Email).
+- **Communication History**: Per-supplier threaded conversation log with sent/received messages, timestamps, and translation pairs.
+- **Order Status Board**: Kanban view of outstanding orders per supplier (ordered → shipped → in transit → received) with ETA tracking.
+- **Price Comparison**: Side-by-side supplier comparison for the same product across different suppliers with historical pricing trends.
+
+### Mona Integration
+
+- Mona sends follow-up messages to suppliers on schedule (e.g., order confirmations, shipment tracking requests).
+- Mona auto-translates messages between English and Chinese for cross-border communication.
+- Human composes critical negotiations and reviews translations before sending.
+
+### Manual Mode
+
+- Trader can manually manage suppliers, compose messages, track orders, and compare prices without Mona.
 
 ## HK-Specific Requirements
 
@@ -137,6 +172,18 @@ CREATE TABLE glossary (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, BR number, principal business (import/export/re-export), base currency
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, WeChat Official Account or WeChat Work API credentials
+3. **Supplier Directory**: Import supplier contacts from CSV or manual entry with WeChat IDs and preferred channels
+4. **Currency Configuration**: Select frequently used currencies for order tracking (USD, CNH, HKD)
+5. **Factory Calendar**: Configure Mainland Chinese public holiday calendar for auto-ping scheduling
+6. **Sample Data**: Option to seed demo suppliers, orders, and conversation templates for testing
+7. **Connection Test**: Validates WeChat API, WhatsApp, Telegram connectivity, LLM availability, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Successfully sends a WeChat message to a test contact and receives the response
@@ -157,3 +204,7 @@ CREATE TABLE glossary (
 - Memory budget: ~5GB (Qwen LLM for translation is the primary consumer; WeChat API integration is lightweight)
 - Auto-ping scheduling: respect factory working hours and avoid Chinese public holidays — pre-load the Mainland public holiday calendar
 - Consider implementing a "morning briefing" that summarizes overnight messages from all suppliers in a single digest
+- **Logging**: All operations logged to `/var/log/openclaw/supplier-bot.log` with daily rotation (7-day retention). Trade values and supplier details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Trade documentation contains commercially sensitive data — zero cloud processing for classification and document generation.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Trade declarations and filing history included for audit compliance.

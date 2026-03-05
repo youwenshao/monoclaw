@@ -1,6 +1,6 @@
 # DefectsManager
 
-## Tool Name & Overview
+## Overview
 
 DefectsManager is a property defect logging and work order management tool that accepts WhatsApp photo reports with automatic location tagging. It generates work orders for contractors, tracks repair status through to completion, and produces defect resolution reports for building management. Designed for Hong Kong property management companies and building management offices handling ongoing maintenance across residential and commercial properties.
 
@@ -19,17 +19,20 @@ Hong Kong property management officers, building managers, Owners' Corporation c
 
 ## Tech Stack
 
-- **Messaging**: Twilio WhatsApp Business API for resident defect reporting and status updates
-- **Image Analysis**: MLX local LLM with vision capability for defect photo classification; Pillow for image processing
-- **Database**: SQLite for defects, work orders, contractor records, and property database
-- **UI**: Streamlit dashboard for property management staff
-- **PDF**: reportlab for work order and defect report generation
-- **Geolocation**: Photo EXIF data + manual floor/unit tagging for defect location
+| Component | Library / Tool |
+|-----------|---------------|
+| Messaging | Twilio WhatsApp Business API |
+| Image Analysis | MLX local LLM (vision), Pillow |
+| Database | SQLite |
+| UI | Streamlit |
+| PDF | reportlab |
+| Geolocation | Photo EXIF data, manual floor/unit tagging |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/defects-manager/
+/opt/openclaw/skills/local/defects-manager/
 ├── app.py                      # Streamlit property management dashboard
 ├── bot/
 │   ├── whatsapp_handler.py     # Twilio webhook for resident reports
@@ -57,11 +60,44 @@ Hong Kong property management officers, building managers, Owners' Corporation c
 └── README.md
 ```
 
+## Workspace Data Directory
+
+```
+~/OpenClawWorkspace/defects-manager/
+├── defects.db                 # SQLite database (runtime data)
+├── photos/                    # Defect and completion evidence photos
+├── work_orders/               # Generated work order PDFs
+└── reports/                   # Defect resolution and monthly reports
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp**: Resident-facing defect reporting and status notification channel
 - **Local LLM (MLX)**: Photo and text analysis for defect categorization and severity assessment
 - **PDF Generation**: Work order and completion report output for contractors and building management
+- **Telegram Bot API**: Secondary channel for permit alerts, safety reminders, and subcontractor dispatch.
+
+## GUI Specification
+
+Part of the **Construction Dashboard** (`http://mona.local:8503`) — DefectsManager tab.
+
+### Views
+
+- **Defect Log**: Paginated table of all logged defects with photo thumbnail, description, location, severity, assigned party, and resolution status.
+- **Defect Detail View**: Full-size annotated photo, detailed description, location (floor/unit/area), severity rating, assigned contractor, deadline, and resolution timeline.
+- **Work Order Generator**: Create work orders from defect entries with contractor assignment, scope of work, and deadline. Export as PDF.
+- **DMC Responsibility Matrix**: Visual matrix showing defect responsibility by category (structural, plumbing, electrical, finishing) mapped to the responsible DMC party.
+- **Analytics**: Charts showing defects by type, average resolution time, overdue items, and trends over time.
+
+### Mona Integration
+
+- Mona processes defect photos submitted via WhatsApp, extracting location and description to create log entries.
+- Mona generates work orders and dispatches them to assigned contractors via WhatsApp.
+- Human reviews defect classifications, assigns responsibility, and approves work orders.
+
+### Manual Mode
+
+- Project manager can manually log defects, upload photos, assign responsibility, create work orders, and track resolutions without Mona.
 
 ## HK-Specific Requirements
 
@@ -148,6 +184,18 @@ CREATE TABLE defect_updates (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Company Profile**: Company name, management company details, office address
+2. **Properties**: Add managed properties with address, district, building age, and DMC reference
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, SMTP email for formal notifications
+4. **Contractor Directory**: Import contractor contact list with trade classifications and registration numbers
+5. **DMC Rules**: Configure responsibility rules per property DMC (owner vs Owners' Corporation)
+6. **Sample Data**: Option to seed demo defects and work orders for testing
+7. **Connection Test**: Validates all API connections and message delivery
+
 ## Testing Criteria
 
 - [ ] WhatsApp photo report creates a defect record with correct timestamp and auto-categorization
@@ -167,3 +215,7 @@ CREATE TABLE defect_updates (
 - LLM vision for photo analysis: use a multimodal model if available on MLX, or fall back to text-only classification based on the resident's description
 - Memory budget: ~4GB if using vision-capable LLM; ~2GB if text-only classification
 - Consider integrating with the BMO requirement for Owners' Corporation meeting minutes — defect reports can auto-generate agenda items for OC meetings
+- **Logging**: All operations logged to `/var/log/openclaw/defects-manager.log` with daily rotation (7-day retention). BD credentials and personal details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. BD portal credentials stored with restricted file permissions (600). Site safety records maintained for statutory retention period (minimum 7 years for construction records).
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, Playwright browser state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Safety records and permit history maintained in export for compliance.

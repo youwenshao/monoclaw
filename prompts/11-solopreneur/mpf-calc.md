@@ -1,6 +1,6 @@
 # MPFCalc
 
-## Tool Name & Overview
+## Overview
 
 MPFCalc automates the calculation of Mandatory Provident Fund (MPF) contributions for Hong Kong small business employers. It computes the mandatory 5% employer and employee contributions (subject to the HK$1,500 monthly cap and HK$7,100 minimum relevant income threshold), generates remittance statements for MPF trustees, handles voluntary contributions, and tracks contribution history for compliance reporting. Eliminates the manual spreadsheet calculations that most small HK businesses perform monthly.
 
@@ -19,17 +19,20 @@ Hong Kong small business owners, sole proprietors, and HR/payroll administrators
 
 ## Tech Stack
 
-- **Calculation Engine**: Python decimal module for precise monetary calculations (no floating-point errors)
-- **Document Generation**: openpyxl for Excel remittance statements; reportlab for PDF contribution summaries
-- **Database**: SQLite for employee records, monthly contributions, and compliance history
-- **UI**: Streamlit dashboard with monthly payroll view and compliance status
-- **Scheduler**: APScheduler for monthly contribution reminders (5 days before contribution day)
-- **Notifications**: Twilio WhatsApp/SMTP email for deadline reminders
+| Component | Library / Tool |
+|-----------|---------------|
+| Calculation Engine | Python decimal module for precise monetary calculations (no floating-point errors) |
+| Document Generation | openpyxl for Excel remittance statements; reportlab for PDF contribution summaries |
+| Database | SQLite for employee records, monthly contributions, and compliance history |
+| UI | Streamlit dashboard with monthly payroll view and compliance status |
+| Scheduler | APScheduler for monthly contribution reminders (5 days before contribution day) |
+| Notifications | Twilio WhatsApp/SMTP email for deadline reminders |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/mpf-calc/
+/opt/openclaw/skills/local/mpf-calc/
 ├── app.py                        # Streamlit MPF dashboard
 ├── calculation/
 │   ├── mpf_engine.py             # Core MPF contribution calculation
@@ -54,11 +57,43 @@ Hong Kong small business owners, sole proprietors, and HR/payroll administrators
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/mpf-calc/
+├── mpf.db                            # SQLite database (employees, contributions, payroll)
+├── remittance_reports/               # Generated remittance statements
+├── annual_summaries/                 # Annual contribution summaries for tax filing
+└── exports/                          # Excel and PDF exports
+```
+
 ## Key Integrations
 
 - **MPF Trustee Portals**: Generates remittance statements in formats compatible with major HK MPF trustees
 - **Twilio WhatsApp**: Monthly contribution deadline reminders to the business owner
 - **IRD Tax Filing**: Annual contribution summaries formatted for inclusion in BIR56A/IR56B employer's returns
+- **Telegram Bot API**: Secondary channel for business alerts, customer communication, and payment reminders.
+
+## GUI Specification
+
+Part of the **Solopreneur Dashboard** (`http://mona.local:8506`) — MPFCalc tab.
+
+### Views
+
+- **Employee Table**: All employees with name, classification (full-time/part-time/casual), monthly salary, MPF enrollment date, and 60-day rule status.
+- **Monthly Calculator**: Auto-calculated mandatory contributions for each employee. Editable overrides for variable income components (overtime, commission, bonus). Clear breakdown of employer vs employee portions.
+- **Remittance Statement Preview**: Formatted statement matching the selected MPF trustee's template. PDF download button.
+- **Compliance Dashboard**: Contribution day countdown timer. Late payment warnings with 5% surcharge calculation. Historical compliance record.
+- **What-If Calculator**: Enter a proposed salary for a new hire → instantly see total employer cost including MPF contribution.
+- **Annual Summary**: Employee-level annual contribution totals formatted for IR56B employer's return filing.
+
+### Mona Integration
+
+- Mona auto-calculates monthly contributions when payroll data is entered or updated.
+- Mona sends contribution deadline reminders via WhatsApp 5 days before the contribution day.
+- Human reviews calculations, generates remittance statements, and handles exceptions.
+
+### Manual Mode
+
+- Business owner can manually enter employee data, calculate contributions, generate statements, and track compliance without Mona.
 
 ## HK-Specific Requirements
 
@@ -137,6 +172,18 @@ CREATE TABLE remittance_submissions (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Business Profile**: Business name, BR number, business type, operating hours, base currency (HKD)
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token
+3. **MPF Trustee**: Select MPF trustee, configure contribution day, upload remittance statement template
+4. **Employee Import**: Import employee list from CSV/Excel or enter manually; classify employment types (full-time/part-time/casual) and set start dates
+5. **Payroll Configuration**: Define income components (basic salary, overtime, commission, bonus) per employee
+6. **Sample Data**: Option to seed demo employees and contribution history for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] Correctly calculates 5% employer and employee contributions for income of HK$25,000 (result: HK$1,250 each)
@@ -157,3 +204,7 @@ CREATE TABLE remittance_submissions (
 - Memory budget: ~1GB (this is a computation-heavy, LLM-light tool; no inference needed for core calculations)
 - Data security: MPF data includes employee financial information — implement SQLite encryption (sqlcipher) or at minimum restrict file permissions
 - Consider adding a "what-if" calculator for new hires — enter proposed salary and see the employer's total cost including MPF contribution
+- **Logging**: All operations logged to `/var/log/openclaw/mpf-calc.log` with daily rotation (7-day retention). Financial data and customer details masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Business financial data protected under PDPO — zero cloud processing for transaction data.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, POS sync status, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all business data for backup or accountant handoff.

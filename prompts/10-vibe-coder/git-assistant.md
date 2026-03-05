@@ -1,6 +1,6 @@
 # GitAssistant
 
-## Tool Name & Overview
+## Overview
 
 GitAssistant is a local AI-powered Git workflow automation tool that drafts pull request descriptions from diffs, suggests reviewers based on code ownership, writes release notes from tagged commits, and auto-labels GitHub Issues based on content analysis. It streamlines the software development lifecycle tasks that surround code changes, using the local LLM so that proprietary code diffs never leave the machine.
 
@@ -19,17 +19,20 @@ Software developers, team leads, and open-source maintainers who want to spend l
 
 ## Tech Stack
 
-- **Git**: GitPython for repository analysis; subprocess for git commands
-- **GitHub**: PyGithub or httpx for GitHub API interaction (issues, PRs, labels, reviewers)
-- **LLM**: MLX local inference (Qwen-2.5-Coder-7B) for text generation from code diffs
-- **CLI**: Typer for command-line interface (`gitassist pr`, `gitassist release`, `gitassist label`)
-- **Database**: SQLite for reviewer history, label mappings, and generation cache
-- **UI**: Streamlit for optional dashboard view of PRs, issues, and release history
+| Component | Library / Tool |
+|-----------|---------------|
+| Git | GitPython for repository analysis; subprocess for git commands |
+| GitHub | PyGithub or httpx for GitHub API interaction (issues, PRs, labels, reviewers) |
+| LLM | MLX local inference (Qwen-2.5-Coder-7B) for text generation from code diffs |
+| CLI | Typer for command-line interface (`gitassist pr`, `gitassist release`, `gitassist label`) |
+| Database | SQLite for reviewer history, label mappings, and generation cache |
+| UI | Streamlit for optional dashboard view of PRs, issues, and release history |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/git-assistant/
+/opt/openclaw/skills/local/git-assistant/
 ├── app.py                        # Streamlit optional dashboard
 ├── cli.py                        # CLI entry point (gitassist command)
 ├── pr/
@@ -56,11 +59,43 @@ Software developers, team leads, and open-source maintainers who want to spend l
 └── README.md
 ```
 
+```
+~/OpenClawWorkspace/git-assistant/
+├── data/
+│   └── gitassist.db             # SQLite database
+├── cache/                       # Cached PR descriptions and release notes
+└── logs/
+    └── git_ops.log              # Git operation logs
+```
+
 ## Key Integrations
 
 - **GitHub API**: Read/write access to PRs, Issues, Labels, and Releases via PyGithub or REST API
 - **Git (local)**: Reads repository state, diffs, logs, blame, and tags from the local git repository
 - **Local LLM (MLX)**: All text generation from code analysis runs on-device
+- **Telegram Bot API**: Secondary channel for build notifications and documentation alerts.
+
+## GUI Specification
+
+Part of the **Vibe Coder Dashboard** (`http://mona.local:8010`) — GitAssistant tab.
+
+### Views
+
+- **Repo Selector**: Choose from local Git repositories. Display recent commits, branches, and tags.
+- **PR Description Generator**: Select commits to include, generate a structured PR description with summary, changes, and testing notes. Edit before copying.
+- **Release Notes Builder**: Select version range (tag to tag), generate a formatted changelog grouped by category (features, fixes, breaking changes).
+- **Issue Labeling**: Display open issues with AI-suggested labels (bug, feature, enhancement, documentation). Apply labels with one click.
+- **Commit Message Helper**: Staged changes summary with a suggested conventional commit message. Edit and copy.
+
+### Mona Integration
+
+- Mona auto-generates PR descriptions when branches are pushed.
+- Mona suggests release notes when tags are created.
+- Developer reviews and edits all generated content before use.
+
+### Manual Mode
+
+- Developer can manually browse repos, write PR descriptions, generate release notes, and label issues without Mona.
 
 ## HK-Specific Requirements
 
@@ -133,6 +168,18 @@ CREATE TABLE issue_labels (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Developer Profile**: Name, preferred PR description style, and default commit message conventions
+2. **Model Configuration**: Verify Qwen-2.5-Coder-7B is loaded; configure generation parameters
+3. **Git Configuration**: Configure default Git repositories, base branch, and commit message format (conventional commits or free-form)
+4. **GitHub Integration**: Configure GitHub token via `gh auth token` or `GITHUB_TOKEN` for PR, Issue, and Release access
+5. **Telegram**: Configure Telegram bot token for PR and release notifications (optional)
+6. **Sample Data**: Option to analyze a demo repository for testing PR descriptions and release notes
+7. **Connection Test**: Validates model loading, Git repository access, GitHub API connectivity, and Telegram bot
+
 ## Testing Criteria
 
 - [ ] Generates a meaningful PR description from a diff with 5 changed files covering the summary, changes, and test plan sections
@@ -153,3 +200,7 @@ CREATE TABLE issue_labels (
 - Memory budget: ~5GB when LLM is loaded; ~200MB for pure Git analysis without LLM features
 - GitHub token management: use `gh auth token` or `GITHUB_TOKEN` env var — never store tokens in the SQLite database
 - Consider implementing a git hook integration that auto-generates commit messages from staged changes (opt-in via git config)
+- **Logging**: All operations logged to `/var/log/openclaw/git-assistant.log` with daily rotation (7-day retention). Code snippets truncated in logs to avoid leaking proprietary source code.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication. Source code never leaves the local machine — zero cloud processing for all inference.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM model state (loaded/warm/cold), and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON archive of conversation history, generated documentation, and configuration.

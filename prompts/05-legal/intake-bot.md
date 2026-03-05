@@ -1,6 +1,6 @@
 # IntakeBot
 
-## Tool Name & Overview
+## Overview
 
 IntakeBot is a client intake automation tool that collects new client details via WhatsApp and WeChat, performs conflict-of-interest checks against the firm's existing client database, and schedules initial consultation meetings. It streamlines the first-contact-to-meeting pipeline for Hong Kong law firms, reducing manual data entry and ensuring regulatory compliance with conflict checking obligations.
 
@@ -19,18 +19,20 @@ Hong Kong law firm receptionists, intake coordinators, junior solicitors, and sm
 
 ## Tech Stack
 
-- **Messaging**: Twilio WhatsApp Business API; WeChat Official Account API (wechatpy library)
-- **LLM**: MLX local inference for conversational flow management and intent classification
-- **Fuzzy Matching**: rapidfuzz for name matching; pypinyin + jyutping for Chinese phonetic matching
-- **Calendar**: Google Calendar API or Microsoft Graph API for availability checking
-- **Database**: SQLite for client database, conflict log, and intake history
-- **Document Generation**: python-docx for intake forms and engagement letters; reportlab for PDF output
-- **UI**: Streamlit admin dashboard for intake queue management
+| Component | Library / Tool |
+|-----------|---------------|
+| Messaging | Twilio WhatsApp Business API; WeChat Official Account API (wechatpy library) |
+| LLM | MLX local inference for conversational flow management and intent classification |
+| Fuzzy Matching | rapidfuzz for name matching; pypinyin + jyutping for Chinese phonetic matching |
+| Calendar | Google Calendar API or Microsoft Graph API for availability checking |
+| Database | SQLite for client database, conflict log, and intake history |
+| Document Generation | python-docx for intake forms and engagement letters; reportlab for PDF output |
+| UI | Streamlit admin dashboard for intake queue management |
 
 ## File Structure
 
 ```
-~/OpenClaw/tools/intake-bot/
+/opt/openclaw/skills/local/intake-bot/
 ├── app.py                    # Streamlit admin dashboard
 ├── bot/
 │   ├── whatsapp_handler.py   # Twilio webhook handler for WhatsApp messages
@@ -57,12 +59,45 @@ Hong Kong law firm receptionists, intake coordinators, junior solicitors, and sm
 └── README.md
 ```
 
+### Workspace Data Directory
+
+```
+~/OpenClawWorkspace/intake-bot/
+├── intake_forms/             # Generated intake form PDFs/Word docs
+├── engagement_letters/       # Draft engagement letter outputs
+├── conflict_reports/         # Conflict check result reports
+└── conversation_logs/        # Archived client conversation transcripts
+```
+
 ## Key Integrations
 
 - **Twilio WhatsApp Business API**: Primary client communication channel; webhook-based message handling
 - **WeChat Official Account API**: Secondary channel for Mainland Chinese clients communicating via WeChat
 - **Calendar API**: Google Calendar or Microsoft 365 for solicitor availability and booking
 - **Local LLM (MLX)**: Conversational intent classification and freeform message understanding
+- **Telegram Bot API**: Secondary messaging channel for client intake, deadline reminders, and status updates.
+
+## GUI Specification
+
+Part of the **Legal Dashboard** (`http://mona.local:8501`) — IntakeBot tab.
+
+### Views
+
+- **Intake Queue**: Table of pending new client enquiries with source channel, matter type, urgency level, and time-since-received.
+- **Client Intake Form**: Structured form for manual data entry or review of bot-collected information (name, contact, matter type, adverse party, urgency).
+- **Conflict Check Panel**: Results of the conflict-of-interest search showing potential matches with confidence scores, match type (exact/fuzzy/phonetic), and "Clear" / "Potential Conflict" / "Confirmed Conflict" status buttons.
+- **Conversation Viewer**: Full WhatsApp/WeChat conversation thread for each intake, showing bot and client messages.
+- **Meeting Scheduler**: Calendar view of available solicitor slots with one-click booking and confirmation controls.
+
+### Mona Integration
+
+- Mona collects client details via WhatsApp/WeChat conversation flows and populates the intake queue.
+- Mona runs conflict checks automatically and flags potential issues for human review.
+- Human makes final conflict determination and approves meeting scheduling.
+
+### Manual Mode
+
+- Receptionist can manually enter client details, run conflict checks, schedule meetings, and generate intake forms without Mona.
 
 ## HK-Specific Requirements
 
@@ -128,6 +163,18 @@ CREATE TABLE appointments (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Firm Profile**: Firm name, SFC/HKLS registration details, office address, practice areas
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, WeChat Official Account credentials (if applicable)
+3. **Calendar Integration**: Google Calendar or Microsoft 365 API credentials for solicitor availability and meeting booking
+4. **Reference Data**: Import existing client database for conflict checking; upload standard intake form and engagement letter templates
+5. **HK Compliance**: Configure HKLS conflict check rules; set PDPO-compliant data collection fields; confirm HKID handling (last 4 digits only)
+6. **Sample Data**: Option to seed demo cases and contracts for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] WhatsApp intake flow collects all required fields (name, phone, matter type, adverse party) in under 8 messages
@@ -147,3 +194,7 @@ CREATE TABLE appointments (
 - LLM inference is needed only for freeform message understanding — structured button responses should bypass the LLM entirely
 - Memory usage: the bot server + LLM should fit within ~8GB, leaving headroom for other tools on 16GB M4
 - Store conversation logs for compliance but implement automatic purging after the matter's retention period expires per HKLS guidelines
+- **Logging**: All operations logged to `/var/log/openclaw/intake-bot.log` with daily rotation (7-day retention). Client names, case details, and privileged content masked in log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Dashboard requires PIN authentication. Legal documents are highly sensitive — zero cloud processing. Implement audit trail for all data access.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive. Privilege-tagged documents must maintain their tags in the export.

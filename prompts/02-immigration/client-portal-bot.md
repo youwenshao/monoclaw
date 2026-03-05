@@ -75,6 +75,28 @@ Hong Kong immigration consultants managing 30-100 active client cases who receiv
 - **FormAutoFill (sibling tool)**: Pull client data from the shared client database for form generation.
 - **PolicyWatcher (sibling tool)**: When policy changes affect active cases, trigger proactive client notifications.
 
+## GUI Specification
+
+Part of the **Immigration Dashboard** (`http://mona.local:8002`) — ClientPortal tab.
+
+### Views
+
+- **Client Case List**: Table of all active clients with status badges (submitted, processing, approved, rejected) and last-updated timestamps.
+- **Case Timeline**: Per-client vertical timeline showing all milestones, document submissions, and communications.
+- **Message History**: Threaded view of WhatsApp and Telegram conversations per client with sent/delivered/read status.
+- **Quick-Reply Composer**: Template-based message composer for manual status updates with bilingual preview.
+- **Broadcast Panel**: Send batch updates to all clients affected by a policy change or processing milestone.
+
+### Mona Integration
+
+- Mona handles routine status inquiries from clients automatically via WhatsApp/Telegram.
+- Mona sends proactive updates when case milestones are detected (e.g., approval notification from ImmD).
+- Human composes and sends sensitive communications (rejections, complex updates) via the Quick-Reply Composer.
+
+### Manual Mode
+
+- Consultant can manually update case statuses, send messages, and manage client communications without Mona.
+
 ## HK-Specific Requirements
 
 - **Immigration Department Processing Times**: Maintain a reference table of typical processing times by scheme:
@@ -154,6 +176,17 @@ CREATE TABLE conversations (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Practice Profile**: Firm name, immigration consultant registration number, office address, business hours
+2. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, default message language
+3. **Bot Configuration**: Set greeting messages, FAQ knowledge base, appointment slot duration, escalation rules
+4. **Client Database**: Import existing client cases from CSV or start fresh
+5. **Sample Data**: Option to seed demo client cases, conversations, and appointment history for testing
+6. **Connection Test**: Validates all API connections, messaging delivery, and reports any issues
+
 ## Testing Criteria
 
 - [ ] Status query returns correct case information when client provides valid reference code
@@ -173,3 +206,7 @@ CREATE TABLE conversations (
 - **Rate limiting**: Cap outbound messages at 1 per second per channel. Twilio WhatsApp Business has template message requirements for messages sent >24 hours after last client message — use approved templates for proactive notifications.
 - **Memory**: Steady-state <500MB without LLM. With LLM loaded for active conversation, ~5.5GB. Unload LLM after 5 minutes of no incoming messages.
 - **Privacy**: Client case data is highly sensitive. All data stays local. Mask case reference codes in logs. Implement message retention policy: conversation logs auto-delete after 180 days. Client can request data deletion via the bot.
+- **Logging**: All operations logged to `/var/log/openclaw/client-portal-bot.log` using Python `logging` module with daily rotation (7-day retention). PII (phone numbers, HKID, passport numbers, names) is masked in all log output.
+- **Security**: SQLite database encrypted at rest via SQLCipher. Local dashboard requires PIN authentication on first access. All API credentials stored in `config.yaml` with restricted file permissions (600). Immigration data is among the most sensitive in the MonoClaw suite — zero cloud processing for document content.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM/OCR engine state, and memory usage.
+- **Data export**: Supports `POST /api/export` to generate a portable JSON + files archive of all tool data for backup or PDPO compliance.

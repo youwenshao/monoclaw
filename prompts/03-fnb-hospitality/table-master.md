@@ -28,6 +28,7 @@ Hong Kong restaurant owners and managers operating 30-80 seat venues who receive
 | Scheduling | `APScheduler` |
 | Database | `sqlite3` |
 | QR code | `qrcode` |
+| Telegram | `python-telegram-bot` |
 
 ## File Structure
 
@@ -69,6 +70,28 @@ Hong Kong restaurant owners and managers operating 30-80 seat venues who receive
 - **Instagram Graph API**: Receive booking requests from Instagram DMs. Requires Instagram Business account linked to a Facebook Page.
 - **OpenRice**: HK's dominant restaurant platform. Integrate via available API or scrape the restaurant's OpenRice booking page for new reservations. Sync confirmed bookings back.
 - **NoShowShield (sibling tool)**: Share booking data for no-show prediction and prevention. Feed confirmed bookings into the confirmation pipeline.
+- **Telegram Bot API**: Secondary channel for booking confirmations, queue updates, and guest communication.
+
+## GUI Specification
+
+Part of the **F&B Dashboard** (`http://mona.local:8003`) — TableMaster tab.
+
+### Views
+
+- **Interactive Floor Plan**: Drag-and-drop table layout editor. Tables colored by real-time status (green=available, blue=reserved, orange=occupied, grey=clearing). Click any table to view booking details. Drag one table onto another to combine for large parties. WebSocket-powered live updates.
+- **Booking List**: Sortable table of all bookings with channel icons (WhatsApp, IG, OpenRice, phone, walk-in) and status indicators.
+- **Channel Inbox**: Real-time feed of incoming booking requests with LLM-parsed data preview and "Confirm / Decline / Suggest Alternative" action buttons.
+- **Booking Heatmap**: Daily and weekly heatmap showing booking density by time slot to visualize peak periods.
+
+### Mona Integration
+
+- Mona parses incoming booking requests from all channels and presents structured data in the Channel Inbox for confirmation.
+- Mona auto-assigns tables based on party size, preferences, and section balancing; human can override via the floor plan.
+- Mona detects conflicts and suggests alternatives in real-time.
+
+### Manual Mode
+
+- Manager can manually create bookings, assign tables, manage the floor plan layout, and view analytics without Mona.
 
 ## HK-Specific Requirements
 
@@ -126,6 +149,18 @@ CREATE TABLE booking_analytics (
 );
 ```
 
+## First-Run Setup
+
+On first launch, the tool presents a configuration wizard:
+
+1. **Restaurant Profile**: Restaurant name, address, cuisine type, operating hours (lunch/dinner/dim sum sessions)
+2. **Table Layout**: Define tables (number, seats, section, combinability) via the interactive floor plan editor
+3. **Messaging Setup**: Twilio API credentials for WhatsApp, Telegram bot token, Instagram Graph API token
+4. **Platform Connections**: OpenRice integration credentials (if available)
+5. **Business Rules**: Default dining durations per meal period, confirmation timing, no-show thresholds
+6. **Sample Data**: Option to seed demo bookings for testing
+7. **Connection Test**: Validates all API connections and reports any issues
+
 ## Testing Criteria
 
 - [ ] WhatsApp booking request "4位，星期六7點半" correctly parses to party_size=4, Saturday, 19:30
@@ -145,3 +180,7 @@ CREATE TABLE booking_analytics (
 - **Dining duration estimation**: Default durations — Lunch: 75 min, Dinner weekday: 90 min, Dinner weekend: 120 min, Dim sum: 120 min. Allow per-booking override.
 - **Memory**: LLM (~5GB) loads on demand. Steady-state with dashboard serving: <500MB. Suitable for background operation on M4 16GB.
 - **Backup**: Auto-snapshot the SQLite database every night at 3am. Keep 7 days of snapshots.
+- **Logging**: All operations logged to `/var/log/openclaw/table-master.log` with daily rotation (7-day retention). Guest phone numbers masked in log output.
+- **Security**: SQLite database encrypted at rest. Dashboard requires PIN authentication on first access. Guest personal data (phone, dietary/health info) protected under PDPO.
+- **Health check**: Exposes `GET /health` returning tool status, uptime, database connectivity, LLM state, and memory usage.
+- **Data export**: Supports `POST /api/export` for portable JSON + files archive of all tool data.
