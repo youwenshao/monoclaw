@@ -137,6 +137,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Omit<Profile, "id">>;
+        Relationships: [];
       };
       orders: {
         Row: Order;
@@ -147,6 +148,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Omit<Order, "id">>;
+        Relationships: [];
       };
       order_addons: {
         Row: OrderAddon;
@@ -155,6 +157,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Omit<OrderAddon, "id">>;
+        Relationships: [];
       };
       order_status_history: {
         Row: OrderStatusHistory;
@@ -163,6 +166,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Omit<OrderStatusHistory, "id">>;
+        Relationships: [];
       };
       devices: {
         Row: Device;
@@ -173,6 +177,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Omit<Device, "id">>;
+        Relationships: [];
       };
       device_test_results: {
         Row: DeviceTestResult;
@@ -181,6 +186,7 @@ export interface Database {
           executed_at?: string;
         };
         Update: Partial<Omit<DeviceTestResult, "id">>;
+        Relationships: [];
       };
       device_test_summaries: {
         Row: DeviceTestSummary;
@@ -189,7 +195,12 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Omit<DeviceTestSummary, "id">>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

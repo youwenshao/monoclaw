@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getStripe } from "@/lib/stripe";
+import { SOFTWARE_BASE_PRICE_HKD, MODEL_CATEGORIES, LLM_MODELS, BUNDLES } from "@/lib/constants";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { hardwareType, hardwareConfig, addons, industry, personas } = body;
+
+    const lineItems: { price_data: { currency: string; product_data: { name: string; description?: string }; unit_amount: number }; quantity: number }[] = [
+      {
+        price_data: {
+          currency: "hkd",
+          product_data: {
+            name: "OpenClaw Software Suite",
+            description: `Industry: ${industry || "General"} | Hardware: ${hardwareType}`,
+          },
+          unit_amount: SOFTWARE_BASE_PRICE_HKD * 100,
+        },
+        quantity: 1,
+      },
+    ];
+
+    if (addons.bundle) {
+      const bundle = BUNDLES.find((b) => b.id === addons.bundle);
+      if (bundle) {
+        lineItems.push({
+          price_data: {
+            currency: "hkd",
+            product_data: {
+              name: bundle.name,
+              description: bundle.description,
+            },
+            unit_amount: bundle.priceHkd * 100,
+          },
+          quantity: 1,
+        });
+      }
+    } else if (addons.models && addons.models.length > 0) {
+      for (const modelId of addons.models) {
+        const model = LLM_MODELS.find((m) => m.id === modelId);
+        if (!model) continue;
+        const category = MODEL_CATEGORIES.find((c) => c.id === model.category);
+        if (!category) continue;
+        lineItems.push({
+          price_data: {
+            currency: "hkd",
+            product_data: {
+              name: `${model.name} ${model.parameterSize}`,
+              description: `${category.name} model - ${model.description}`,
+            },
+            unit_amount: category.priceHkd * 100,
+          },
+          quantity: 1,
+        });
+      }
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    const session = await getStripe().checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      success_url: `${appUrl}/en/order/confirmation/{CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/en/order/review`,
+      metadata: {
+        hardwareType,
+        hardwareConfig: JSON.stringify(hardwareConfig),
+        addons: JSON.stringify(addons),
+        industry: industry || "",
+        personas: JSON.stringify(personas),
+      },
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    console.error("Checkout error:", error);
+    return NextResponse.json(
+      { error: "Failed to create checkout session" },
+      { status: 500 }
+    );
+  }
+}

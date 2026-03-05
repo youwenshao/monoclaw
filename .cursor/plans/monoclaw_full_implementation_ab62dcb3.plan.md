@@ -7,10 +7,10 @@ todos:
     status: completed
   - id: phase-2-marketing
     content: "Phase 2 -- Marketing Site: Build landing page (hero, hardware showcase, industry carousel, CTA). Build pricing page with interactive configurator (hardware + addons + bundles). Build 12 industry/persona pages from spec content. Build about, FAQ, contact pages. All pages fully translated EN/TC/SC."
-    status: in_progress
+    status: completed
   - id: phase-3-checkout
     content: "Phase 3 -- Checkout Flow: Multi-step order form (hardware selection, addon picker, industry selection, review). Stripe Checkout Session creation via API route. Stripe webhook handler for payment confirmation. Order confirmation page with Apple Store redirect and shipping instructions. Order record creation in Supabase."
-    status: pending
+    status: in_progress
   - id: phase-4-dashboards
     content: "Phase 4 -- Dashboards: Client dashboard with order list, order detail with status timeline, device test report viewer (tabbed by category, pass/fail badges, expandable details, summary donut chart). Admin dashboard with KPI cards, order management table, device inventory, client list, manual status progression."
     status: pending
