@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block title %}PropertyGPT{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-36">
+    <div class="card-header">Buildings</div>
+    <div class="card-value">{{ building_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-36">
+    <div class="card-header">Transactions</div>
+    <div class="card-value">{{ tx_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-36">
+    <div class="card-header">Queries Today</div>
+    <div class="card-value">{{ queries_today|default(0) }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="propertyGptApp()">
+    <!-- Search Section -->
+    <section class="card">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Property Search</h3>
+        <form id="search-form"
+              hx-get="/property-gpt/partials/search-results"
+              hx-trigger="submit, change from:select delay:300ms"
+              hx-target="#search-results"
+              hx-swap="innerHTML"
+              hx-include="[name='query'],[name='district'],[name='min_price'],[name='max_price'],[name='bedrooms']"
+              class="space-y-4">
+            <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm text-gray-400 mb-1">Search</label>
+                    <input type="text" name="query" placeholder="Building name, address, or keyword..."
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="w-40">
+                    <label class="block text-sm text-gray-400 mb-1">District</label>
+                    <select name="district" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">All Districts</option>
+                        <option value="Central & Western">Central & Western</option>
+                        <option value="Eastern">Eastern</option>
+                        <option value="Southern">Southern</option>
+                        <option value="Wan Chai">Wan Chai</option>
+                        <option value="Kowloon City">Kowloon City</option>
+                        <option value="Kwun Tong">Kwun Tong</option>
+                        <option value="Sham Shui Po">Sham Shui Po</option>
+                        <option value="Wong Tai Sin">Wong Tai Sin</option>
+                        <option value="Yau Tsim Mong">Yau Tsim Mong</option>
+                        <option value="Islands">Islands</option>
+                        <option value="Kwai Tsing">Kwai Tsing</option>
+                        <option value="North">North</option>
+                        <option value="Sai Kung">Sai Kung</option>
+                        <option value="Sha Tin">Sha Tin</option>
+                        <option value="Tai Po">Tai Po</option>
+                        <option value="Tuen Mun">Tuen Mun</option>
+                        <option value="Tsuen Wan">Tsuen Wan</option>
+                        <option value="Yuen Long">Yuen Long</option>
+                    </select>
+                </div>
+                <div class="w-32">
+                    <label class="block text-sm text-gray-400 mb-1">Min $/sqft</label>
+                    <input type="number" name="min_price" placeholder="—" min="0" step="100"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="w-32">
+                    <label class="block text-sm text-gray-400 mb-1">Max $/sqft</label>
+                    <input type="number" name="max_price" placeholder="—" min="0" step="100"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="w-28">
+                    <label class="block text-sm text-gray-400 mb-1">Bedrooms</label>
+                    <select name="bedrooms" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Any</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4+</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Main layout: Results + Chat -->
+    <div class="flex gap-6 flex-col lg:flex-row">
+        <!-- Left: Results + Price Trends -->
+        <div class="flex-1 space-y-6 min-w-0">
+            <!-- Results area -->
+            <section>
+                <h3 class="text-lg font-semibold text-gold-400 mb-3">Results</h3>
+                <div id="search-results" class="min-h-[200px]"
+                     hx-get="/property-gpt/partials/search-results"
+                     hx-trigger="load"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center py-12 text-gray-500">
+                        <svg class="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Loading…
+                    </div>
+                </div>
+            </section>
+
+            <!-- Comparison section (hidden until properties selected) -->
+            <section id="comparison-section" class="card hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gold-400">Compare Properties</h3>
+                    <button type="button" onclick="window.clearCompare && window.clearCompare()" class="text-sm text-gray-400 hover:text-white">Clear</button>
+                </div>
+                <div id="comparison-badges" class="flex gap-2 flex-wrap mb-4"></div>
+                <button type="button" id="compare-selected-btn" class="btn btn-secondary btn-sm" onclick="window.doCompare && window.doCompare()">Compare Selected</button>
+            </section>
+
+            <!-- Price Trends -->
+            <section class="card">
+                <h3 class="text-lg font-semibold text-gold-400 mb-4">Transaction Price Trends</h3>
+                <div class="h-64">
+                    <canvas id="price-trend-chart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right: Chat panel -->
+        <aside class="w-full lg:w-96 shrink-0">
+            <section class="card sticky top-6">
+                <h3 class="text-lg font-semibold text-gold-400 mb-4">Ask PropertyGPT</h3>
+                <div id="chat-messages" class="h-64 overflow-auto space-y-3 mb-4 text-sm border border-navy-700 rounded-lg p-3 bg-navy-950">
+                    <p class="text-gray-500 text-center py-4">Ask about buildings, districts, or market trends. Responses stream below.</p>
+                </div>
+                <form id="chat-form" @submit.prevent="sendChatMessage()" class="flex gap-2">
+                    <input type="text" x-model="chatInput" placeholder="e.g. Best value in Mid-Levels?"
+                           class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <button type="submit" class="btn btn-primary" :disabled="chatLoading">
+                        <span x-show="!chatLoading">Send</span>
+                        <span x-show="chatLoading" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </form>
+            </section>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Compare state (shared with htmx-loaded partial)
+window.propertyGptCompare = new Set();
+window.toggleCompare = function(id, checked) {
+    if (checked) window.propertyGptCompare.add(id);
+    else window.propertyGptCompare.delete(id);
+    var section = document.getElementById('comparison-section');
+    var badges = document.getElementById('comparison-badges');
+    if (section) section.classList.toggle('hidden', window.propertyGptCompare.size < 2);
+    if (badges) badges.innerHTML = Array.from(window.propertyGptCompare).map(function(i) {
+        return '<span class="badge badge-blue">#' + i + '</span>';
+    }).join(' ');
+};
+window.clearCompare = function() {
+    window.propertyGptCompare.clear();
+    document.querySelectorAll('.compare-checkbox').forEach(function(cb) { cb.checked = false; });
+    var section = document.getElementById('comparison-section');
+    if (section) section.classList.add('hidden');
+    var badges = document.getElementById('comparison-badges');
+    if (badges) badges.innerHTML = '';
+};
+window.doCompare = function() {
+    var ids = Array.from(window.propertyGptCompare);
+    if (ids.length < 2) return;
+    fetch('/property-gpt/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ building_ids: ids })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) { console.log('Compare result:', data); });
+};
+window.viewDetails = function(buildingId) {
+    // Placeholder: could open modal or navigate to details page
+    console.log('View details for building', buildingId);
+};
+
+function propertyGptApp() {
+    return {
+        chatInput: '',
+        chatLoading: false,
+        async sendChatMessage() {
+            const msg = this.chatInput.trim();
+            if (!msg || this.chatLoading) return;
+            this.chatLoading = true;
+
+            const messagesEl = document.getElementById('chat-messages');
+            const userBubble = document.createElement('div');
+            userBubble.className = 'text-right text-gray-300';
+            userBubble.innerHTML = '<span class="inline-block bg-navy-700 rounded-lg px-3 py-2">' + escapeHtml(msg) + '</span>';
+            messagesEl.appendChild(userBubble);
+
+            const streamBubble = document.createElement('div');
+            streamBubble.className = 'text-gray-200';
+            streamBubble.innerHTML = '<span class="inline-block bg-navy-800 rounded-lg px-3 py-2"><span class="typing-cursor"></span></span>';
+            messagesEl.appendChild(streamBubble);
+            const contentSpan = streamBubble.querySelector('.inline-block');
+
+            try {
+                const res = await fetch('/property-gpt/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: msg })
+                });
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let full = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    full += decoder.decode(value, { stream: true });
+                    contentSpan.innerHTML = escapeHtml(full) + '<span class="typing-cursor"></span>';
+                    streamBubble.scrollIntoView({ behavior: 'smooth' });
+                }
+                contentSpan.innerHTML = escapeHtml(full);
+            } catch (e) {
+                contentSpan.innerHTML = '<span class="text-red-400">Error: ' + escapeHtml(String(e)) + '</span>';
+            }
+            this.chatInput = '';
+            this.chatLoading = false;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+    };
+}
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// Price trends chart
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/property-gpt/trends?days=90')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var txns = data.transactions || [];
+            var byMonth = {};
+            txns.forEach(function(t) {
+                var dt = t.transaction_date || t.instrument_date || '';
+                var key = dt ? dt.substring(0, 7) : 'Unknown';
+                if (!byMonth[key]) byMonth[key] = { count: 0, total: 0 };
+                byMonth[key].count++;
+                byMonth[key].total += t.price_psf_saleable || t.price_psf || t.price_hkd || 0;
+            });
+            var labels = Object.keys(byMonth).sort().slice(-12);
+            var avgPrices = labels.map(function(l) {
+                var m = byMonth[l];
+                return m.count ? Math.round(m.total / m.count) : 0;
+            });
+
+            var ctx = document.getElementById('price-trend-chart');
+            if (ctx && typeof Chart !== 'undefined') {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Avg $/sqft',
+                            data: avgPrices,
+                            borderColor: '#d4a843',
+                            backgroundColor: 'rgba(212, 168, 67, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: { color: 'rgba(45, 51, 82, 0.5)' },
+                                ticks: { color: '#9ca3af' }
+                            },
+                            x: {
+                                grid: { color: 'rgba(45, 51, 82, 0.5)' },
+                                ticks: { color: '#9ca3af' }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(() => {});
+});
+</script>
+<style>
+.typing-cursor::after { content: '▋'; animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+</style>
+{% endblock %}

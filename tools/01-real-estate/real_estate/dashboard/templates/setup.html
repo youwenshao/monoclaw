@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard{% endblock %}
+
+{% block content %}
+<div x-data="{ step: 1 }" class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-gold-400 mb-6">First-Run Configuration</h2>
+
+    <form method="post" action="/setup/" class="space-y-6">
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="s in [1,2,3,4,5]">
+                <div class="flex items-center gap-2">
+                    <div :class="step >= s ? 'bg-gold-500 text-navy-900' : 'bg-navy-700 text-gray-400'"
+                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                         x-text="s"></div>
+                    <div x-show="s < 5" class="w-8 h-px" :class="step > s ? 'bg-gold-500' : 'bg-navy-700'"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Step 1: Business Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Business Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Agency Name</label>
+                    <input type="text" name="agency_name" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="ABC Property Agency">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">EAA License Number</label>
+                    <input type="text" name="eaa_license" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="E-123456" pattern="[ES]-\d{6}">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Office Address</label>
+                    <input type="text" name="office_address" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Operating Hours</label>
+                    <input type="text" name="operating_hours" value="09:00-18:00" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Messaging -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">Messaging Setup</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Account SID</label>
+                    <input type="text" name="twilio_sid" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="ACxxxxxxxx">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Auth Token</label>
+                    <input type="password" name="twilio_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">WhatsApp From Number</label>
+                    <input type="text" name="whatsapp_from" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="+852XXXXXXXX">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Telegram Bot Token</label>
+                    <input type="password" name="telegram_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Language</label>
+                    <select name="default_language" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="en">English</option>
+                        <option value="zh">繁體中文</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Platform Credentials -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">Platform Credentials</h3>
+            <div class="space-y-4">
+                <div class="p-4 bg-navy-800 rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium text-gold-400">28Hse</h4>
+                    <input type="text" name="hse_username" placeholder="Username" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <input type="password" name="hse_password" placeholder="Password" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium text-gold-400">Squarefoot</h4>
+                    <input type="text" name="sf_username" placeholder="Username" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <input type="password" name="sf_password" placeholder="Password" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Sample Data -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data</h3>
+            <div class="p-4 bg-navy-800 rounded-lg">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500 focus:ring-gold-500">
+                    <div>
+                        <p class="text-sm font-medium">Seed demo data for testing</p>
+                        <p class="text-xs text-gray-400">Creates sample listings, tenancies, and viewings so you can explore the dashboard before going live.</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 5: Connection Test -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">Connection Test</h3>
+            <div id="connection-results" class="space-y-3"
+                 hx-get="/api/connection-test" hx-trigger="intersect once" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Testing connections...
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex justify-between pt-4 border-t border-navy-700">
+            <button type="button" @click="step = Math.max(1, step-1)" x-show="step > 1"
+                    class="px-4 py-2 text-sm text-gray-300 bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors">
+                Back
+            </button>
+            <div class="ml-auto">
+                <button type="button" @click="step++" x-show="step < 5"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Next
+                </button>
+                <button type="submit" x-show="step === 5"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Complete Setup
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

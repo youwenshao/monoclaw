@@ -1,0 +1,28 @@
+{% if warnings and (is_unsafe or warnings|selectattr('is_caution')|list|length > 0) %}
+<div class="rounded-lg p-4 mb-4 flex items-center justify-between gap-4
+            {% if is_unsafe %}bg-red-500/20 border border-red-500/50{% else %}bg-amber-500/20 border border-amber-500/50{% endif %}">
+    <div class="flex-1">
+        <p class="font-semibold {% if is_unsafe %}text-red-400{% else %}text-amber-400{% endif %}">
+            {% if is_unsafe %}Weather warning – viewings may be unsafe{% else %}Weather caution – monitor conditions{% endif %}
+        </p>
+        <p class="text-sm text-gray-300 mt-1">{{ recommendation }}</p>
+        <ul class="mt-2 space-y-1 text-sm text-gray-400">
+            {% for w in warnings %}
+            {% if w.is_unsafe or w.is_caution %}
+            <li>{{ w.code }}: {{ w.name }}</li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% if is_unsafe %}
+    <button type="button"
+            hx-get="/viewing-bot/weather"
+            hx-trigger="click"
+            hx-swap="none"
+            hx-on::after-request="if(event.detail.successful) { htmx.trigger(document.body, 'viewingUpdated'); htmx.ajax('GET', '/viewing-bot/partials/weather-banner', {target: '#weather-banner', swap: 'innerHTML'}); }"
+            class="btn btn-danger btn-sm">
+        Auto-Cancel Viewings
+    </button>
+    {% endif %}
+</div>
+{% endif %}

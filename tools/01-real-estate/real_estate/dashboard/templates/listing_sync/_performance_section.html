@@ -1,0 +1,105 @@
+<div class="space-y-6">
+    <!-- Charts row -->
+    <div class="grid grid-cols-2 gap-6">
+        <div class="card">
+            <div class="card-header mb-4">Views by Platform</div>
+            <canvas id="chart-views" height="200"></canvas>
+        </div>
+        <div class="card">
+            <div class="card-header mb-4">Inquiries by Platform</div>
+            <canvas id="chart-inquiries" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Top performers table -->
+    <div class="card">
+        <div class="card-header mb-4">Top Performers</div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Title</th>
+                        <th>District</th>
+                        <th>Views</th>
+                        <th>Inquiries</th>
+                        <th>Conversion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in performance.top_performers %}
+                    <tr>
+                        <td class="font-medium">{{ p.reference_code }}</td>
+                        <td class="max-w-[200px] truncate">{{ p.title or '—' }}</td>
+                        <td>{{ p.district or '—' }}</td>
+                        <td>{{ p.total_views }}</td>
+                        <td>{{ p.total_inquiries }}</td>
+                        <td><span class="badge badge-green">{{ p.conversion_rate }}%</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-gray-500 py-4">No performance data yet. Sync listings to platforms to track views and inquiries.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const byPlatform = {{ performance.by_platform | tojson }};
+    const platforms = Object.keys(byPlatform);
+    const navyColors = ['#2d3352', '#363b5a', '#3a3f56'];
+    const goldColors = ['#d4a843', '#c9952e', '#b88524'];
+
+    if (platforms.length > 0 && typeof Chart !== 'undefined') {
+        new Chart(document.getElementById('chart-views'), {
+            type: 'bar',
+            data: {
+                labels: platforms.map(p => p === '28hse' ? '28Hse' : p === 'squarefoot' ? 'Squarefoot' : p),
+                datasets: [{
+                    label: 'Views',
+                    data: platforms.map(p => byPlatform[p].total_views || 0),
+                    backgroundColor: goldColors.slice(0, platforms.length),
+                    borderColor: ['#d4a843'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(45,51,82,0.5)' }, ticks: { color: '#9ca3af' } },
+                    x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('chart-inquiries'), {
+            type: 'bar',
+            data: {
+                labels: platforms.map(p => p === '28hse' ? '28Hse' : p === 'squarefoot' ? 'Squarefoot' : p),
+                datasets: [{
+                    label: 'Inquiries',
+                    data: platforms.map(p => byPlatform[p].total_inquiries || 0),
+                    backgroundColor: navyColors.slice(0, platforms.length),
+                    borderColor: ['#d4a843'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(45,51,82,0.5)' }, ticks: { color: '#9ca3af' } },
+                    x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                }
+            }
+        });
+    }
+})();
+</script>

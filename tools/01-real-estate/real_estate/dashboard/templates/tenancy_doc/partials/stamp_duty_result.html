@@ -1,0 +1,23 @@
+{% if monthly_rent and term_months and monthly_rent > 0 and term_months > 0 %}
+<div class="space-y-2">
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-400">Total rent</span>
+        <span class="font-medium text-gold-400">HK${{ "{:,.0f}".format(result.total_rent) }}</span>
+    </div>
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-400">Average yearly rent</span>
+        <span class="font-medium">HK${{ "{:,.2f}".format(result.average_yearly_rent) }}</span>
+    </div>
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-400">Rate applied</span>
+        <span class="font-medium">{{ (result.rate_applied * 100)|round(2) }}%</span>
+    </div>
+    <div class="flex justify-between text-lg font-bold pt-2 border-t border-navy-700">
+        <span class="text-gold-400">Stamp duty payable</span>
+        <span class="text-gold-400">HK${{ "{:,.0f}".format(result.duty_amount) }}</span>
+    </div>
+    <p class="text-xs text-gray-500 mt-2">{{ result.breakdown }}</p>
+</div>
+{% else %}
+<p class="text-gray-500 text-sm">Enter monthly rent and term to calculate stamp duty.</p>
+{% endif %}

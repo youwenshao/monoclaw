@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block title %}ViewingBot{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Today's Viewings</div>
+    <div class="card-value">{{ today_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Confirmed</div>
+    <div class="card-value text-green-400">{{ confirmed_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Pending</div>
+    <div class="card-value text-amber-400">{{ pending_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Follow-ups Due</div>
+    <div class="card-value">{{ follow_ups_due|default(0) }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="viewingBotApp()" x-init="init()" class="space-y-6">
+    <!-- Weather alert banner -->
+    <div id="weather-banner"
+         hx-get="/viewing-bot/partials/weather-banner"
+         hx-trigger="load, every 5m"
+         hx-swap="innerHTML">
+    </div>
+
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-2 border-b border-navy-700 pb-2">
+        <button @click="activeSubTab = 'calendar'"
+                :class="activeSubTab === 'calendar' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Calendar
+        </button>
+        <button @click="activeSubTab = 'route'; $nextTick(() => initMap())"
+                :class="activeSubTab === 'route' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Route Map
+        </button>
+        <button @click="activeSubTab = 'coordination'"
+                :class="activeSubTab === 'coordination' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Coordination
+        </button>
+        <button @click="activeSubTab = 'followups'"
+                :class="activeSubTab === 'followups' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Follow-ups
+        </button>
+    </div>
+
+    <!-- Calendar tab -->
+    <div x-show="activeSubTab === 'calendar'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Viewing Schedule</h3>
+            <button @click="modalOpen = true" class="btn btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Viewing
+            </button>
+        </div>
+        <div class="card p-4">
+            <div id="viewing-calendar" class="min-h-[400px]"></div>
+        </div>
+    </div>
+
+    <!-- Route Map tab -->
+    <div x-show="activeSubTab === 'route'" x-transition class="tab-section">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Today's Optimised Route</h3>
+        <div id="route-map" class="h-96 rounded-lg overflow-hidden border border-navy-700"></div>
+        <div id="route-details" class="mt-4 text-sm text-gray-400"
+             hx-get="/viewing-bot/partials/route-details"
+             hx-trigger="load, viewingUpdated from:body"
+             hx-swap="innerHTML">
+        </div>
+    </div>
+
+    <!-- Coordination tab -->
+    <div x-show="activeSubTab === 'coordination'" x-transition class="tab-section">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Today's Viewings – Coordination</h3>
+        <div id="coordination-grid" class="grid grid-cols-2 gap-4"
+             hx-get="/viewing-bot/partials/today-coordination"
+             hx-trigger="load, viewingUpdated from:body"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12 text-gray-500 col-span-full">
+                <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Follow-ups tab -->
+    <div x-show="activeSubTab === 'followups'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Post-Viewing Follow-ups</h3>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-400">Interest:</label>
+                <select name="interest"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm"
+                        hx-get="/viewing-bot/partials/follow-ups"
+                        hx-target="#followups-content"
+                        hx-trigger="change"
+                        hx-include="this"
+                        hx-swap="innerHTML">
+                    <option value="">All</option>
+                    <option value="hot">Hot</option>
+                    <option value="warm">Warm</option>
+                    <option value="cold">Cold</option>
+                </select>
+            </div>
+        </div>
+        <div id="followups-content"
+             hx-get="/viewing-bot/partials/follow-ups"
+             hx-trigger="load, viewingUpdated from:body"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12 text-gray-500">
+                <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- New Viewing Modal -->
+    <div x-show="modalOpen" x-transition
+         class="flex items-center justify-center p-4"
+         style="position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="modalOpen = false">
+        <div @click.outside="modalOpen = false"
+             class="bg-navy-800 border border-navy-700 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-semibold text-gold-400 mb-4">New Viewing</h3>
+            <form id="new-viewing-form" @submit.prevent="submitViewing()" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Property Ref *</label>
+                        <input type="text" x-model="form.property_ref" required
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">District</label>
+                        <select x-model="form.district" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Select district</option>
+                            <option value="Central & Western">Central & Western</option>
+                            <option value="Wan Chai">Wan Chai</option>
+                            <option value="Eastern">Eastern</option>
+                            <option value="Southern">Southern</option>
+                            <option value="Yau Tsim Mong">Yau Tsim Mong</option>
+                            <option value="Sham Shui Po">Sham Shui Po</option>
+                            <option value="Kowloon City">Kowloon City</option>
+                            <option value="Wong Tai Sin">Wong Tai Sin</option>
+                            <option value="Kwun Tong">Kwun Tong</option>
+                            <option value="Sha Tin">Sha Tin</option>
+                            <option value="Tai Po">Tai Po</option>
+                            <option value="North">North</option>
+                            <option value="Tuen Mun">Tuen Mun</option>
+                            <option value="Yuen Long">Yuen Long</option>
+                            <option value="Tsuen Wan">Tsuen Wan</option>
+                            <option value="Kwai Tsing">Kwai Tsing</option>
+                            <option value="Islands">Islands</option>
+                            <option value="Sai Kung">Sai Kung</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Viewer Name</label>
+                    <input type="text" x-model="form.viewer_name"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Viewer Phone *</label>
+                    <input type="tel" x-model="form.viewer_phone" required placeholder="+852XXXXXXXX"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Landlord Phone</label>
+                    <input type="tel" x-model="form.landlord_phone" placeholder="+852XXXXXXXX"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Proposed Date & Time *</label>
+                    <input type="datetime-local" x-model="form.proposed_datetime" required
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Notes</label>
+                    <textarea x-model="form.notes" rows="2"
+                              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary" :disabled="formSubmitting">
+                        <span x-show="!formSubmitting">Create Viewing</span>
+                        <span x-show="formSubmitting" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Creating...
+                        </span>
+                    </button>
+                    <button type="button" @click="modalOpen = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/htmx-ext-json-enc@2.0.0/json-enc.js"></script>
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('viewingBotApp', () => ({
+        activeSubTab: 'calendar',
+        modalOpen: false,
+        formSubmitting: false,
+        calendar: null,
+        map: null,
+        routeLayer: null,
+
+        form: {
+            property_ref: '',
+            property_address: '',
+            district: '',
+            viewer_name: '',
+            viewer_phone: '',
+            landlord_phone: '',
+            agent_phone: '',
+            proposed_datetime: '',
+            notes: ''
+        },
+
+        init() {
+            this.initProposedDatetime();
+            this.$nextTick(() => this.initCalendar());
+        },
+
+        initProposedDatetime() {
+            const now = new Date();
+            now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30);
+            this.form.proposed_datetime = now.toISOString().slice(0, 16);
+        },
+
+        initCalendar() {
+            const calEl = document.getElementById('viewing-calendar');
+            if (!calEl || typeof FullCalendar === 'undefined') return;
+
+            this.calendar = new FullCalendar.Calendar(calEl, {
+                initialView: 'timeGridWeek',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                slotMinTime: '08:00:00',
+                slotMaxTime: '20:00:00',
+                events: function(info, successCallback, failureCallback) {
+                    fetch('/viewing-bot/partials/calendar')
+                        .then(r => r.json())
+                        .then(events => {
+                            const fcEvents = events.map(e => ({
+                                id: e.id,
+                                title: e.title,
+                                start: e.start,
+                                className: 'fc-event-' + (e.status || 'pending'),
+                                extendedProps: e
+                            }));
+                            successCallback(fcEvents);
+                        })
+                        .catch(() => failureCallback());
+                },
+                eventClick: function(arg) {
+                    if (arg.event.extendedProps?.id) {
+                        window.location.hash = '#viewing-' + arg.event.extendedProps.id;
+                    }
+                }
+            });
+            this.calendar.render();
+        },
+
+        initMap() {
+            const mapEl = document.getElementById('route-map');
+            if (!mapEl || typeof L === 'undefined') return;
+
+            if (this.map) {
+                this.map.remove();
+                this.map = null;
+            }
+
+            this.map = L.map('route-map').setView([22.28, 114.17], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(this.map);
+
+            fetch('/viewing-bot/route/today')
+                .then(r => r.json())
+                .then(data => {
+                    const route = data.route || [];
+                    if (route.length === 0) return;
+
+                    const points = route.map(v => {
+                        const lat = v.lat ?? window.HK_DISTRICT_COORDS?.[v.district]?.[0] ?? 22.28;
+                        const lon = v.lon ?? window.HK_DISTRICT_COORDS?.[v.district]?.[1] ?? 114.17;
+                        return [lat, lon];
+                    });
+
+                    route.forEach((v, i) => {
+                        const lat = v.lat ?? window.HK_DISTRICT_COORDS?.[v.district]?.[0] ?? 22.28;
+                        const lon = v.lon ?? window.HK_DISTRICT_COORDS?.[v.district]?.[1] ?? 114.17;
+                        L.marker([lat, lon])
+                            .bindPopup(`<b>#${v.route_order || i+1}</b> ${v.property_ref || ''} — ${v.viewer_name || ''}`)
+                            .addTo(this.map);
+                    });
+
+                    if (points.length > 1) {
+                        if (this.routeLayer) this.map.removeLayer(this.routeLayer);
+                        this.routeLayer = L.polyline(points, { color: '#d4a843', weight: 4 }).addTo(this.map);
+                        this.map.fitBounds(this.routeLayer.getBounds(), { padding: [20, 20] });
+                    }
+                });
+        },
+
+        async submitViewing() {
+            if (this.formSubmitting) return;
+            const dt = this.form.proposed_datetime;
+            const proposed = dt ? new Date(dt).toISOString().slice(0, 19).replace('T', ' ') : '';
+
+            const body = {
+                property_ref: this.form.property_ref || '',
+                property_address: this.form.property_address || '',
+                district: this.form.district || null,
+                viewer_name: this.form.viewer_name || null,
+                viewer_phone: this.form.viewer_phone || '',
+                landlord_phone: this.form.landlord_phone || null,
+                agent_phone: this.form.agent_phone || null,
+                proposed_datetime: proposed,
+                notes: this.form.notes || null
+            };
+
+            this.formSubmitting = true;
+            try {
+                const res = await fetch('/viewing-bot/viewings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.id) {
+                    this.modalOpen = false;
+                    this.form = { property_ref: '', property_address: '', district: '', viewer_name: '', viewer_phone: '', landlord_phone: '', agent_phone: '', proposed_datetime: '', notes: '' };
+                    this.initProposedDatetime();
+                    if (this.calendar) this.calendar.refetchEvents();
+                    htmx.trigger(document.body, 'viewingUpdated');
+                } else if (data.detail) {
+                    alert('Error: ' + (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : data.detail));
+                }
+            } catch (e) {
+                alert('Failed to create viewing: ' + e.message);
+            }
+            this.formSubmitting = false;
+        }
+    }));
+});
+
+// HK district coordinates for map when backend doesn't provide lat/lon
+window.HK_DISTRICT_COORDS = {
+    "Central & Western": [22.2860, 114.1500],
+    "Wan Chai": [22.2780, 114.1720],
+    "Eastern": [22.2840, 114.2240],
+    "Southern": [22.2470, 114.1580],
+    "Yau Tsim Mong": [22.3120, 114.1720],
+    "Sham Shui Po": [22.3300, 114.1590],
+    "Kowloon City": [22.3280, 114.1910],
+    "Wong Tai Sin": [22.3420, 114.1940],
+    "Kwun Tong": [22.3130, 114.2260],
+    "Sha Tin": [22.3810, 114.1880],
+    "Tai Po": [22.4510, 114.1640],
+    "North": [22.4960, 114.1380],
+    "Tuen Mun": [22.3910, 113.9770],
+    "Yuen Long": [22.4440, 114.0220],
+    "Tsuen Wan": [22.3710, 114.1140],
+    "Kwai Tsing": [22.3560, 114.1310],
+    "Islands": [22.2620, 113.9460],
+    "Sai Kung": [22.3820, 114.2710]
+};
+</script>
+<style>
+.fc-event-pending { background-color: #f59e0b !important; border-color: #f59e0b; }
+.fc-event-confirmed { background-color: #22c55e !important; border-color: #22c55e; }
+.fc-event-completed { background-color: #3b82f6 !important; border-color: #3b82f6; }
+.fc-event-cancelled { background-color: #6b7280 !important; border-color: #6b7280; }
+.fc-theme-standard .fc-event { border-radius: 4px; }
+.fc { --fc-border-color: var(--color-navy-700); --fc-page-bg-color: transparent; --fc-neutral-bg-color: var(--color-navy-900); }
+.fc .fc-toolbar-title { font-size: 1.125rem; color: var(--color-gold-400); }
+.fc .fc-col-header-cell-cushion, .fc .fc-timegrid-slot-label-cushion { color: #9ca3af; }
+.fc .fc-button { background: var(--color-navy-700); color: #d1d5db; border-color: var(--color-navy-600); }
+.fc .fc-button:hover { background: var(--color-navy-800); }
+.fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled).fc-button-active { background: var(--color-gold-500); color: var(--color-navy-950); }
+</style>
+{% endblock %}

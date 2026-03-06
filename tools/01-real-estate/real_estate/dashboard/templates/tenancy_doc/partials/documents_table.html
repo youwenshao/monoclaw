@@ -1,0 +1,33 @@
+{% if documents %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Tenancy Ref</th>
+            <th>Version</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in documents %}
+        <tr>
+            <td>
+                <span class="badge badge-blue">{{ d.doc_type|replace('_', ' ')|title }}</span>
+            </td>
+            <td class="font-mono text-sm">#{{ d.tenancy_id }}</td>
+            <td>{{ d.version|default(1) }}</td>
+            <td>{% if d.generated_at %}{{ str(d.generated_at)[:10] }}{% else %}—{% endif %}</td>
+            <td>
+                <a href="/tenancy-doc/documents/{{ d.id }}/download"
+                   class="btn btn-secondary btn-sm">
+                    Download
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-gray-500 py-8 text-center">No documents found.</p>
+{% endif %}

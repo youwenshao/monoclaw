@@ -1,0 +1,76 @@
+<!-- Per-viewing coordination detail partial -->
+{% if viewing %}
+<div class="card">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h3 class="text-lg font-semibold">{{ viewing.property_ref }}</h3>
+            <p class="text-sm text-gray-400">{{ viewing.property_address }}</p>
+        </div>
+        <span class="badge {% if viewing.status == 'confirmed' %}badge-green{% elif viewing.status == 'pending' %}badge-amber{% elif viewing.status == 'cancelled' %}badge-red{% else %}badge-blue{% endif %}">
+            {{ viewing.status }}
+        </span>
+    </div>
+
+    <!-- Three-party status -->
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="p-3 bg-navy-900 rounded-lg text-center">
+            <p class="text-xs text-gray-400 mb-1">Viewer</p>
+            <p class="text-sm font-medium">{{ viewing.viewer_name or 'Unknown' }}</p>
+            {% if viewing.viewer_confirmed %}
+                <span class="text-green-400 text-xs">Confirmed</span>
+            {% else %}
+                <span class="text-amber-400 text-xs">Pending</span>
+            {% endif %}
+        </div>
+        <div class="p-3 bg-navy-900 rounded-lg text-center">
+            <p class="text-xs text-gray-400 mb-1">Landlord</p>
+            <p class="text-sm font-medium">{{ viewing.landlord_phone or 'N/A' }}</p>
+            {% if viewing.landlord_confirmed %}
+                <span class="text-green-400 text-xs">Confirmed</span>
+            {% else %}
+                <span class="text-amber-400 text-xs">Pending</span>
+            {% endif %}
+        </div>
+        <div class="p-3 bg-navy-900 rounded-lg text-center">
+            <p class="text-xs text-gray-400 mb-1">Agent</p>
+            <p class="text-sm font-medium">{{ viewing.agent_phone or 'N/A' }}</p>
+            <span class="text-green-400 text-xs">Available</span>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        <h4 class="text-xs text-gray-400 uppercase tracking-wider mb-2">Messages</h4>
+        <div class="space-y-2 max-h-48 overflow-auto">
+            {% for msg in messages %}
+            <div class="p-2 bg-navy-900 rounded text-xs">
+                <span class="text-gray-500">{{ msg.timestamp }}</span>
+                <span class="{% if msg.direction == 'outgoing' %}text-gold-400{% else %}text-gray-300{% endif %}">
+                    {{ msg.direction }}
+                </span>
+                <p class="mt-1">{{ msg.message_text }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Follow-ups -->
+    {% if follow_ups %}
+    <div>
+        <h4 class="text-xs text-gray-400 uppercase tracking-wider mb-2">Follow-ups</h4>
+        {% for fu in follow_ups %}
+        <div class="p-2 bg-navy-900 rounded text-xs mb-1">
+            <span class="badge {% if fu.interest_level == 'hot' %}badge-red{% elif fu.interest_level == 'warm' %}badge-amber{% else %}badge-blue{% endif %}">
+                {{ fu.interest_level or 'pending' }}
+            </span>
+            <span class="text-gray-400 ml-2">{{ fu.response or 'No response yet' }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<p class="text-sm text-gray-500 text-center py-4">Viewing not found.</p>
+{% endif %}

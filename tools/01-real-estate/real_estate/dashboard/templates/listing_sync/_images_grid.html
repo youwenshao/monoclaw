@@ -1,0 +1,35 @@
+{% for item in image_items %}
+<div class="card p-2">
+    <div class="text-xs text-gray-400 mb-1 truncate">{{ item.reference_code }}</div>
+    <div class="grid grid-cols-2 gap-1">
+        <div>
+            <div class="text-xs text-gray-500 mb-1">Original</div>
+            {% if item.original_url %}
+            <img src="{{ item.original_url }}" alt="Original" class="w-full h-24 object-cover rounded border border-navy-700">
+            {% else %}
+            <div class="w-full h-24 bg-navy-900 rounded border border-navy-700 flex items-center justify-center text-gray-600 text-xs">—</div>
+            {% endif %}
+        </div>
+        <div>
+            <div class="text-xs text-gray-500 mb-1">Watermarked</div>
+            {% if item.watermarked_url %}
+            <img src="{{ item.watermarked_url }}" alt="Watermarked" class="w-full h-24 object-cover rounded border border-navy-700">
+            {% else %}
+            <div class="w-full h-24 bg-navy-900 rounded border border-navy-700 flex items-center justify-center text-gray-600 text-xs">—</div>
+            {% endif %}
+        </div>
+    </div>
+    <button class="btn btn-sm btn-secondary mt-1 w-full"
+            hx-post="/listing-sync/listings/{{ item.listing_id }}/process-images"
+            hx-trigger="click"
+            hx-swap="none"
+            @htmx:after-request="htmx.ajax('get', '/listing-sync/images-grid', {target: '#images-grid', swap: 'innerHTML'})">
+        Process
+    </button>
+</div>
+{% else %}
+<div class="col-span-4 text-center text-gray-500 py-12">
+    <p class="mb-2">No listing images yet.</p>
+    <p class="text-sm">Add images to your listings and run the image processor to see before/after watermark previews.</p>
+</div>
+{% endfor %}

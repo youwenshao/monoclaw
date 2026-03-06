@@ -1,0 +1,15 @@
+{% if route %}
+<p class="text-gray-400">
+    <span class="text-gold-400 font-medium">{{ count }}</span> viewings •
+    Total distance: <span class="text-gold-400 font-medium">{{ "%.1f"|format(total_distance_km) }}</span> km
+</p>
+<ol class="mt-2 space-y-1 text-sm text-gray-400" style="list-style: decimal inside;">
+    {% for v in route %}
+    <li>{{ v.property_ref }} — {{ v.viewer_name|default('—') }}
+        {% if v.distance_from_prev_km %}(+{{ "%.1f"|format(v.distance_from_prev_km) }} km){% endif %}
+    </li>
+    {% endfor %}
+</ol>
+{% else %}
+<p class="text-gray-500">No viewings for today.</p>
+{% endif %}

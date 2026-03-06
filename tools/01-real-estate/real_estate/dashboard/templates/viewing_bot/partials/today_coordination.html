@@ -1,0 +1,73 @@
+{% for v in viewings %}
+<div class="card">
+    <div class="flex justify-between items-start mb-3">
+        <div>
+            <p class="font-semibold text-gold-400">{{ v.property_ref }}</p>
+            <p class="text-sm text-gray-400">{{ v.property_address or v.district or '—' }}</p>
+        </div>
+        <span class="badge {% if v.status == 'confirmed' %}badge-green{% elif v.status == 'pending' %}badge-amber{% else %}badge-grey{% endif %}">
+            {{ v.status }}
+        </span>
+    </div>
+    <div class="space-y-2 text-sm">
+        <div class="flex items-center gap-2">
+            <span class="text-gray-400">Viewer:</span>
+            <span>{{ v.viewer_name or '—' }}</span>
+            {% if v.viewer_confirmed %}
+            <span class="text-green-400" title="Confirmed">✓</span>
+            {% else %}
+            <span class="text-red-400" title="Not confirmed">✗</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-gray-400">Landlord:</span>
+            {% if v.landlord_confirmed %}
+            <span class="text-green-400">✓</span>
+            {% else %}
+            <span class="text-red-400">✗</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-gray-400">Agent:</span>
+            <span class="text-green-400">✓</span>
+        </div>
+    </div>
+    <div class="flex flex-wrap gap-2 mt-4">
+        <button type="button" class="btn btn-secondary btn-sm"
+                hx-post="/viewing-bot/viewings/{{ v.id }}/confirm"
+                hx-ext="json-enc"
+                hx-vals='{"party": "viewer"}'
+                hx-trigger="click"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) htmx.trigger(document.body, 'viewingUpdated')"
+                {% if v.viewer_confirmed %}disabled{% endif %}>
+            Confirm Viewer
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm"
+                hx-post="/viewing-bot/viewings/{{ v.id }}/confirm"
+                hx-ext="json-enc"
+                hx-vals='{"party": "landlord"}'
+                hx-trigger="click"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) htmx.trigger(document.body, 'viewingUpdated')"
+                {% if v.landlord_confirmed %}disabled{% endif %}>
+            Confirm Landlord
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" title="Send reminder (placeholder)">
+            Send Reminder
+        </button>
+        <button type="button" class="btn btn-danger btn-sm"
+                hx-post="/viewing-bot/viewings/{{ v.id }}/cancel"
+                hx-ext="json-enc"
+                hx-vals='{"reason": "Cancelled from dashboard"}'
+                hx-trigger="click"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) htmx.trigger(document.body, 'viewingUpdated')"
+                {% if v.status == 'cancelled' %}disabled{% endif %}>
+            Cancel
+        </button>
+    </div>
+</div>
+{% else %}
+<p class="text-gray-500 text-center py-8 col-span-2">No viewings scheduled for today.</p>
+{% endfor %}

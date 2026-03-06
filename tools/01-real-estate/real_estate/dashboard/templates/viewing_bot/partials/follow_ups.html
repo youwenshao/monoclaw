@@ -1,0 +1,42 @@
+{% if follow_ups %}
+<div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Property</th>
+                    <th>Viewer</th>
+                    <th>Viewing Date</th>
+                    <th>Interest</th>
+                    <th>Response</th>
+                    <th>Next Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in follow_ups %}
+                <tr>
+                    <td>{{ f.property_ref|default('—') }}</td>
+                    <td>{{ f.viewer_name|default('—') }}</td>
+                    <td>{{ f.viewing_date|default('—') }}</td>
+                    <td>
+                        {% if f.interest_level == 'hot' %}
+                        <span class="badge badge-red">Hot</span>
+                        {% elif f.interest_level == 'warm' %}
+                        <span class="badge badge-amber">Warm</span>
+                        {% elif f.interest_level == 'cold' %}
+                        <span class="badge badge-blue">Cold</span>
+                        {% else %}
+                        <span class="badge badge-grey">{{ f.interest_level|default('—') }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ f.response|default('—') }}</td>
+                    <td>{{ f.next_action|default('—') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<p class="text-gray-500 text-center py-8">No follow-ups found.</p>
+{% endif %}

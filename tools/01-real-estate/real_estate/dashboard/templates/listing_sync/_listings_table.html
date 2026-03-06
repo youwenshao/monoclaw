@@ -1,0 +1,45 @@
+{% for listing in listings %}
+<tr class="hover:bg-navy-800/50">
+    <td>
+        <div class="font-medium">{{ listing.reference_code }}</div>
+        <div class="text-xs text-gray-500 truncate max-w-[200px]">{{ listing.title_en or listing.address or '—' }}</div>
+    </td>
+    <td>
+        <form hx-post="/listing-sync/listings/{{ listing.id }}/status"
+              hx-trigger="change from:select"
+              hx-include="this"
+              hx-swap="none"
+              class="inline"
+              @htmx:after-request="htmx.trigger(document.body, 'listingUpdated')">
+            <select name="status" class="bg-navy-800 border border-navy-600 rounded px-2 py-1 text-sm">
+                <option value="active" {{ 'selected' if listing.status == 'active' else '' }}>Active</option>
+                <option value="under-offer" {{ 'selected' if listing.status == 'under-offer' else '' }}>Under Offer</option>
+                <option value="sold" {{ 'selected' if listing.status == 'sold' else '' }}>Sold</option>
+                <option value="withdrawn" {{ 'selected' if listing.status == 'withdrawn' else '' }}>Withdrawn</option>
+            </select>
+        </form>
+    </td>
+    {% set platforms = ['28hse', 'squarefoot', 'whatsapp'] %}
+    {% set status_map = {'posted': 'green', 'live': 'green', 'pending': 'amber', 'failed': 'red'} %}
+    {% for platform in platforms %}
+    <td class="text-center">
+        {% set pstatus = listing.platform_statuses.get(platform, '') %}
+        {% set dot_class = status_map.get(pstatus, 'grey') %}
+        <span class="status-dot {{ dot_class }}" title="{{ platform }}: {{ pstatus or 'not posted' }}"></span>
+    </td>
+    {% endfor %}
+    <td>
+        <button class="btn btn-sm btn-primary"
+                hx-post="/listing-sync/listings/{{ listing.id }}/sync"
+                hx-trigger="click"
+                hx-swap="none"
+                @htmx:after-request="htmx.trigger(document.body, 'listingUpdated')">
+            Sync All
+        </button>
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="6" class="text-center text-gray-500 py-8">No listings yet. Click "New Listing" to create one.</td>
+</tr>
+{% endfor %}

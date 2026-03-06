@@ -1,0 +1,64 @@
+tool_name: real-estate
+version: "1.0.0"
+port: 8001
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/real-estate"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Business profile (set during first-run wizard)
+  agency_name: ""
+  eaa_license: ""
+  office_address: ""
+  operating_hours: "09:00-18:00"
+
+  # Platform credentials
+  twentyeight_hse_username: ""
+  twentyeight_hse_password: ""
+  squarefoot_username: ""
+  squarefoot_password: ""
+
+  # Stamp duty rates (IRD, configurable for annual Budget changes)
+  stamp_duty_rates:
+    - max_term_years: 1
+      rate: 0.0025
+      description: "Not exceeding 1 year: 0.25% of total rent"
+    - max_term_years: 3
+      rate: 0.005
+      description: "Exceeding 1 year but not 3 years: 0.5% of average yearly rent"
+    - max_term_years: 999
+      rate: 0.01
+      description: "Exceeding 3 years: 1% of average yearly rent"
+  stamp_duty_effective_date: "2024-04-01"
+
+  # Watermark settings
+  watermark_font_size: 14
+  watermark_opacity: 0.6
+  watermark_position: "bottom-right"
+
+  # Viewing hours
+  default_viewing_start: "10:00"
+  default_viewing_end: "20:00"
+
+  # District travel time overrides (minutes)
+  cross_harbour_penalty_minutes: 20
+  nt_penalty_minutes: 30

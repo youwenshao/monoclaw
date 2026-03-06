@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}ListingSync{% endblock %}
+
+{% block status_cards %}
+<div class="card flex-1 min-w-0">
+    <div class="card-header">Active Listings</div>
+    <div class="card-value" id="status-active-count">{{ stats.active_listings }}</div>
+</div>
+<div class="card flex-1 min-w-0">
+    <div class="card-header">Pending Syncs</div>
+    <div class="card-value text-amber-400" id="status-pending-count">{{ stats.pending_syncs }}</div>
+</div>
+<div class="card flex-1 min-w-0">
+    <div class="card-header">Total Views</div>
+    <div class="card-value text-gold-400" id="status-total-views">{{ stats.total_views }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="listingSyncApp()" x-init="init()" class="space-y-6">
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-2 border-b border-navy-700 pb-2">
+        <button @click="activeSubTab = 'listings'"
+                :class="activeSubTab === 'listings' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Listings
+        </button>
+        <button @click="activeSubTab = 'images'"
+                :class="activeSubTab === 'images' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Images
+        </button>
+        <button @click="activeSubTab = 'performance'"
+                :class="activeSubTab === 'performance' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Performance
+        </button>
+    </div>
+
+    <!-- Listings tab -->
+    <div x-show="activeSubTab === 'listings'" x-transition
+         class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Platform Status</h3>
+            <button @click="showNewForm = !showNewForm"
+                    class="btn btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Listing
+            </button>
+        </div>
+
+        <!-- New listing form (Alpine toggle) -->
+        <div x-show="showNewForm" x-transition
+             class="card mb-6">
+            <h4 class="text-gold-400 font-semibold mb-4">Create New Listing</h4>
+            <form id="new-listing-form"
+                  hx-post="/listing-sync/listings"
+                  hx-ext="json-enc"
+                  hx-target="this"
+                  hx-swap="none"
+                  @htmx:after-request="handleCreateResponse($event)"
+                  class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Reference Code *</label>
+                        <input type="text" name="reference_code" required
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">District</label>
+                        <input type="text" name="district"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="e.g. Central">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm text-gray-400 mb-1">Title (English)</label>
+                        <input type="text" name="title_en"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm text-gray-400 mb-1">Title (Chinese)</label>
+                        <input type="text" name="title_zh"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm text-gray-400 mb-1">Description (Master)</label>
+                        <textarea name="description_master" rows="4"
+                                  class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Estate</label>
+                        <input type="text" name="estate"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Address</label>
+                        <input type="text" name="address"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Saleable Area (sq ft)</label>
+                        <input type="number" step="0.01" name="saleable_area_sqft"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Gross Area (sq ft)</label>
+                        <input type="number" step="0.01" name="gross_area_sqft"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Price (HKD)</label>
+                        <input type="number" name="price_hkd"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Bedrooms</label>
+                        <input type="number" name="bedrooms"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Bathrooms</label>
+                        <input type="number" name="bathrooms"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Floor</label>
+                        <input type="text" name="floor"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Facing</label>
+                        <input type="text" name="facing"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="e.g. South">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Images</label>
+                    <div class="dropzone"
+                         @dragover.prevent="dragOver = true"
+                         @dragleave="dragOver = false"
+                         @drop.prevent="handleDrop($event)"
+                         :class="dragOver ? 'dragover' : ''">
+                        <p class="text-gray-400 text-sm">Drop images here or click to browse</p>
+                        <p class="text-gray-500 text-xs mt-1">Images can be uploaded after creating the listing</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary">Create Listing</button>
+                    <button type="button" @click="showNewForm = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Platform status grid table -->
+        <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Listing</th>
+                            <th>Status</th>
+                            <th>28Hse</th>
+                            <th>Squarefoot</th>
+                            <th>WhatsApp</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listings-tbody"
+                           hx-get="/listing-sync/listings-table"
+                           hx-trigger="load, listingUpdated from:body"
+                           hx-swap="innerHTML">
+                        {% include "listing_sync/_listings_table.html" %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Images tab -->
+    <div x-show="activeSubTab === 'images'" x-transition
+         class="tab-section">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Listing Images</h3>
+        <div id="images-grid"
+             hx-get="/listing-sync/images-grid"
+             hx-trigger="load, intersect"
+             hx-swap="innerHTML"
+             class="grid grid-cols-4 gap-4">
+            <div class="text-center text-gray-500 py-8">Loading images...</div>
+        </div>
+    </div>
+
+    <!-- Performance tab -->
+    <div x-show="activeSubTab === 'performance'" x-transition
+         class="tab-section"
+         id="performance-section"
+         hx-get="/listing-sync/performance-section"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center gap-2 text-gray-500 py-8">
+            <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Loading performance data...
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/htmx.org@2.0.4/dist/ext/json-enc.js"></script>
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('listingSyncApp', () => ({
+        activeSubTab: 'listings',
+        showNewForm: false,
+        dragOver: false,
+
+        init() {
+            htmx.on('htmx:afterSwap', (ev) => {
+                if (ev.detail.target.id === 'performance-section' && ev.detail.xhr.response) {
+                    const scripts = ev.detail.target.querySelectorAll('script');
+                    scripts.forEach(s => { eval(s.textContent); });
+                }
+            });
+        },
+
+        handleCreateResponse(ev) {
+            if (ev.detail.successful && ev.detail.xhr.status >= 200 && ev.detail.xhr.status < 300) {
+                this.showNewForm = false;
+                document.getElementById('new-listing-form')?.reset();
+                htmx.trigger(document.body, 'listingUpdated');
+                window.location.reload(); // Refresh to show new listing and update stats
+            }
+        },
+
+        handleDrop(ev) {
+            this.dragOver = false;
+            const files = ev.dataTransfer?.files;
+            if (files?.length) {
+                console.log('Images dropped:', files.length, '(upload after listing created)');
+            }
+        }
+    }));
+});
+</script>
+{% endblock %}
