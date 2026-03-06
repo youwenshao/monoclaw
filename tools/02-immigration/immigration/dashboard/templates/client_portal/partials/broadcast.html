@@ -1,0 +1,118 @@
+<!-- Broadcast partial: loaded into the broadcast tab -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Client selection list -->
+    <div class="card p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-gray-300">Select Recipients</h4>
+            <span class="text-xs text-gray-500">{{ cases|length }} total</span>
+        </div>
+
+        <div class="mb-2">
+            <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                <input type="checkbox" id="broadcast-select-all"
+                       onchange="document.querySelectorAll('.broadcast-case-cb').forEach(cb => { cb.checked = this.checked; cb.dispatchEvent(new Event('change')); })"
+                       class="rounded bg-navy-900 border-navy-600">
+                Select all visible
+            </label>
+        </div>
+
+        <div class="space-y-1 max-h-72 overflow-auto">
+            {% for case in cases %}
+            <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-navy-800 cursor-pointer text-sm broadcast-row"
+                   data-scheme="{{ case.scheme }}" data-status="{{ case.current_status }}">
+                <input type="checkbox" name="broadcast_case_ids" value="{{ case.id }}"
+                       class="broadcast-case-cb rounded bg-navy-900 border-navy-600">
+                <span class="text-gray-200 font-mono text-xs">{{ case.reference_code }}</span>
+                <span class="text-gray-400 truncate">{{ case.client_name }}</span>
+                <span class="ml-auto text-xs px-2 py-0.5 rounded-full shrink-0
+                    {% if case.scheme == 'GEP' %}bg-blue-900/60 text-blue-300
+                    {% elif case.scheme == 'TTPS' %}bg-purple-900/60 text-purple-300
+                    {% elif case.scheme == 'QMAS' %}bg-teal-900/60 text-teal-300
+                    {% elif case.scheme == 'IANG' %}bg-green-900/60 text-green-300
+                    {% elif case.scheme == 'ASMTP' %}bg-orange-900/60 text-orange-300
+                    {% elif case.scheme == 'Dependant' %}bg-pink-900/60 text-pink-300
+                    {% else %}bg-navy-700 text-gray-300{% endif %}">
+                    {{ case.scheme }}
+                </span>
+            </label>
+            {% endfor %}
+
+            {% if not cases %}
+            <p class="text-sm text-gray-500 py-4 text-center">No cases available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Message composer -->
+    <div class="card p-4">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3">Compose Message</h4>
+        <form id="broadcast-form" class="space-y-3">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Channel</label>
+                <select name="broadcast_channel" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="both">Both</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Message</label>
+                <textarea name="broadcast_message" rows="6" placeholder="Type your broadcast message..."
+                          class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"
+                          oninput="document.getElementById('broadcast-char-count').textContent = this.value.length"></textarea>
+                <p class="text-xs text-gray-500 mt-1">
+                    <span id="broadcast-char-count">0</span>/1600 characters
+                </p>
+            </div>
+            <div class="flex items-center justify-between pt-2">
+                <span id="broadcast-recipient-count" class="text-xs text-gray-400">0 recipient(s)</span>
+                <button type="button" onclick="sendBroadcastForm()" class="btn btn-primary">
+                    Send Broadcast
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+function sendBroadcastForm() {
+    const checked = document.querySelectorAll('.broadcast-case-cb:checked');
+    const caseIds = Array.from(checked).map(cb => parseInt(cb.value));
+    const message = document.querySelector('[name="broadcast_message"]').value;
+    const channel = document.querySelector('[name="broadcast_channel"]').value;
+
+    if (!message.trim() || caseIds.length === 0) {
+        alert('Please select recipients and enter a message.');
+        return;
+    }
+
+    fetch('/client-portal/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_ids: caseIds, message_text: message, channel: channel })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.sent > 0) {
+            document.querySelector('[name="broadcast_message"]').value = '';
+            document.querySelectorAll('.broadcast-case-cb').forEach(cb => cb.checked = false);
+            document.getElementById('broadcast-char-count').textContent = '0';
+            updateRecipientCount();
+            alert(`Broadcast sent to ${data.sent} recipient(s).`);
+        }
+    })
+    .catch(e => alert('Broadcast failed: ' + e.message));
+}
+
+function updateRecipientCount() {
+    const count = document.querySelectorAll('.broadcast-case-cb:checked').length;
+    const el = document.getElementById('broadcast-recipient-count');
+    if (el) el.textContent = count + ' recipient(s)';
+}
+
+document.querySelectorAll('.broadcast-case-cb').forEach(cb => {
+    cb.addEventListener('change', updateRecipientCount);
+});
+</script>

@@ -1,0 +1,24 @@
+steps:
+  - step: 1
+    timing: "at_booking"
+    subject: "訂位確認"
+    body: >-
+      您好！提提你，你喺[restaurant_name]嘅訂位已經確認 —
+      訂位編號 #[booking_id]。請回覆「確認」或「取消」。多謝！🙏
+
+  - step: 2
+    timing: "24h_before"
+    subject: "訂位提醒"
+    body: >-
+      溫馨提醒：你喺[restaurant_name]嘅訂位（編號 #[booking_id]）
+      聽日就到喇。請回覆「確認」嚟保留你嘅枱，
+      或者回覆「取消」如果有變。期待見到你！🍽️
+
+  - step: 3
+    timing: "2h_before"
+    subject: "最後提醒"
+    body: >-
+      你喺[restaurant_name]嘅枱仲有2個鐘就到喇
+      （訂位編號 #[booking_id]）。如果收唔到你嘅回覆，
+      訂位可能會開放畀其他客人。請回覆「確認」或「取消」。
+      等緊你！⏰

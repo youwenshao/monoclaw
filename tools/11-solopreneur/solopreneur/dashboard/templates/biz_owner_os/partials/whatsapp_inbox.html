@@ -1,0 +1,84 @@
+<div class="space-y-4">
+    <!-- Filter bar -->
+    <div class="flex items-center gap-2">
+        <button hx-get="/biz-owner-os/partials/whatsapp-inbox" hx-target="#inbox-list" hx-swap="innerHTML"
+                class="px-3 py-1.5 text-xs font-medium bg-[#2d3352] text-[#d4a843] rounded-lg">All</button>
+        <button hx-get="/biz-owner-os/partials/whatsapp-inbox?status=pending" hx-target="#inbox-list" hx-swap="innerHTML"
+                class="px-3 py-1.5 text-xs font-medium bg-[#0f1225] text-gray-400 hover:text-gray-200 rounded-lg border border-[#2d3352]">Pending</button>
+        <button hx-get="/biz-owner-os/partials/whatsapp-inbox?status=handled" hx-target="#inbox-list" hx-swap="innerHTML"
+                class="px-3 py-1.5 text-xs font-medium bg-[#0f1225] text-gray-400 hover:text-gray-200 rounded-lg border border-[#2d3352]">Handled</button>
+    </div>
+
+    <!-- Message list -->
+    <div id="inbox-list" class="space-y-3">
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4 hover:border-[#3d4562] transition-colors">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3 flex-1">
+                    <!-- Direction indicator -->
+                    <div class="mt-1">
+                        {% if msg.direction == 'inbound' %}
+                        <div class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"/>
+                            </svg>
+                        </div>
+                        {% else %}
+                        <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"/>
+                            </svg>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-sm font-medium text-gray-200">{{ msg.name or msg.name_tc or 'Unknown' }}</span>
+                            {% if msg.phone %}
+                            <span class="text-xs text-gray-500">{{ msg.phone }}</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-gray-400 line-clamp-2">{{ msg.message_text or '' }}</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="text-xs text-gray-600">{{ msg.timestamp or '' }}</span>
+                            {% if msg.tags %}
+                            {% for tag in (msg.tags or '').split(',') %}
+                            {% if tag.strip() %}
+                            <span class="px-1.5 py-0.5 text-xs bg-[#2d3352] text-gray-400 rounded">{{ tag.strip() }}</span>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status & actions -->
+                <div class="flex flex-col items-end gap-2 shrink-0">
+                    {% if msg.requires_followup %}
+                    <span class="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full">Pending</span>
+                    {% else %}
+                    <span class="px-2 py-0.5 text-xs font-medium bg-emerald-500/20 text-emerald-400 rounded-full">Handled</span>
+                    {% endif %}
+
+                    {% if msg.direction == 'inbound' %}
+                    <button class="px-2 py-1 text-xs bg-[#2d3352] text-gray-300 hover:text-[#d4a843] rounded-lg transition-colors">
+                        Quick Reply
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-12 text-center">
+            <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
+            </svg>
+            <p class="text-sm text-gray-500">No messages yet</p>
+            <p class="text-xs text-gray-600 mt-1">Messages will appear here when customers contact you via WhatsApp</p>
+        </div>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,96 @@
+<div class="space-y-4">
+    <!-- Improved commit message -->
+    <div class="space-y-2">
+        <div class="flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gold-400">Improved Commit Message</h3>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('improved-msg-raw').textContent)"
+                    class="text-xs text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                </svg>
+                Copy
+            </button>
+        </div>
+        <div class="bg-navy-900 border border-navy-700 rounded-lg p-4 font-mono text-sm text-gray-100 whitespace-pre-wrap">{{ improved }}</div>
+        <script id="improved-msg-raw" type="text/plain">{{ improved }}</script>
+    </div>
+
+    <!-- Commit type badges -->
+    {% if type %}
+    <div class="flex flex-wrap gap-2">
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-md
+            {% if type == 'feat' %}bg-emerald-500/20 text-emerald-400
+            {% elif type == 'fix' %}bg-blue-500/20 text-blue-400
+            {% elif type == 'refactor' %}bg-purple-500/20 text-purple-400
+            {% elif type == 'docs' %}bg-cyan-500/20 text-cyan-400
+            {% elif type == 'test' %}bg-amber-500/20 text-amber-400
+            {% elif type == 'chore' %}bg-gray-500/20 text-gray-400
+            {% elif type == 'perf' %}bg-orange-500/20 text-orange-400
+            {% elif type == 'ci' %}bg-pink-500/20 text-pink-400
+            {% else %}bg-gray-500/20 text-gray-400
+            {% endif %}">
+            {{ type }}
+        </span>
+        {% if scope %}
+        <span class="px-2.5 py-1 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded-md">
+            {{ scope }}
+        </span>
+        {% endif %}
+        {% if breaking %}
+        <span class="px-2.5 py-1 text-xs font-semibold bg-red-500/20 text-red-400 rounded-md">
+            BREAKING CHANGE
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Original vs Improved comparison -->
+    {% if original %}
+    <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1">
+            <label class="text-xs text-gray-500 uppercase tracking-wider">Original</label>
+            <div class="bg-navy-900 border border-navy-700 rounded-lg p-3 font-mono text-xs text-gray-400 whitespace-pre-wrap max-h-40 overflow-auto">{{ original }}</div>
+        </div>
+        <div class="space-y-1">
+            <label class="text-xs text-emerald-500 uppercase tracking-wider">Improved</label>
+            <div class="bg-navy-900 border border-emerald-900/30 rounded-lg p-3 font-mono text-xs text-gray-200 whitespace-pre-wrap max-h-40 overflow-auto">{{ improved }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Explanation -->
+    {% if explanation %}
+    <div class="bg-navy-900 border border-navy-700 rounded-lg p-4">
+        <p class="text-xs font-medium text-gray-300 mb-1.5">Why this format?</p>
+        <p class="text-xs text-gray-400 leading-relaxed">{{ explanation }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Staged changes summary -->
+    {% if staged_files %}
+    <details class="group">
+        <summary class="flex items-center gap-2 cursor-pointer text-xs text-gray-400 hover:text-gray-200 transition-colors py-1">
+            <svg class="w-4 h-4 transform group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+            </svg>
+            {{ staged_files|length }} staged file{{ 's' if staged_files|length != 1 else '' }}
+        </summary>
+        <div class="mt-2 bg-navy-900 border border-navy-700 rounded-lg divide-y divide-navy-700 max-h-48 overflow-auto">
+            {% for f in staged_files %}
+            <div class="flex items-center gap-2 px-3 py-1.5 text-xs">
+                {% if f.status == 'A' %}
+                <span class="badge-green">A</span>
+                {% elif f.status == 'M' %}
+                <span class="badge-amber">M</span>
+                {% elif f.status == 'D' %}
+                <span class="badge-red">D</span>
+                {% else %}
+                <span class="badge-grey">{{ f.status }}</span>
+                {% endif %}
+                <span class="text-gray-300 font-mono truncate">{{ f.path }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+</div>

@@ -1,0 +1,88 @@
+<!-- htmx partial: guest CRM cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for guest in guests %}
+    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5 hover:border-[#3d4466] transition-colors cursor-pointer"
+         hx-get="/sommelier-memory/guests/{{ guest.id }}/timeline"
+         hx-target="#guest-detail-panel"
+         hx-swap="innerHTML"
+         @click="$dispatch('open-guest-detail')">
+        <!-- Header -->
+        <div class="flex items-start gap-3 mb-4">
+            <!-- Photo Placeholder -->
+            <div class="w-12 h-12 rounded-xl bg-[#242b4a] border border-[#2d3352] flex items-center justify-center shrink-0">
+                {% if guest.photo %}
+                <img src="{{ guest.photo }}" alt="{{ guest.name }}" class="w-full h-full rounded-xl object-cover">
+                {% else %}
+                <span class="text-lg font-bold text-[#d4a843]">{{ guest.name[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold text-white truncate">{{ guest.name }}</p>
+                    <!-- VIP Tier Badge -->
+                    {% if guest.tier == 'vvip' %}
+                    <span class="tier-vvip inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#d4a843]/20 text-[#d4a843] border border-[#d4a843]/30">VVIP</span>
+                    {% elif guest.tier == 'vip' %}
+                    <span class="tier-vip inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">VIP</span>
+                    {% else %}
+                    <span class="tier-regular inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#242b4a] text-gray-400">Regular</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">{{ guest.phone | default('—') }}</p>
+            </div>
+        </div>
+
+        <!-- Allergy Badges -->
+        {% if guest.allergies %}
+        <div class="flex flex-wrap gap-1.5 mb-3">
+            {% for allergy in guest.allergies %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
+                {% if allergy.severity == 'anaphylactic' %}allergy-anaphylactic bg-red-500/15 text-red-400 border border-red-500/30
+                {% elif allergy.severity == 'severe' %}allergy-severe bg-orange-500/15 text-orange-400 border border-orange-500/30
+                {% elif allergy.severity == 'moderate' %}allergy-moderate bg-[#d4a843]/15 text-[#d4a843] border border-[#d4a843]/30
+                {% else %}allergy-mild bg-[#242b4a] text-gray-400 border border-[#2d3352]{% endif %}">
+                {% if allergy.severity == 'anaphylactic' %}
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                {% endif %}
+                {{ allergy.name }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Preference Tags -->
+        {% if guest.preferences %}
+        <div class="flex flex-wrap gap-1.5 mb-3">
+            {% for pref in guest.preferences %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-[#242b4a] text-gray-300 border border-[#2d3352]">{{ pref }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Dietary Flags -->
+        {% if guest.dietary_flags %}
+        <div class="flex flex-wrap gap-1.5 mb-3">
+            {% for flag in guest.dietary_flags %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{{ flag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Footer Stats -->
+        <div class="flex items-center justify-between pt-3 border-t border-[#2d3352] text-xs text-gray-500">
+            <span>{{ guest.total_visits | default(0) }} visits</span>
+            <span>Avg ${{ guest.avg_spend | default(0) }}/head</span>
+            <span>Last: {{ guest.last_visit | default('—') }}</span>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full text-center py-16">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-600 opacity-40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+        <p class="text-sm text-gray-500">No guest profiles found</p>
+        <p class="text-xs text-gray-600 mt-1">Add guests via the "New Guest" button or they'll be created automatically from bookings</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="guest-detail-panel"></div>

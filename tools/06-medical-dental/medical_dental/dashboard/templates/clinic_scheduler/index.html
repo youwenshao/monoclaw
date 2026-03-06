@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}ClinicScheduler{% endblock %}
+
+{% block status_cards %}
+<div class="grid grid-cols-5 gap-4 w-full" id="scheduler-stats"
+     hx-get="/clinic-scheduler/api/stats" hx-trigger="load, every 30s" hx-swap="innerHTML">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '今日預約' : 'Today\'s Appts'">Today's Appts</p>
+        <p class="text-2xl font-bold text-gray-100 mt-1">{{ stats.today_total | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '已完成' : 'Completed'">Completed</p>
+        <p class="text-2xl font-bold text-green-400 mt-1">{{ stats.completed | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '未到診' : 'No-Shows'">No-Shows</p>
+        <p class="text-2xl font-bold text-red-400 mt-1">{{ stats.no_shows | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '即時到診' : 'Walk-Ins'">Walk-Ins</p>
+        <p class="text-2xl font-bold text-blue-400 mt-1">{{ stats.walk_ins | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '平均等候' : 'Avg Wait'">Avg Wait</p>
+        <p class="text-2xl font-bold text-amber-400 mt-1">{{ stats.avg_wait | default('—') }}<span class="text-sm font-normal text-gray-400">min</span></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ selectedDate: '{{ today | default('') }}' }" class="space-y-6">
+
+    <!-- Date navigation + booking button -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <button hx-get="/clinic-scheduler/api/schedule" hx-vals="js:{date: document.getElementById('schedule-date').value ? new Date(new Date(document.getElementById('schedule-date').value).getTime()-86400000).toISOString().slice(0,10) : ''}"
+                    hx-target="#schedule-grid" hx-swap="innerHTML"
+                    class="bg-[#2d3352] text-gray-300 px-3 py-2 rounded-lg hover:bg-[#3d4466] transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <input type="date" id="schedule-date" x-model="selectedDate"
+                   hx-get="/clinic-scheduler/api/schedule" hx-trigger="change" hx-target="#schedule-grid" hx-swap="innerHTML"
+                   hx-include="this"
+                   name="date"
+                   class="bg-[#242b4a] border border-[#2d3352] rounded-lg px-4 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+            <button hx-get="/clinic-scheduler/api/schedule" hx-vals="js:{date: document.getElementById('schedule-date').value ? new Date(new Date(document.getElementById('schedule-date').value).getTime()+86400000).toISOString().slice(0,10) : ''}"
+                    hx-target="#schedule-grid" hx-swap="innerHTML"
+                    class="bg-[#2d3352] text-gray-300 px-3 py-2 rounded-lg hover:bg-[#3d4466] transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+            <span class="text-sm text-gray-400" x-text="selectedDate">{{ today }}</span>
+        </div>
+        <div class="flex gap-2">
+            <a href="/clinic-scheduler/waiting-room" target="_blank"
+               class="bg-[#2d3352] text-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-[#3d4466] transition-colors">
+                <span x-text="lang==='zh' ? '候診室顯示' : 'Waiting Room TV'">Waiting Room TV</span>
+            </a>
+            <button hx-get="/clinic-scheduler/api/booking/form" hx-target="#booking-area" hx-swap="innerHTML"
+                    class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                <span x-text="lang==='zh' ? '+ 新預約' : '+ New Booking'">+ New Booking</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="booking-area"></div>
+
+    <!-- Schedule Grid -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg overflow-hidden">
+        <div id="schedule-grid" hx-get="/clinic-scheduler/api/schedule" hx-trigger="load" hx-swap="innerHTML" hx-vals='{"date": "{{ today | default("") }}"}'>
+            <div class="p-8 text-center text-gray-500">Loading schedule… 載入中…</div>
+        </div>
+    </div>
+
+    <!-- Bottom panels -->
+    <div class="grid grid-cols-2 gap-6">
+        <!-- Waitlist -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '候補名單' : 'Waitlist'">Waitlist</h3>
+                <span class="text-xs text-gray-500" id="waitlist-count"></span>
+            </div>
+            <div id="waitlist-panel" hx-get="/clinic-scheduler/api/waitlist" hx-trigger="load, every 15s" hx-swap="innerHTML"
+                 class="space-y-2 max-h-[300px] overflow-auto">
+                <p class="text-sm text-gray-500 text-center py-4">Loading…</p>
+            </div>
+        </div>
+
+        <!-- Walk-in Queue -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '即時到診' : 'Walk-In Queue'">Walk-In Queue</h3>
+                <button hx-post="/clinic-scheduler/api/walk-in/call-next" hx-target="#walkin-queue" hx-swap="innerHTML"
+                        class="text-xs bg-green-600/20 text-green-400 px-3 py-1.5 rounded hover:bg-green-600/30 transition-colors">
+                    <span x-text="lang==='zh' ? '叫號' : 'Call Next'">Call Next</span>
+                </button>
+            </div>
+
+            <!-- Walk-in join form -->
+            <form hx-post="/clinic-scheduler/api/walk-in" hx-target="#walkin-queue" hx-swap="innerHTML"
+                  class="flex gap-2 mb-4">
+                <input type="text" name="patient_name" placeholder="Patient name 病人姓名" required
+                       class="flex-1 bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+                <select name="service_type"
+                        class="bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                    <option value="general">General 一般</option>
+                    <option value="dental">Dental 牙科</option>
+                    <option value="urgent">Urgent 緊急</option>
+                </select>
+                <button type="submit"
+                        class="bg-[#2d3352] text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#3d4466] transition-colors">
+                    Join 加入
+                </button>
+            </form>
+
+            <div id="walkin-queue" hx-get="/clinic-scheduler/api/walk-in/queue" hx-trigger="load, every 10s" hx-swap="innerHTML"
+                 class="space-y-2 max-h-[240px] overflow-auto">
+                <p class="text-sm text-gray-500 text-center py-4">Loading…</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-solopreneur"
+version = "1.0.0"
+description = "Solopreneur Dashboard — BizOwner OS, MPFCalc, SupplierLedger, SocialSync"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    "python-dateutil>=2.9",
+    "sse-starlette>=2.0",
+    # BizOwner OS — charts and image handling
+    "Pillow>=10.0",
+    "plotly>=5.18",
+    # MPFCalc + SupplierLedger — document generation
+    "openpyxl>=3.1",
+    "reportlab>=4.1",
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+macos = ["pyobjc-framework-Vision>=10.0"]
+video = ["moviepy>=1.0"]
+all = ["openclaw-solopreneur[mlx,messaging,macos,video]"]
+
+[tool.setuptools.packages.find]
+include = ["solopreneur*"]

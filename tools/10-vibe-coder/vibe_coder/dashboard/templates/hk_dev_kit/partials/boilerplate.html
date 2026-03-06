@@ -1,0 +1,106 @@
+<!-- Boilerplate project summary partial — loaded into #boilerplate-summary via htmx -->
+<div class="space-y-4">
+
+    <!-- Project header -->
+    <div class="flex items-center gap-3 pb-3 border-b border-navy-700">
+        <div class="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-gold-400 font-bold text-lg shrink-0">
+            {{ project.name[0]|upper if project.name else '?' }}
+        </div>
+        <div class="min-w-0">
+            <h4 class="text-sm font-semibold text-white truncate">{{ project.name }}</h4>
+            <p class="text-xs text-gray-400">{{ project.framework }} &middot; {{ project.integrations|length }} integration{{ 's' if project.integrations|length != 1 }}</p>
+        </div>
+        <div class="ml-auto flex gap-2">
+            <span class="badge badge-green">Generated</span>
+        </div>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="grid grid-cols-3 gap-3">
+        <div class="bg-navy-900 rounded-lg p-3 text-center">
+            <p class="text-xl font-bold text-white">{{ project.files_count|default(0) }}</p>
+            <p class="text-xs text-gray-400">Files</p>
+        </div>
+        <div class="bg-navy-900 rounded-lg p-3 text-center">
+            <p class="text-xl font-bold text-white">{{ project.integrations|length }}</p>
+            <p class="text-xs text-gray-400">Integrations</p>
+        </div>
+        <div class="bg-navy-900 rounded-lg p-3 text-center">
+            <p class="text-xl font-bold text-white">{{ project.lines_of_code|default(0) }}</p>
+            <p class="text-xs text-gray-400">Lines</p>
+        </div>
+    </div>
+
+    <!-- Integrations list -->
+    <div>
+        <h5 class="text-xs text-gray-400 uppercase tracking-wider mb-2">Included Integrations</h5>
+        <div class="flex flex-wrap gap-2">
+            {% for intg in project.integrations %}
+            <span class="badge badge-blue">{{ intg }}</span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- File tree -->
+    <div>
+        <h5 class="text-xs text-gray-400 uppercase tracking-wider mb-2">Project Structure</h5>
+        <div class="bg-navy-900 rounded-lg p-4 overflow-auto max-h-[280px]">
+            <pre class="text-xs text-gray-300" style="font-family: var(--font-mono);">{{ project.tree|default('') }}</pre>
+        </div>
+    </div>
+
+    <!-- Output path -->
+    <div class="flex items-center justify-between p-3 bg-navy-900 rounded-lg">
+        <div class="min-w-0">
+            <p class="text-xs text-gray-400">Output Directory</p>
+            <p class="text-sm text-gray-200 truncate" style="font-family: var(--font-mono);">{{ project.output_path|default('~/Projects/' + project.name) }}</p>
+        </div>
+        <button onclick="copyToClipboard('{{ project.output_path|default("") }}', this)"
+                class="btn btn-secondary btn-sm shrink-0">
+            Copy Path
+        </button>
+    </div>
+
+    <!-- Quick-start commands -->
+    <div>
+        <h5 class="text-xs text-gray-400 uppercase tracking-wider mb-2">Quick Start</h5>
+        <div class="bg-navy-900 rounded-lg p-4 space-y-2">
+            {% for cmd in project.quickstart_commands|default([]) %}
+            <div class="flex items-center justify-between group">
+                <code class="text-xs text-green-400" style="font-family: var(--font-mono);">{{ cmd }}</code>
+                <button onclick="copyToClipboard('{{ cmd }}', this)"
+                        class="text-xs text-gray-500 hover:text-gold-400 opacity-0 group-hover:opacity-100 transition-all">
+                    Copy
+                </button>
+            </div>
+            {% endfor %}
+            {% if not project.quickstart_commands %}
+            <div class="flex items-center justify-between group">
+                <code class="text-xs text-green-400" style="font-family: var(--font-mono);">cd {{ project.output_path|default(project.name) }}</code>
+                <button onclick="copyToClipboard('cd {{ project.output_path|default(project.name) }}', this)"
+                        class="text-xs text-gray-500 hover:text-gold-400 opacity-0 group-hover:opacity-100 transition-all">
+                    Copy
+                </button>
+            </div>
+            {% if project.framework in ['fastapi', 'flask'] %}
+            <div class="flex items-center justify-between group">
+                <code class="text-xs text-green-400" style="font-family: var(--font-mono);">pip install -r requirements.txt</code>
+                <button onclick="copyToClipboard('pip install -r requirements.txt', this)"
+                        class="text-xs text-gray-500 hover:text-gold-400 opacity-0 group-hover:opacity-100 transition-all">
+                    Copy
+                </button>
+            </div>
+            {% elif project.framework in ['express', 'nextjs'] %}
+            <div class="flex items-center justify-between group">
+                <code class="text-xs text-green-400" style="font-family: var(--font-mono);">npm install</code>
+                <button onclick="copyToClipboard('npm install', this)"
+                        class="text-xs text-gray-500 hover:text-gold-400 opacity-0 group-hover:opacity-100 transition-all">
+                    Copy
+                </button>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+</div>

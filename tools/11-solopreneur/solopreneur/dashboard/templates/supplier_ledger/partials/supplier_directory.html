@@ -1,0 +1,75 @@
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-[#2d3352] text-left text-gray-400">
+                <th class="px-4 py-3 font-medium">Company</th>
+                <th class="px-4 py-3 font-medium">Type</th>
+                <th class="px-4 py-3 font-medium">Contact Person</th>
+                <th class="px-4 py-3 font-medium">Phone / WhatsApp</th>
+                <th class="px-4 py-3 font-medium text-right">Outstanding</th>
+                <th class="px-4 py-3 font-medium">Terms</th>
+                <th class="px-4 py-3 font-medium">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in contacts %}
+            <tr class="border-b border-[#2d3352]/50 hover:bg-[#242b4a]/50 transition-colors">
+                <td class="px-4 py-3">
+                    <div class="text-gray-200 font-medium">{{ c.company_name }}</div>
+                    {% if c.company_name_tc %}
+                    <div class="text-xs text-gray-500">{{ c.company_name_tc }}</div>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-1 rounded-full font-medium
+                        {% if c.contact_type == 'supplier' %}bg-blue-900/60 text-blue-300
+                        {% elif c.contact_type == 'customer' %}bg-green-900/60 text-green-300
+                        {% else %}bg-purple-900/60 text-purple-300{% endif %}">
+                        {{ c.contact_type|title }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-gray-300">{{ c.contact_person or '—' }}</td>
+                <td class="px-4 py-3 text-gray-300 text-sm">
+                    {{ c.phone or c.whatsapp or '—' }}
+                </td>
+                <td class="px-4 py-3 text-right">
+                    {% if c.outstanding > 0 %}
+                    <span class="font-semibold text-amber-400">HK${{ "{:,.2f}".format(c.outstanding) }}</span>
+                    {% else %}
+                    <span class="text-gray-500">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-400 text-sm">{{ c.payment_terms_days }} days</td>
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-1">
+                        <a href="/supplier-ledger/statements/{{ c.id }}/{{ now_month|default('2026-03') }}"
+                           target="_blank"
+                           class="p-1.5 rounded-lg hover:bg-[#2d3352] text-gray-400 hover:text-[#d4a843] transition-colors"
+                           title="Download statement">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                            </svg>
+                        </a>
+                        {% if c.email %}
+                        <button class="p-1.5 rounded-lg hover:bg-[#2d3352] text-gray-400 hover:text-blue-400 transition-colors"
+                                title="Send statement via email">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+                            </svg>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+
+            {% if not contacts %}
+            <tr>
+                <td colspan="7" class="px-4 py-12 text-center text-gray-500">
+                    No contacts found. Add a supplier or customer to get started.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

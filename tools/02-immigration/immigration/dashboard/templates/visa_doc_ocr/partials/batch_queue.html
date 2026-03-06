@@ -1,0 +1,64 @@
+<div class="space-y-2">
+{% for doc in documents %}
+<div class="bg-navy-900 rounded-lg p-3 border border-navy-700 hover:border-navy-500 transition-colors cursor-pointer"
+     onclick="viewDocument({{ doc.id }})">
+    <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-gray-200 truncate max-w-[140px]"
+              title="{{ doc.file_path }}">
+            {{ doc.file_path.split('/')[-1] if doc.file_path else 'unnamed' }}
+        </span>
+        {% if doc.status == 'processed' %}
+        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/20 text-emerald-400 uppercase">Done</span>
+        {% elif doc.status == 'review' %}
+        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/20 text-amber-400 uppercase">Review</span>
+        {% elif doc.status == 'pending' %}
+        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-sky-500/20 text-sky-400 uppercase">Pending</span>
+        {% elif doc.status == 'rejected' %}
+        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-red-500/20 text-red-400 uppercase">Error</span>
+        {% elif doc.status == 'approved' %}
+        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gold-500/20 text-gold-400 uppercase">Approved</span>
+        {% else %}
+        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-500/20 text-gray-400 uppercase">{{ doc.status }}</span>
+        {% endif %}
+    </div>
+
+    <div class="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
+        <span class="uppercase">{{ doc.doc_type or 'unknown' }}</span>
+        <span>&middot;</span>
+        <span>#{{ doc.id }}</span>
+    </div>
+
+    {% if doc.confidence_score is not none %}
+    {% set conf_pct = (doc.confidence_score * 100)|round|int %}
+    <div class="w-full bg-navy-700 rounded-full h-1.5">
+        {% if conf_pct >= 85 %}
+        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {{ conf_pct }}%"></div>
+        {% elif conf_pct >= 70 %}
+        <div class="bg-amber-500 h-1.5 rounded-full" style="width: {{ conf_pct }}%"></div>
+        {% else %}
+        <div class="bg-red-500 h-1.5 rounded-full" style="width: {{ conf_pct }}%"></div>
+        {% endif %}
+    </div>
+    <p class="text-[10px] text-gray-500 mt-1">
+        Confidence:
+        {% if conf_pct >= 85 %}
+        <span class="text-emerald-400">{{ conf_pct }}%</span>
+        {% elif conf_pct >= 70 %}
+        <span class="text-amber-400">{{ conf_pct }}%</span>
+        {% else %}
+        <span class="text-red-400">{{ conf_pct }}%</span>
+        {% endif %}
+    </p>
+    {% else %}
+    <div class="w-full bg-navy-700 rounded-full h-1.5">
+        <div class="bg-sky-500/50 h-1.5 rounded-full animate-pulse" style="width: 30%"></div>
+    </div>
+    <p class="text-[10px] text-gray-500 mt-1">Processing…</p>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if not documents %}
+<p class="text-xs text-gray-500 text-center py-4">No documents yet</p>
+{% endif %}
+</div>

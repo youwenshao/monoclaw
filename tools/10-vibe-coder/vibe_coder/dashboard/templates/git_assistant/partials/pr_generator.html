@@ -1,0 +1,107 @@
+<div class="space-y-4">
+    <!-- PR Title -->
+    <div class="space-y-1">
+        <div class="flex items-center justify-between">
+            <label class="text-xs text-gray-400 uppercase tracking-wider">PR Title</label>
+            <button onclick="navigator.clipboard.writeText(this.closest('[data-pr]').dataset.prTitle)"
+                    class="text-xs text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                </svg>
+                Copy title
+            </button>
+        </div>
+        <div class="bg-navy-900 border border-navy-700 rounded-lg px-4 py-3"
+             data-pr data-pr-title="{{ title }}">
+            <p class="text-lg font-semibold text-white">{{ title }}</p>
+        </div>
+    </div>
+
+    <!-- PR Body -->
+    <div class="space-y-1">
+        <div class="flex items-center justify-between">
+            <label class="text-xs text-gray-400 uppercase tracking-wider">PR Body</label>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('pr-body-raw').textContent)"
+                    class="text-xs text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                </svg>
+                Copy body
+            </button>
+        </div>
+        <div class="bg-navy-900 border border-navy-700 rounded-lg p-4 prose prose-invert prose-sm max-w-none overflow-auto max-h-[500px]">
+            {{ body_html|safe }}
+        </div>
+        <script id="pr-body-raw" type="text/plain">{{ body_raw }}</script>
+    </div>
+
+    <!-- Diff stats -->
+    {% if diff_stats %}
+    <div class="flex items-center gap-4 px-4 py-2.5 bg-navy-900 border border-navy-700 rounded-lg">
+        <div class="flex gap-3 text-sm">
+            <span class="text-emerald-400 font-medium">+{{ diff_stats.additions }}</span>
+            <span class="text-red-400 font-medium">-{{ diff_stats.deletions }}</span>
+            <span class="text-gray-400">{{ diff_stats.files_changed }} files changed</span>
+        </div>
+        {% if base_branch and head_branch %}
+        <div class="ml-auto flex items-center gap-2 text-xs text-gray-500">
+            <span class="px-2 py-0.5 bg-navy-700 rounded-md font-mono">{{ base_branch }}</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+            </svg>
+            <span class="px-2 py-0.5 bg-navy-700 rounded-md font-mono">{{ head_branch }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Suggested reviewers -->
+    {% if reviewers %}
+    <div class="space-y-2">
+        <h4 class="text-xs text-gray-400 uppercase tracking-wider">Suggested Reviewers</h4>
+        <div class="flex flex-wrap gap-2">
+            {% for r in reviewers %}
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-navy-900 border border-navy-700 rounded-lg">
+                <img src="{{ r.avatar_url }}" class="w-5 h-5 rounded-full" alt="{{ r.login }}">
+                <span class="text-sm text-gray-200">{{ r.login }}</span>
+                {% if r.reason %}
+                <span class="text-xs text-gray-500 ml-1">({{ r.reason }})</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Changed files -->
+    {% if changed_files %}
+    <details class="group">
+        <summary class="flex items-center gap-2 cursor-pointer text-xs text-gray-400 hover:text-gray-200 transition-colors py-1">
+            <svg class="w-4 h-4 transform group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+            </svg>
+            {{ changed_files|length }} changed files
+        </summary>
+        <div class="mt-2 bg-navy-900 border border-navy-700 rounded-lg divide-y divide-navy-700 max-h-64 overflow-auto">
+            {% for f in changed_files %}
+            <div class="flex items-center gap-2 px-3 py-1.5 text-xs">
+                {% if f.status == 'added' %}
+                <span class="badge-green">A</span>
+                {% elif f.status == 'modified' %}
+                <span class="badge-amber">M</span>
+                {% elif f.status == 'deleted' %}
+                <span class="badge-red">D</span>
+                {% elif f.status == 'renamed' %}
+                <span class="badge-blue">R</span>
+                {% else %}
+                <span class="badge-grey">{{ f.status[:1]|upper }}</span>
+                {% endif %}
+                <span class="text-gray-300 font-mono truncate">{{ f.path }}</span>
+                <span class="ml-auto text-emerald-400">+{{ f.additions }}</span>
+                <span class="text-red-400">-{{ f.deletions }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+</div>

@@ -1,0 +1,71 @@
+{% if deadline %}
+<div class="bg-navy-800 rounded-xl border border-navy-700 p-4">
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-3">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                {% if case and case.case_number %}
+                <span class="text-xs font-mono text-gray-400">{{ case.case_number }}</span>
+                {% endif %}
+                <span class="px-2 py-0.5 rounded text-xs font-medium bg-navy-600 text-gray-300">
+                    {{ deadline.deadline_type|replace('_', ' ')|title }}
+                </span>
+            </div>
+            <p class="text-sm text-gray-200 font-medium">{{ deadline.description }}</p>
+        </div>
+        {% if deadline.status == 'overdue' %}
+        <span class="urgency-red px-2.5 py-1 rounded text-xs font-semibold">Overdue</span>
+        {% elif deadline.status == 'due_soon' %}
+        <span class="urgency-amber px-2.5 py-1 rounded text-xs font-semibold">Due Soon</span>
+        {% elif deadline.status == 'completed' %}
+        <span class="px-2.5 py-1 rounded text-xs font-semibold bg-gray-500/15 text-gray-400">Completed</span>
+        {% else %}
+        <span class="urgency-green px-2.5 py-1 rounded text-xs font-semibold">Upcoming</span>
+        {% endif %}
+    </div>
+
+    <!-- Countdown -->
+    <div class="flex items-center gap-3 mb-3">
+        <span class="text-xs text-gray-400">Due:</span>
+        <span class="text-sm font-medium text-gray-200">{{ deadline.due_date }}</span>
+        <span data-deadline="{{ deadline.due_date }}" class="text-xs"></span>
+    </div>
+
+    <!-- Statutory basis -->
+    {% if deadline.statutory_basis %}
+    <div class="mb-3 px-3 py-2 bg-navy-900 rounded-md">
+        <p class="text-xs text-gray-500 mb-0.5">Statutory Basis</p>
+        <p class="text-xs text-gray-300">{{ deadline.statutory_basis }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if deadline.notes %}
+    <p class="text-xs text-gray-400 mb-3">{{ deadline.notes }}</p>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="flex items-center gap-2 pt-3 border-t border-navy-700">
+        {% if deadline.status != 'completed' %}
+        <button hx-post="/deadline-guardian/deadline/{{ deadline.id }}/complete"
+                hx-target="closest div.bg-navy-800"
+                hx-swap="outerHTML"
+                class="px-3 py-1.5 text-xs font-medium bg-emerald-500/15 text-emerald-400 rounded-lg hover:bg-emerald-500/25 transition-colors">
+            <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+            Complete
+        </button>
+        {% endif %}
+        <a href="/deadline-guardian/deadline/{{ deadline.id }}/export-ics"
+           class="px-3 py-1.5 text-xs font-medium text-gray-300 bg-navy-600 rounded-lg hover:bg-navy-500 transition-colors">
+            <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+            </svg>
+            Export .ics
+        </a>
+    </div>
+</div>
+{% else %}
+<p class="text-sm text-gray-500 text-center py-4">Deadline not found.</p>
+{% endif %}

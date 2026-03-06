@@ -1,0 +1,66 @@
+{% for alert in alerts | default([]) %}
+<div class="interaction-{{ alert.severity }} rounded-lg px-4 py-3 space-y-2">
+    <div class="flex items-start justify-between">
+        <div class="flex items-center gap-2">
+            {% if alert.severity == 'contraindicated' %}
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/>
+            </svg>
+            {% elif alert.severity == 'major' %}
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+            </svg>
+            {% else %}
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
+            </svg>
+            {% endif %}
+            <div>
+                <p class="text-sm font-semibold">
+                    {{ alert.drug_a }} + {{ alert.drug_b }}
+                </p>
+                <p class="text-xs font-medium uppercase">{{ alert.severity }}</p>
+            </div>
+        </div>
+        <span class="text-xs opacity-70">{{ alert.patient_name }}</span>
+    </div>
+
+    <p class="text-xs leading-relaxed opacity-90">{{ alert.description }}</p>
+
+    {% if alert.recommendation %}
+    <div class="text-xs opacity-80">
+        <span class="font-semibold">Recommendation 建議:</span> {{ alert.recommendation }}
+    </div>
+    {% endif %}
+
+    <div class="flex gap-2 pt-1">
+        <button hx-post="/med-reminder/api/interactions/{{ alert.id }}/acknowledge"
+                hx-target="#interaction-alerts" hx-swap="innerHTML"
+                class="text-xs bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors">
+            Acknowledge 確認知悉
+        </button>
+        {% if alert.severity in ['major', 'contraindicated'] %}
+        <button hx-post="/med-reminder/api/interactions/{{ alert.id }}/escalate"
+                hx-target="#interaction-alerts" hx-swap="innerHTML"
+                class="text-xs bg-red-600/30 px-3 py-1 rounded hover:bg-red-600/40 transition-colors">
+            Escalate 上報
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="flex flex-col items-center py-8 text-gray-600">
+    <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-sm">No active interaction alerts. 暫無藥物交互警報。</p>
+</div>
+{% endfor %}
+
+{% if alerts %}
+<div class="pt-3 border-t border-white/10 flex gap-4 text-xs opacity-60">
+    <span>Total: {{ alerts | length }}</span>
+    <span>Critical: {{ alerts | selectattr('severity', 'equalto', 'contraindicated') | list | length }}</span>
+    <span>Major: {{ alerts | selectattr('severity', 'equalto', 'major') | list | length }}</span>
+</div>
+{% endif %}

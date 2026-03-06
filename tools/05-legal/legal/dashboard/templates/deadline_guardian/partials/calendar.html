@@ -1,0 +1,90 @@
+{% set days_of_week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+
+<div class="bg-navy-800 rounded-xl border border-navy-700 p-4">
+    <!-- Calendar header -->
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-white">Deadline Calendar</h3>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                <span class="text-xs text-gray-400">Court Filing</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                <span class="text-xs text-gray-400">Limitation</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-xs text-gray-400">Contractual</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day headers -->
+    <div class="grid grid-cols-7 gap-1 mb-1">
+        {% for day in days_of_week %}
+        <div class="text-center text-xs font-medium text-gray-500 py-1">{{ day }}</div>
+        {% endfor %}
+    </div>
+
+    <!-- Calendar grid (5-week view) -->
+    <div class="grid grid-cols-7 gap-1">
+        {% for day in calendar_days|default([]) %}
+        <div class="calendar-cell flex flex-col items-center justify-start p-1 text-center
+                    {% if day.is_today %}bg-navy-600 ring-1 ring-gold-500/50{% elif day.is_current_month %}bg-navy-900/50{% else %}bg-transparent{% endif %}">
+            <span class="text-xs {% if day.is_today %}text-gold-400 font-bold{% elif day.is_current_month %}text-gray-300{% else %}text-gray-600{% endif %}">
+                {{ day.number }}
+            </span>
+
+            {% if day.deadlines %}
+            <div class="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
+                {% for dl in day.deadlines %}
+                {% if dl.deadline_type == 'court_filing' %}
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-500" title="{{ dl.description|default('Court filing') }}"></span>
+                {% elif dl.deadline_type == 'limitation' %}
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500" title="{{ dl.description|default('Limitation') }}"></span>
+                {% else %}
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="{{ dl.description|default('Contractual') }}"></span>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {# Fallback: static 35-cell grid when calendar_days isn't provided #}
+        {% if not calendar_days %}
+        {% for dl in deadlines %}
+        {# Data is available but no pre-computed grid; render as a deadline list instead #}
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    {% if not calendar_days and deadlines %}
+    <!-- Flat deadline list fallback -->
+    <div class="mt-4 space-y-2 border-t border-navy-700 pt-3">
+        {% for dl in deadlines %}
+        <div class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-navy-700/50 transition-colors">
+            {% if dl.deadline_type == 'court_filing' %}
+            <span class="w-2 h-2 rounded-full bg-sky-500 shrink-0"></span>
+            {% elif dl.deadline_type == 'limitation' %}
+            <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+            {% else %}
+            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            {% endif %}
+            <span class="text-xs text-gray-300 flex-1">{{ dl.deadline_type|replace('_', ' ')|title }}</span>
+            <span class="text-xs text-gray-400">{{ dl.due_date }}</span>
+            {% if dl.status == 'overdue' %}
+            <span class="urgency-red px-1.5 py-0.5 rounded text-xs">Overdue</span>
+            {% elif dl.status == 'due_soon' %}
+            <span class="urgency-amber px-1.5 py-0.5 rounded text-xs">Soon</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% elif not calendar_days and not deadlines %}
+    <div class="text-center py-6">
+        <p class="text-xs text-gray-500">No deadlines to display on the calendar.</p>
+    </div>
+    {% endif %}
+</div>

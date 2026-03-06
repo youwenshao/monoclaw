@@ -1,0 +1,26 @@
+steps:
+  - step: 1
+    timing: "at_booking"
+    subject: "Booking Confirmation"
+    body: >-
+      Hi! Your booking at [restaurant_name] is confirmed —
+      Booking #[booking_id]. Please reply CONFIRM to secure your table
+      or CANCEL if your plans have changed. Thank you!
+
+  - step: 2
+    timing: "24h_before"
+    subject: "Reminder"
+    body: >-
+      Friendly reminder: your reservation at [restaurant_name]
+      (Booking #[booking_id]) is tomorrow. Please reply CONFIRM
+      that you'll be joining us, or CANCEL if you need to change plans.
+      We look forward to seeing you! 🍽️
+
+  - step: 3
+    timing: "2h_before"
+    subject: "Final Reminder"
+    body: >-
+      Your table at [restaurant_name] is ready in 2 hours
+      (Booking #[booking_id]). If we don't hear from you,
+      your reservation may be released to our waitlist.
+      Reply CONFIRM or CANCEL. See you soon! ⏰

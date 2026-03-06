@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% block title %}SiteCoordinator{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Today's Assignments</div>
+    <div class="card-value">{{ today_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Active Contractors</div>
+    <div class="card-value text-blue-400">{{ active_contractors|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Sites</div>
+    <div class="card-value text-green-400">{{ sites|length }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Weather Mode</div>
+    <div class="card-value text-sm">
+        {% if typhoon_mode %}
+        <span class="badge badge-red">Typhoon</span>
+        {% else %}
+        <span class="badge badge-green">Normal</span>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="siteCoordinatorApp()" class="space-y-6">
+
+    <!-- Typhoon mode toggle -->
+    <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gold-400">Site Coordinator</h2>
+        <button @click="toggleTyphoon()"
+                hx-post="/site-coordinator/typhoon-toggle"
+                hx-swap="none"
+                :class="typhoonMode ? 'bg-red-600 hover:bg-red-500' : 'bg-navy-700 hover:bg-navy-600'"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+            </svg>
+            <span x-text="typhoonMode ? 'Typhoon Mode ON' : 'Typhoon Mode OFF'"></span>
+        </button>
+    </div>
+
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-2 border-b border-navy-700 pb-2">
+        <button @click="activeTab = 'schedule'"
+                :class="activeTab === 'schedule' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Schedule
+        </button>
+        <button @click="activeTab = 'dispatch'"
+                :class="activeTab === 'dispatch' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Dispatch
+        </button>
+        <button @click="activeTab = 'deliveries'"
+                :class="activeTab === 'deliveries' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Deliveries
+        </button>
+        <button @click="activeTab = 'access'"
+                :class="activeTab === 'access' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Site Access
+        </button>
+    </div>
+
+    <!-- ═══════ Schedule Tab ═══════ -->
+    <div x-show="activeTab === 'schedule'" x-transition class="tab-section space-y-4">
+        <!-- Week navigator -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button @click="navigateWeek(-1)"
+                        class="p-2 rounded-lg bg-navy-800 hover:bg-navy-700 text-gray-300 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                </button>
+                <span class="text-sm font-medium text-gray-200" x-text="weekLabel"></span>
+                <button @click="navigateWeek(1)"
+                        class="p-2 rounded-lg bg-navy-800 hover:bg-navy-700 text-gray-300 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button hx-post="/site-coordinator/optimize"
+                        hx-target="#schedule-grid"
+                        hx-swap="innerHTML"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gold-500 text-navy-900 text-sm font-semibold hover:bg-gold-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                    </svg>
+                    Optimize
+                </button>
+                <button @click="showNewAssignment = !showNewAssignment"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    New Assignment
+                </button>
+            </div>
+        </div>
+
+        <!-- Schedule grid (htmx-loaded) -->
+        <div id="schedule-grid"
+             hx-get="/site-coordinator/schedule-grid/partial"
+             hx-trigger="load, scheduleUpdated from:body"
+             hx-vals='js:{"week_start": document.querySelector("[x-ref=weekStart]")?.value || ""}'
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-gray-500 text-sm">Loading schedule...</span>
+            </div>
+        </div>
+        <input type="hidden" x-ref="weekStart" :value="weekStart">
+
+        <!-- New assignment form -->
+        <div x-show="showNewAssignment" x-transition class="card p-5">
+            <h4 class="text-sm font-semibold text-gold-400 mb-4">New Assignment</h4>
+            <form @submit.prevent="submitAssignment()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Contractor</label>
+                    <select x-model="assignmentForm.contractor_id" required
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select contractor...</option>
+                        {% for c in contractors %}
+                        <option value="{{ c.id }}">{{ c.company_name }} — {{ c.trade }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Site</label>
+                    <select x-model="assignmentForm.site_id" required
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select site...</option>
+                        {% for s in sites %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Date</label>
+                    <input type="date" x-model="assignmentForm.date" required
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Scope / Task</label>
+                    <input type="text" x-model="assignmentForm.scope" required placeholder="e.g. Rebar fixing Level 3"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Workers</label>
+                    <input type="number" x-model="assignmentForm.workers" min="1" placeholder="5"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="btn btn-primary" :disabled="assignmentSubmitting">
+                        <span x-show="!assignmentSubmitting">Create</span>
+                        <span x-show="assignmentSubmitting" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Saving...
+                        </span>
+                    </button>
+                    <button type="button" @click="showNewAssignment = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════ Dispatch Tab ═══════ -->
+    <div x-show="activeTab === 'dispatch'" x-transition class="tab-section space-y-4">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gold-400">WhatsApp Dispatch</h3>
+            <button hx-post="/site-coordinator/dispatch-next-day"
+                    hx-target="#dispatch-log"
+                    hx-swap="innerHTML"
+                    hx-confirm="Dispatch all assignments for tomorrow via WhatsApp?"
+                    class="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-sm font-semibold transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+                </svg>
+                Dispatch Next Day
+            </button>
+        </div>
+
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-navy-700 text-left text-gray-400">
+                        <th class="px-4 py-3 font-medium">Date</th>
+                        <th class="px-4 py-3 font-medium">Contractor</th>
+                        <th class="px-4 py-3 font-medium">Site</th>
+                        <th class="px-4 py-3 font-medium">Scope</th>
+                        <th class="px-4 py-3 font-medium">Dispatched</th>
+                        <th class="px-4 py-3 font-medium">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="dispatch-log"
+                       hx-get="/site-coordinator/dispatch-log/partial"
+                       hx-trigger="load, dispatchUpdated from:body"
+                       hx-swap="innerHTML">
+                    <tr>
+                        <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                            <svg class="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Loading dispatch log...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════ Deliveries Tab ═══════ -->
+    <div x-show="activeTab === 'deliveries'" x-transition class="tab-section space-y-4">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gold-400">Delivery Schedule</h3>
+        </div>
+
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-navy-700 text-left text-gray-400">
+                        <th class="px-4 py-3 font-medium">Date</th>
+                        <th class="px-4 py-3 font-medium">Supplier</th>
+                        <th class="px-4 py-3 font-medium">Description</th>
+                        <th class="px-4 py-3 font-medium">Site</th>
+                        <th class="px-4 py-3 font-medium">ETA</th>
+                        <th class="px-4 py-3 font-medium">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="delivery-schedule"
+                       hx-get="/site-coordinator/delivery-schedule/partial"
+                       hx-trigger="load, deliveriesUpdated from:body"
+                       hx-swap="innerHTML">
+                    <tr>
+                        <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                            <svg class="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Loading deliveries...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════ Site Access Tab ═══════ -->
+    <div x-show="activeTab === 'access'" x-transition class="tab-section space-y-4">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gold-400">Site Access Log</h3>
+        </div>
+
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-navy-700 text-left text-gray-400">
+                        <th class="px-4 py-3 font-medium">Person</th>
+                        <th class="px-4 py-3 font-medium">Company</th>
+                        <th class="px-4 py-3 font-medium">Site</th>
+                        <th class="px-4 py-3 font-medium">Sign In</th>
+                        <th class="px-4 py-3 font-medium">Sign Out</th>
+                    </tr>
+                </thead>
+                <tbody id="access-log"
+                       hx-get="/site-coordinator/access-log/partial"
+                       hx-trigger="load, accessUpdated from:body"
+                       hx-swap="innerHTML">
+                    <tr>
+                        <td colspan="5" class="px-4 py-12 text-center text-gray-500">
+                            <svg class="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Loading access log...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('siteCoordinatorApp', () => ({
+        activeTab: 'schedule',
+        typhoonMode: {{ 'true' if typhoon_mode else 'false' }},
+        showNewAssignment: false,
+        assignmentSubmitting: false,
+
+        weekStart: '{{ week_start }}',
+        weekEnd: '{{ week_end }}',
+
+        assignmentForm: {
+            contractor_id: '',
+            site_id: '',
+            date: '',
+            scope: '',
+            workers: ''
+        },
+
+        get weekLabel() {
+            if (!this.weekStart || !this.weekEnd) return '';
+            const fmt = (d) => new Date(d).toLocaleDateString('en-HK', { month: 'short', day: 'numeric' });
+            return fmt(this.weekStart) + ' — ' + fmt(this.weekEnd);
+        },
+
+        navigateWeek(delta) {
+            const d = new Date(this.weekStart);
+            d.setDate(d.getDate() + delta * 7);
+            this.weekStart = d.toISOString().slice(0, 10);
+            const end = new Date(d);
+            end.setDate(end.getDate() + 6);
+            this.weekEnd = end.toISOString().slice(0, 10);
+            this.$refs.weekStart.value = this.weekStart;
+            htmx.ajax('GET', '/site-coordinator/schedule-grid/partial?week_start=' + this.weekStart, '#schedule-grid');
+        },
+
+        toggleTyphoon() {
+            this.typhoonMode = !this.typhoonMode;
+        },
+
+        async submitAssignment() {
+            if (this.assignmentSubmitting) return;
+            this.assignmentSubmitting = true;
+            try {
+                const resp = await fetch('/site-coordinator/assignments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.assignmentForm)
+                });
+                const data = await resp.json();
+                if (data.assignment_id) {
+                    this.showNewAssignment = false;
+                    this.assignmentForm = { contractor_id: '', site_id: '', date: '', scope: '', workers: '' };
+                    htmx.trigger(document.body, 'scheduleUpdated');
+                } else if (data.detail) {
+                    alert('Error: ' + (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : data.detail));
+                }
+            } catch (e) {
+                alert('Failed to create assignment: ' + e.message);
+            }
+            this.assignmentSubmitting = false;
+        }
+    }));
+});
+</script>
+{% endblock %}

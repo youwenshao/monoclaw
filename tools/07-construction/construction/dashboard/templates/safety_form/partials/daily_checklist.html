@@ -1,0 +1,129 @@
+{% set categories = {} %}
+{% for item in items %}
+    {% if item.category not in categories %}
+        {% if categories.update({item.category: []}) %}{% endif %}
+    {% endif %}
+    {% if categories[item.category].append(item) %}{% endif %}
+{% endfor %}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gold-400">Inspection Checklist</h3>
+        <span class="text-sm text-gray-400">Inspection #{{ inspection_id }}</span>
+    </div>
+
+    {% for category, cat_items in categories.items() %}
+    <div class="card overflow-hidden">
+        <div class="px-4 py-3 bg-navy-800 border-b border-navy-700">
+            <h4 class="text-sm font-semibold text-gray-200 uppercase tracking-wide">
+                {% if category == 'housekeeping' %}
+                <svg class="w-4 h-4 inline mr-1.5 text-gold-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+                </svg>
+                {% elif category == 'ppe' %}
+                <svg class="w-4 h-4 inline mr-1.5 text-gold-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                </svg>
+                {% elif category == 'scaffolding' %}
+                <svg class="w-4 h-4 inline mr-1.5 text-gold-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6M9 12h6M9 17.25h6"/>
+                </svg>
+                {% else %}
+                <svg class="w-4 h-4 inline mr-1.5 text-gold-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.653-4.655m4.093-4.093L17.25 4.17a2.123 2.123 0 013.04 0l.543.543a2.123 2.123 0 010 3.04l-4.32 4.32m-4.093-4.093l4.093 4.093"/>
+                </svg>
+                {% endif %}
+                {{ category|replace('_', ' ')|title }}
+            </h4>
+        </div>
+
+        <div class="divide-y divide-navy-800">
+            {% for item in cat_items %}
+            <div class="px-4 py-4" x-data="{ showNotes: false }">
+                <div class="flex items-start gap-4">
+                    <!-- Description -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-200">{{ item.description }}</p>
+                        {% if item.severity %}
+                        <span class="mt-1 inline-block text-xs px-2 py-0.5 rounded-full
+                            {% if item.severity == 'critical' %}severity-critical bg-red-900/50 text-red-400
+                            {% elif item.severity == 'major' %}severity-major bg-amber-900/50 text-amber-400
+                            {% elif item.severity == 'minor' %}severity-minor bg-yellow-900/50 text-yellow-400
+                            {% else %}severity-observation bg-blue-900/50 text-blue-400{% endif %}">
+                            {{ item.severity|title }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pass / Fail / NA radios -->
+                    <form hx-post="/safety-form/inspections/{{ inspection_id }}/items"
+                          hx-swap="none"
+                          hx-vals='{"item_id": {{ item.id }}}'
+                          class="flex items-center gap-3 shrink-0">
+
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="result_{{ item.id }}" value="pass"
+                                   {% if item.result == 'pass' %}checked{% endif %}
+                                   class="w-4 h-4 text-green-500 bg-navy-900 border-navy-600 focus:ring-green-500">
+                            <span class="text-xs text-green-400 font-medium">Pass</span>
+                        </label>
+
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="result_{{ item.id }}" value="fail"
+                                   {% if item.result == 'fail' %}checked{% endif %}
+                                   class="w-4 h-4 text-red-500 bg-navy-900 border-navy-600 focus:ring-red-500">
+                            <span class="text-xs text-red-400 font-medium">Fail</span>
+                        </label>
+
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="result_{{ item.id }}" value="na"
+                                   {% if item.result == 'na' %}checked{% endif %}
+                                   class="w-4 h-4 text-gray-500 bg-navy-900 border-navy-600 focus:ring-gray-500">
+                            <span class="text-xs text-gray-400 font-medium">N/A</span>
+                        </label>
+
+                        <!-- Photo upload -->
+                        <label class="cursor-pointer text-gray-400 hover:text-gold-400 transition-colors" title="Upload photo">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+                            </svg>
+                            <input type="file" name="photo" accept="image/*" class="hidden"
+                                   hx-post="/safety-form/inspections/{{ inspection_id }}/items/{{ item.id }}/photo"
+                                   hx-encoding="multipart/form-data"
+                                   hx-swap="none">
+                        </label>
+
+                        <!-- Toggle notes -->
+                        <button type="button" @click="showNotes = !showNotes"
+                                class="text-gray-400 hover:text-gold-400 transition-colors" title="Add notes">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/>
+                            </svg>
+                        </button>
+
+                        <button type="submit" class="btn btn-primary text-xs px-3 py-1.5">Save</button>
+                    </form>
+                </div>
+
+                <!-- Notes textarea (toggled) -->
+                <div x-show="showNotes" x-transition class="mt-3">
+                    <textarea name="notes" rows="2" placeholder="Add notes or observations..."
+                              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-300"
+                              hx-post="/safety-form/inspections/{{ inspection_id }}/items"
+                              hx-vals='{"item_id": {{ item.id }}}'
+                              hx-trigger="change"
+                              hx-swap="none">{{ item.notes or '' }}</textarea>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not items %}
+    <div class="card p-12 text-center text-gray-500">
+        No checklist items found for this inspection.
+    </div>
+    {% endif %}
+</div>

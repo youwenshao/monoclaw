@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %}InterviewPrep{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-gold-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Problems Solved</p>
+        <p class="text-lg font-bold text-white">{{ solved }} <span class="text-sm text-gray-400 font-normal">/ {{ total_problems }}</span></p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Streak</p>
+        <p class="text-lg font-bold text-white">{{ streak }} <span class="text-sm text-gray-400 font-normal">days</span></p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Weak Areas</p>
+        <p class="text-lg font-bold text-white">{{ weak_count }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="interviewPrep()" class="space-y-6">
+
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <template x-for="tab in ['Problems', 'Practice', 'Mock Interview', 'Progress']" :key="tab">
+            <button @click="subTab = tab.toLowerCase().replace(/ /g, '-')"
+                    :class="subTab === tab.toLowerCase().replace(/ /g, '-')
+                        ? 'text-gold-400 border-gold-500 border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="tab"></button>
+        </template>
+    </div>
+
+    <!-- ════════════════ Problems sub-tab ════════════════ -->
+    <div x-show="subTab === 'problems'" x-cloak>
+        <div class="space-y-4">
+            <div class="flex items-center gap-3">
+                <select x-model="filterTopic" @change="loadProblems()"
+                        class="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="">All Topics</option>
+                    <option value="arrays">Arrays</option>
+                    <option value="strings">Strings</option>
+                    <option value="trees">Trees</option>
+                    <option value="graphs">Graphs</option>
+                    <option value="dp">Dynamic Programming</option>
+                    <option value="sorting">Sorting</option>
+                    <option value="linked_lists">Linked Lists</option>
+                </select>
+                <div class="flex gap-1">
+                    <template x-for="d in ['easy', 'medium', 'hard']" :key="d">
+                        <button @click="filterDifficulty = filterDifficulty === d ? '' : d; loadProblems()"
+                                :class="filterDifficulty === d
+                                    ? (d === 'easy' ? 'bg-emerald-500 text-white' : d === 'medium' ? 'bg-amber-500 text-navy-900' : 'bg-red-500 text-white')
+                                    : 'bg-navy-700 text-gray-300 hover:bg-navy-600'"
+                                class="px-3 py-1.5 text-xs rounded-lg capitalize transition-colors"
+                                x-text="d"></button>
+                    </template>
+                </div>
+            </div>
+
+            <div id="problem-browser-slot"
+                 hx-get="/interview-prep/problem-browser/partial"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <p class="text-sm text-gray-500 py-8 text-center">Loading problems…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Practice sub-tab ════════════════ -->
+    <div x-show="subTab === 'practice'" x-cloak>
+        <div class="grid grid-cols-2 gap-6" style="min-height: 500px;">
+            <div class="space-y-4">
+                <div class="bg-navy-800 rounded-lg p-4" x-show="currentProblem">
+                    <h3 class="text-sm font-semibold text-gold-400" x-text="currentProblem?.title"></h3>
+                    <span class="text-xs px-2 py-0.5 rounded mt-1 inline-block"
+                          :class="currentProblem?.difficulty === 'easy' ? 'bg-emerald-500/20 text-emerald-400' : currentProblem?.difficulty === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'"
+                          x-text="currentProblem?.difficulty"></span>
+                    <p class="text-sm text-gray-300 mt-3 whitespace-pre-line" x-text="currentProblem?.description"></p>
+                    <div class="mt-3 bg-navy-900 rounded p-3 text-xs text-gray-400">
+                        <p><strong class="text-gray-300">Example:</strong></p>
+                        <p class="mt-1">Input: <span x-text="currentProblem?.example_input"></span></p>
+                        <p>Output: <span x-text="currentProblem?.example_output"></span></p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" x-text="'Constraints: ' + (currentProblem?.constraints || '')"></p>
+                </div>
+
+                <div class="bg-navy-800 rounded-lg p-4" x-show="!currentProblem">
+                    <p class="text-sm text-gray-500 py-4 text-center">Select a problem from the Problems tab to start practicing</p>
+                </div>
+
+                <div id="hint-panel-slot" class="bg-navy-800 rounded-lg p-4">
+                    <h3 class="text-sm font-semibold text-gold-400 mb-3">Hints</h3>
+                    <div class="flex gap-2">
+                        <button @click="getHint(1)" class="px-3 py-1.5 text-xs bg-navy-700 text-gray-300 hover:bg-navy-600 rounded-lg transition-colors">Hint 1</button>
+                        <button @click="getHint(2)" class="px-3 py-1.5 text-xs bg-navy-700 text-gray-300 hover:bg-navy-600 rounded-lg transition-colors">Hint 2</button>
+                        <button @click="getHint(3)" class="px-3 py-1.5 text-xs bg-navy-700 text-gray-300 hover:bg-navy-600 rounded-lg transition-colors">Hint 3</button>
+                    </div>
+                    <p class="text-sm text-gray-300 mt-3" x-text="currentHint || 'Click a hint button for progressive hints'"></p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-navy-800 rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-2 border-b border-navy-700">
+                        <div class="flex gap-2">
+                            <button @click="editorLang = 'python'"
+                                    :class="editorLang === 'python' ? 'text-gold-400' : 'text-gray-400'"
+                                    class="text-xs font-medium">Python</button>
+                            <button @click="editorLang = 'javascript'"
+                                    :class="editorLang === 'javascript' ? 'text-gold-400' : 'text-gray-400'"
+                                    class="text-xs font-medium">JavaScript</button>
+                        </div>
+                        <button @click="runCode()"
+                                :disabled="running"
+                                class="px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-500 disabled:opacity-40 transition-colors">
+                            <span x-show="!running">Run Code</span>
+                            <span x-show="running">Running…</span>
+                        </button>
+                    </div>
+                    <div id="code-editor" class="h-[300px]"></div>
+                </div>
+
+                <div class="bg-navy-800 rounded-lg p-4">
+                    <h4 class="text-xs font-semibold text-gray-400 mb-2">Test Results</h4>
+                    <template x-if="testResults">
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span :class="testResults.passed === testResults.total ? 'text-emerald-400' : 'text-amber-400'" class="text-sm font-bold"
+                                      x-text="testResults.passed + '/' + testResults.total + ' passed'"></span>
+                            </div>
+                            <template x-for="(r, i) in testResults.results" :key="i">
+                                <div class="flex items-center gap-2 px-2 py-1 rounded text-xs"
+                                     :class="r.passed ? 'bg-emerald-500/10' : 'bg-red-500/10'">
+                                    <span :class="r.passed ? 'text-emerald-400' : 'text-red-400'" x-text="r.passed ? '✓' : '✗'"></span>
+                                    <span class="text-gray-400">Test <span x-text="i + 1"></span></span>
+                                    <span class="ml-auto text-gray-500" x-show="!r.passed" x-text="'Expected: ' + JSON.stringify(r.expected) + ' Got: ' + r.actual"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <p x-show="!testResults" class="text-xs text-gray-500">Run your code to see results</p>
+                </div>
+
+                <button @click="showExplanation()"
+                        :disabled="!currentProblem"
+                        class="w-full py-2 rounded-lg text-sm bg-navy-700 text-gray-300 hover:bg-navy-600 disabled:opacity-40 transition-colors">
+                    Show Solution & Explanation
+                </button>
+                <div x-show="explanation" class="bg-navy-800 rounded-lg p-4">
+                    <p class="text-sm text-gray-300 whitespace-pre-line" x-text="explanation"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Mock Interview sub-tab ════════════════ -->
+    <div x-show="subTab === 'mock-interview'" x-cloak>
+        <div class="max-w-2xl mx-auto space-y-6">
+            <template x-if="!mockActive">
+                <div class="bg-navy-800 rounded-lg p-6 text-center space-y-4">
+                    <h3 class="text-lg font-semibold text-gold-400">Mock Coding Interview</h3>
+                    <p class="text-sm text-gray-400">2 problems · 45 minutes · Timed</p>
+                    <div class="flex justify-center gap-3">
+                        <button @click="startMock()" class="px-6 py-2.5 bg-gold-500 text-navy-900 font-semibold rounded-lg hover:bg-gold-400 transition-colors text-sm">
+                            Start Interview
+                        </button>
+                        <select x-model="mockDifficulty" class="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100">
+                            <option value="">Any Difficulty</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="mockActive">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between bg-navy-800 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-gold-400">Mock Interview #<span x-text="mockData?.mock_id"></span></span>
+                        <div class="flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="font-mono text-white" x-text="mockTimer"></span>
+                        </div>
+                    </div>
+
+                    <template x-for="(prob, idx) in mockData?.problems" :key="prob.id">
+                        <div class="bg-navy-800 rounded-lg p-4 space-y-3">
+                            <h4 class="text-sm font-semibold text-white">Problem <span x-text="idx + 1"></span>: <span x-text="prob.title"></span></h4>
+                            <p class="text-sm text-gray-300" x-text="prob.description"></p>
+                        </div>
+                    </template>
+
+                    <button @click="submitMock()" class="w-full py-2.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 transition-colors text-sm">
+                        Submit Interview
+                    </button>
+                </div>
+            </template>
+
+            <div x-show="mockResults" class="bg-navy-800 rounded-lg p-6 space-y-3">
+                <h3 class="text-sm font-semibold text-gold-400">Interview Results</h3>
+                <p class="text-2xl font-bold text-white"><span x-text="mockResults?.score?.toFixed(0)"></span>%</p>
+                <p class="text-sm text-gray-300 whitespace-pre-line" x-text="mockResults?.feedback"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Progress sub-tab ════════════════ -->
+    <div x-show="subTab === 'progress'" x-cloak>
+        <div id="progress-dashboard-slot"
+             hx-get="/interview-prep/progress-dashboard/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading progress data…</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function interviewPrep() {
+    return {
+        subTab: 'problems',
+        filterTopic: '',
+        filterDifficulty: '',
+        currentProblem: null,
+        currentHint: '',
+        editorLang: 'python',
+        running: false,
+        testResults: null,
+        explanation: '',
+        editor: null,
+        mockActive: false,
+        mockData: null,
+        mockDifficulty: '',
+        mockTimer: '45:00',
+        mockResults: null,
+        _timerInterval: null,
+
+        loadProblems() {
+            let url = '/interview-prep/problem-browser/partial?';
+            if (this.filterTopic) url += 'topic=' + this.filterTopic + '&';
+            if (this.filterDifficulty) url += 'difficulty=' + this.filterDifficulty;
+            htmx.ajax('GET', url, { target: '#problem-browser-slot', swap: 'innerHTML' });
+        },
+
+        async selectProblem(id) {
+            const resp = await fetch(`/interview-prep/problems/${id}`);
+            this.currentProblem = await resp.json();
+            this.testResults = null;
+            this.explanation = '';
+            this.currentHint = '';
+            this.subTab = 'practice';
+            this.$nextTick(() => this.initEditor());
+        },
+
+        initEditor() {
+            const el = document.getElementById('code-editor');
+            if (!el) return;
+            if (this.editor) { this.editor.toTextArea(); }
+            const ta = document.createElement('textarea');
+            ta.id = 'code-textarea';
+            el.innerHTML = '';
+            el.appendChild(ta);
+            this.editor = CodeMirror.fromTextArea(ta, {
+                mode: this.editorLang === 'python' ? 'python' : 'javascript',
+                theme: 'material-darker',
+                lineNumbers: true,
+                tabSize: 4,
+                indentWithTabs: false,
+            });
+            this.editor.setSize('100%', '100%');
+        },
+
+        async runCode() {
+            if (!this.currentProblem || !this.editor) return;
+            this.running = true;
+            this.testResults = null;
+            try {
+                const resp = await fetch(`/interview-prep/problems/${this.currentProblem.id}/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: this.editor.getValue(), language: this.editorLang }),
+                });
+                this.testResults = await resp.json();
+            } finally {
+                this.running = false;
+            }
+        },
+
+        async getHint(level) {
+            if (!this.currentProblem) return;
+            const resp = await fetch(`/interview-prep/problems/${this.currentProblem.id}/hint`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hint_level: level }),
+            });
+            const data = await resp.json();
+            this.currentHint = data.hint;
+        },
+
+        async showExplanation() {
+            if (!this.currentProblem) return;
+            const code = this.editor ? this.editor.getValue() : null;
+            const resp = await fetch(`/interview-prep/problems/${this.currentProblem.id}/explain`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_code: code || null }),
+            });
+            const data = await resp.json();
+            this.explanation = data.explanation;
+        },
+
+        async startMock() {
+            const resp = await fetch('/interview-prep/mock-interviews/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ difficulty: this.mockDifficulty || null }),
+            });
+            this.mockData = await resp.json();
+            this.mockActive = true;
+            this.mockResults = null;
+            this._startTimer(45 * 60);
+        },
+
+        _startTimer(seconds) {
+            if (this._timerInterval) clearInterval(this._timerInterval);
+            let remaining = seconds;
+            this._timerInterval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(this._timerInterval);
+                    this.submitMock();
+                    return;
+                }
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                this.mockTimer = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }, 1000);
+        },
+
+        async submitMock() {
+            if (this._timerInterval) clearInterval(this._timerInterval);
+            const results = (this.mockData?.problems || []).map(p => ({
+                problem_id: p.id, title: p.title,
+                passed_tests: 0, total_tests: (p.test_cases || []).length,
+                time_seconds: 0,
+            }));
+            const resp = await fetch(`/interview-prep/mock-interviews/${this.mockData.mock_id}/submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ results }),
+            });
+            this.mockResults = await resp.json();
+            this.mockActive = false;
+        },
+
+        init() {
+            window.selectProblem = (id) => this.selectProblem(id);
+        }
+    };
+}
+</script>
+{% endblock %}

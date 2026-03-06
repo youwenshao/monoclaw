@@ -1,0 +1,176 @@
+<div x-data="{ selectedShipment: {{ shipment_id or 'null' }} }">
+    <!-- Shipment selector -->
+    <div class="flex items-center gap-4 mb-6">
+        <label class="text-sm text-gray-400">Select Shipment:</label>
+        <select class="bg-navy-900 border border-navy-600 rounded px-3 py-1.5 text-sm text-white focus:border-gold-400 focus:outline-none min-w-[300px]"
+                @change="selectedShipment = $event.target.value; htmx.ajax('GET', '/stock-reconcile/partials/receipt-matching?shipment_id=' + $event.target.value, {target: '#receipt-matching-content', swap: 'innerHTML'})"
+                >
+            <option value="">— Choose a shipment —</option>
+            {% for s in shipments %}
+            <option value="{{ s.id }}" {% if shipment_id and s.id == shipment_id %}selected{% endif %}>
+                {{ s.shipment_reference }} — {{ s.bl_number or 'No B/L' }} ({{ s.status }})
+            </option>
+            {% endfor %}
+        </select>
+
+        {% if selected_shipment and selected_shipment.status != 'reconciled' %}
+        <button class="px-4 py-1.5 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors"
+                hx-post="/stock-reconcile/api/reconcile/{{ shipment_id }}"
+                hx-target="#reconcile-result"
+                hx-swap="innerHTML"
+                hx-indicator="#reconcile-spinner">
+            Reconcile
+        </button>
+        <svg id="reconcile-spinner" class="htmx-indicator animate-spin h-4 w-4 text-gold-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        {% endif %}
+    </div>
+
+    <div id="receipt-matching-content">
+        {% if not selected_shipment %}
+        <div class="bg-navy-800 rounded-lg border border-navy-700 p-12 text-center">
+            <svg class="w-16 h-16 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/>
+            </svg>
+            <p class="text-gray-500 text-sm">Select a shipment to view manifest vs receipt comparison</p>
+        </div>
+        {% else %}
+
+        <!-- Side-by-side comparison -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left: Manifest items -->
+            <div>
+                <h4 class="text-sm font-semibold text-gold-400 mb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                    </svg>
+                    Manifest Items ({{ manifest_items|length }})
+                </h4>
+                <div class="overflow-auto max-h-[500px] rounded-lg border border-navy-700">
+                    <table class="w-full text-sm">
+                        <thead class="bg-navy-800 sticky top-0">
+                            <tr>
+                                <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Description</th>
+                                <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">SKU</th>
+                                <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Qty</th>
+                                <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-navy-700">
+                            {% for item in manifest_items %}
+                            <tr class="hover:bg-navy-800/50"
+                                id="manifest-{{ item.id }}">
+                                <td class="px-3 py-2 text-white">{{ item.item_description }}</td>
+                                <td class="px-3 py-2 text-gray-300 font-mono text-xs">{{ item.sku or '—' }}</td>
+                                <td class="px-3 py-2 text-right text-white">{{ item.quantity }}</td>
+                                <td class="px-3 py-2 text-gray-400">{{ item.unit or 'pcs' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not manifest_items %}
+                            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">No manifest items</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right: Receipt items -->
+            <div>
+                <h4 class="text-sm font-semibold text-gold-400 mb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/>
+                    </svg>
+                    Receipt Items ({{ receipt_items|length }})
+                </h4>
+                <div class="overflow-auto max-h-[500px] rounded-lg border border-navy-700">
+                    <table class="w-full text-sm">
+                        <thead class="bg-navy-800 sticky top-0">
+                            <tr>
+                                <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Description</th>
+                                <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">SKU</th>
+                                <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Received</th>
+                                <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Condition</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-navy-700">
+                            {% for item in receipt_items %}
+                            <tr class="hover:bg-navy-800/50
+                                {% if item.condition == 'damaged' %}bg-red-900/20{% endif %}"
+                                id="receipt-{{ item.id }}">
+                                <td class="px-3 py-2 text-white">{{ item.item_description }}</td>
+                                <td class="px-3 py-2 text-gray-300 font-mono text-xs">{{ item.sku or '—' }}</td>
+                                <td class="px-3 py-2 text-right text-white">{{ item.quantity_received }}</td>
+                                <td class="px-3 py-2">
+                                    <span class="text-xs px-1.5 py-0.5 rounded-full
+                                        {% if item.condition == 'good' %}bg-emerald-900/50 text-emerald-400
+                                        {% elif item.condition == 'damaged' %}bg-red-900/50 text-red-400
+                                        {% else %}bg-amber-900/50 text-amber-400{% endif %}">
+                                        {{ item.condition }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not receipt_items %}
+                            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">No receipt items — upload a warehouse receipt</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reconciliation results -->
+        {% if results %}
+        <div class="mt-6">
+            <h4 class="text-sm font-semibold text-gold-400 mb-3">Reconciliation Results</h4>
+            <div class="overflow-auto rounded-lg border border-navy-700">
+                <table class="w-full text-sm">
+                    <thead class="bg-navy-800">
+                        <tr>
+                            <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Manifest Item</th>
+                            <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Receipt Item</th>
+                            <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Expected</th>
+                            <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Received</th>
+                            <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Variance</th>
+                            <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Confidence</th>
+                            <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-navy-700">
+                        {% for r in results %}
+                        <tr class="hover:bg-navy-800/50
+                            {% if r.status == 'matched' %}{% elif r.status == 'shortage' %}bg-red-900/10{% elif r.status == 'overage' %}bg-amber-900/10{% elif r.status == 'damaged' %}bg-red-900/20{% endif %}">
+                            <td class="px-3 py-2 text-white">{{ r.manifest_item_id or '—' }}</td>
+                            <td class="px-3 py-2 text-white">{{ r.receipt_item_id or '—' }}</td>
+                            <td class="px-3 py-2 text-right text-gray-300">{{ r.quantity_manifest or '—' }}</td>
+                            <td class="px-3 py-2 text-right text-gray-300">{{ r.quantity_received or '—' }}</td>
+                            <td class="px-3 py-2 text-right font-mono
+                                {% if r.variance and r.variance < 0 %}text-red-400{% elif r.variance and r.variance > 0 %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                                {{ r.variance or 0 }}
+                            </td>
+                            <td class="px-3 py-2 text-center text-gray-400">{{ "%.0f%%"|format((r.match_confidence or 0) * 100) }}</td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="text-xs px-2 py-0.5 rounded-full
+                                    {% if r.status == 'matched' %}bg-emerald-900/50 text-emerald-400
+                                    {% elif r.status == 'shortage' %}bg-red-900/50 text-red-400
+                                    {% elif r.status == 'overage' %}bg-amber-900/50 text-amber-400
+                                    {% elif r.status == 'damaged' %}bg-red-900/50 text-red-400
+                                    {% else %}bg-gray-700 text-gray-400{% endif %}">
+                                    {{ r.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div id="reconcile-result" class="mt-4"></div>
+
+        {% endif %}
+    </div>
+</div>

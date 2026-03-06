@@ -1,0 +1,22 @@
+<div class="space-y-3">
+    <h3 class="text-sm font-semibold text-gold-400">Document Sections</h3>
+
+    {% if sections %}
+    <div class="space-y-2">
+        {% for section in sections %}
+        <div class="flex items-center justify-between px-3 py-2 bg-navy-900 rounded-lg">
+            <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full {% if section.status == 'detected' %}bg-emerald-400{% else %}bg-gray-500{% endif %}"></span>
+                <div>
+                    <p class="text-sm text-white">{{ section.section_title or section.section_type }}</p>
+                    <p class="text-xs text-gray-500">{{ section.section_type }}{% if section.page_start %} · pp. {{ section.page_start }}–{{ section.page_end or '?' }}{% endif %}</p>
+                </div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-navy-700 text-gray-400">{{ section.status }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 text-center py-8">No sections detected. Upload and validate a thesis first.</p>
+    {% endif %}
+</div>

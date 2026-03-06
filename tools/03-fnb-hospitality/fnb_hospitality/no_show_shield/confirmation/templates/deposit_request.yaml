@@ -1,0 +1,16 @@
+messages:
+  en:
+    subject: "Deposit Required"
+    body: >-
+      Hi! Due to high demand, a deposit of HK$[amount] is required
+      to confirm your booking at [restaurant_name] (Booking #[booking_id]).
+      Please complete payment via the link below within 30 minutes,
+      or your reservation will be released. Thank you for understanding! 💳
+
+  zh:
+    subject: "需要按金"
+    body: >-
+      您好！由於需求較大，你喺[restaurant_name]嘅訂位
+      （編號 #[booking_id]）需要繳付HK$[amount]按金先可以確認。
+      請喺30分鐘內透過以下連結完成付款，
+      否則訂位將會開放畀其他客人。感謝你嘅理解！💳

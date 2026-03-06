@@ -1,0 +1,49 @@
+<div class="space-y-4">
+    {% if profile %}
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gold-400">{{ profile.university }} Formatting Profile</h3>
+        <span class="text-xs text-gray-400">{{ profile.degree_level or 'All levels' }}</span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="bg-navy-900 rounded-lg p-3">
+            <p class="text-xs text-gray-400 mb-1">Font</p>
+            <p class="text-white">{{ profile.font_name }} {{ profile.font_size }}pt</p>
+        </div>
+        <div class="bg-navy-900 rounded-lg p-3">
+            <p class="text-xs text-gray-400 mb-1">Line Spacing</p>
+            <p class="text-white">{{ profile.line_spacing }}×</p>
+        </div>
+        <div class="bg-navy-900 rounded-lg p-3 col-span-2">
+            <p class="text-xs text-gray-400 mb-1">Margins (mm)</p>
+            <div class="flex gap-4 text-white">
+                <span>Top: {{ profile.margin_top }}</span>
+                <span>Bottom: {{ profile.margin_bottom }}</span>
+                <span>Left: {{ profile.margin_left }}</span>
+                <span>Right: {{ profile.margin_right }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if profile.notes %}
+    <div class="bg-navy-900 rounded-lg p-3">
+        <p class="text-xs text-gray-400 mb-1">Notes</p>
+        <p class="text-sm text-gray-300">{{ profile.notes }}</p>
+    </div>
+    {% endif %}
+
+    {% if profile.required_sections %}
+    <div class="bg-navy-900 rounded-lg p-3">
+        <p class="text-xs text-gray-400 mb-2">Required Sections</p>
+        <div class="flex flex-wrap gap-2">
+            {% for section in (profile.required_sections if profile.required_sections is iterable and profile.required_sections is not string else []) %}
+            <span class="px-2 py-1 text-xs bg-navy-700 text-gray-300 rounded">{{ section }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p class="text-sm text-gray-500 py-8 text-center">Select a university profile to preview</p>
+    {% endif %}
+</div>

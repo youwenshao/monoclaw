@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}PolicyWatcher{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-gold-400">{{ changes_this_month }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Changes<br>This Month</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-amber-400">{{ pending_review }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Pending<br>Review</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div class="text-xs text-gray-400 leading-tight">Next Scrape<br><span class="text-gray-200">Scheduled</span></div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-emerald-400">{{ active_subs }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Active<br>Subscriptions</div>
+</div>
+<div class="ml-auto">
+    <button hx-post="/policy-watcher/scrape-now" hx-swap="none"
+            class="px-4 py-2 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+        Scrape Now
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'feed' }">
+    <!-- Sub-tabs -->
+    <div class="flex gap-1 mb-6 border-b border-navy-700 pb-px">
+        <button @click="tab='feed'"
+                :class="tab==='feed' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Feed
+        </button>
+        <button @click="tab='search'"
+                :class="tab==='search' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Search
+        </button>
+        <button @click="tab='alerts'"
+                :class="tab==='alerts' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Alerts
+        </button>
+    </div>
+
+    <!-- ── Feed sub-tab ──────────────────────────────────────────── -->
+    <div x-show="tab==='feed'" x-cloak>
+        <div class="flex items-center gap-4 mb-4">
+            <label class="text-xs text-gray-400">Filter by scheme:</label>
+            <select id="scheme-filter"
+                    hx-get="/policy-watcher/feed/partial"
+                    hx-target="#policy-feed"
+                    hx-trigger="change"
+                    hx-include="this"
+                    name="scheme"
+                    class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                <option value="all">All Schemes</option>
+                <option value="GEP">GEP</option>
+                <option value="ASMTP">ASMTP</option>
+                <option value="QMAS">QMAS</option>
+                <option value="TTPS">TTPS</option>
+                <option value="TechTAS">TechTAS</option>
+                <option value="IANG">IANG</option>
+            </select>
+        </div>
+        <div id="policy-feed"
+             hx-get="/policy-watcher/feed/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading policy feed…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Search sub-tab ────────────────────────────────────────── -->
+    <div x-show="tab==='search'" x-cloak>
+        <form hx-get="/policy-watcher/search"
+              hx-target="#search-results"
+              hx-indicator="#search-spinner"
+              class="space-y-4 mb-6">
+            <div class="flex gap-3">
+                <div class="flex-1">
+                    <input type="text" name="q" placeholder="Search policy documents…"
+                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-4 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                </div>
+                <button type="submit"
+                        class="px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+                    Search
+                </button>
+            </div>
+            <div class="flex gap-4 items-center">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">From</label>
+                    <input type="date" name="date_from"
+                           class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">To</label>
+                    <input type="date" name="date_to"
+                           class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                </div>
+            </div>
+        </form>
+
+        <div id="search-spinner" class="htmx-indicator flex items-center justify-center py-8">
+            <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span class="ml-2 text-sm text-gray-500">Searching…</span>
+        </div>
+
+        <div id="search-results" class="space-y-3">
+            <p class="text-sm text-gray-500 text-center py-8">Enter a search term to find policy documents.</p>
+        </div>
+    </div>
+
+    <!-- ── Alerts sub-tab ────────────────────────────────────────── -->
+    <div x-show="tab==='alerts'" x-cloak>
+        <div id="alert-config"
+             hx-get="/policy-watcher/alert-config/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            {% include "policy_watcher/partials/alert_config.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

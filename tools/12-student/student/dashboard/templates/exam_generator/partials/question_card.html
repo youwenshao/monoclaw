@@ -1,0 +1,37 @@
+<div class="bg-navy-800 rounded-lg p-4 space-y-3">
+    <div class="flex items-center gap-2">
+        <span class="text-xs px-2 py-0.5 rounded bg-navy-700 text-gray-400">Q{{ question.question_index }}</span>
+        <span class="text-xs px-2 py-0.5 rounded capitalize
+            {% if question.difficulty == 'easy' %}bg-emerald-900/40 text-emerald-400
+            {% elif question.difficulty == 'hard' %}bg-red-900/40 text-red-400
+            {% else %}bg-amber-900/40 text-amber-400{% endif %}">{{ question.difficulty }}</span>
+        <span class="text-xs px-2 py-0.5 rounded bg-navy-700 text-gray-400">{{ question.question_type }}</span>
+        {% if question.bloom_level %}
+        <span class="text-xs text-gray-500 capitalize">{{ question.bloom_level }}</span>
+        {% endif %}
+        <span class="ml-auto text-xs text-gray-500">{{ question.points }} pts</span>
+    </div>
+
+    <p class="text-sm text-white leading-relaxed">{{ question.question_text }}</p>
+
+    {% if question.options %}
+    <div class="space-y-1.5">
+        {% for opt in question.options %}
+        <div class="flex items-center gap-2 px-3 py-2 rounded bg-navy-900 text-sm text-gray-300">
+            <span class="text-xs text-gray-500 font-mono">{{ ['A','B','C','D','E','F'][loop.index0] }}.</span>
+            {{ opt }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if question.topic %}
+    <div class="flex items-center gap-2 text-xs text-gray-500">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
+        </svg>
+        {{ question.topic }}
+    </div>
+    {% endif %}
+</div>

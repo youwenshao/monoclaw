@@ -1,0 +1,82 @@
+<!-- Snippet browser partial — loaded into #snippet-results via htmx -->
+<div class="space-y-4">
+
+    {% if snippets|length == 0 %}
+    <div class="flex flex-col items-center justify-center py-16 text-gray-500">
+        <svg class="w-12 h-12 mb-3 text-navy-700" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+        </svg>
+        <p class="text-sm">No snippets found</p>
+        {% if query %}
+        <p class="text-xs text-gray-600 mt-1">Try a different search term or clear filters</p>
+        {% endif %}
+    </div>
+    {% else %}
+
+    <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-400">{{ snippets|length }} snippet{{ 's' if snippets|length != 1 }} found</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        {% for snippet in snippets %}
+        <div class="card space-y-3 group">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <div class="min-w-0">
+                    <h4 class="text-sm font-semibold text-white truncate">{{ snippet.title }}</h4>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ snippet.description }}</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-3">
+                    <span class="badge
+                        {% if snippet.category == 'payment' %}badge-green
+                        {% elif snippet.category == 'validation' %}badge-amber
+                        {% elif snippet.category == 'formatting' %}badge-blue
+                        {% elif snippet.category == 'api' %}badge-purple
+                        {% else %}badge-grey{% endif %}">
+                        {{ snippet.category }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Code block -->
+            <div class="relative">
+                <div class="bg-navy-900 rounded-lg p-4 overflow-auto max-h-[200px]">
+                    <pre class="text-xs text-gray-200 whitespace-pre-wrap" style="font-family: var(--font-mono);">{{ snippet.code }}</pre>
+                </div>
+                <button onclick="copyToClipboard(this.closest('.relative').querySelector('pre').textContent, this)"
+                        class="absolute top-2 right-2 px-2 py-1 text-xs bg-navy-700 text-gray-300 rounded
+                               hover:bg-gold-500 hover:text-navy-900 transition-colors
+                               opacity-0 group-hover:opacity-100">
+                    Copy
+                </button>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-between text-xs text-gray-500">
+                <div class="flex items-center gap-3">
+                    {% if snippet.language %}
+                    <span class="flex items-center gap-1">
+                        <span class="status-dot
+                            {% if snippet.language == 'python' %}blue
+                            {% elif snippet.language == 'javascript' %}amber
+                            {% elif snippet.language == 'typescript' %}blue
+                            {% else %}grey{% endif %}"></span>
+                        {{ snippet.language }}
+                    </span>
+                    {% endif %}
+                    <span>{{ snippet.usage_count|default(0) }} uses</span>
+                </div>
+                {% if snippet.tags %}
+                <div class="flex gap-1">
+                    {% for tag in snippet.tags[:3] %}
+                    <span class="text-gray-600">#{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% endif %}
+</div>

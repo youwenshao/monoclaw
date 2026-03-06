@@ -1,0 +1,58 @@
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-[#2d3352] text-left text-gray-400">
+                <th class="px-4 py-3 font-medium">Date</th>
+                <th class="px-4 py-3 font-medium">Contact</th>
+                <th class="px-4 py-3 font-medium">Invoice</th>
+                <th class="px-4 py-3 font-medium">Type</th>
+                <th class="px-4 py-3 font-medium text-right">Amount</th>
+                <th class="px-4 py-3 font-medium">Method</th>
+                <th class="px-4 py-3 font-medium">Reference</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr class="border-b border-[#2d3352]/50 hover:bg-[#242b4a]/50 transition-colors">
+                <td class="px-4 py-3 text-gray-400 text-sm">{{ p.payment_date or p.recorded_at[:10] if p.recorded_at else '—' }}</td>
+                <td class="px-4 py-3 text-gray-200">{{ p.company_name or '—' }}</td>
+                <td class="px-4 py-3">
+                    <span class="font-mono text-[#d4a843] text-xs">{{ p.invoice_number or ('INV-' ~ p.invoice_id) }}</span>
+                </td>
+                <td class="px-4 py-3">
+                    {% if p.invoice_type %}
+                    <span class="text-xs px-2 py-0.5 rounded-full
+                        {% if p.invoice_type == 'receivable' %}bg-green-900/60 text-green-300
+                        {% else %}bg-blue-900/60 text-blue-300{% endif %}">
+                        {{ p.invoice_type|title }}
+                    </span>
+                    {% else %}
+                    <span class="text-gray-500">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right font-medium text-green-400">HK${{ "{:,.2f}".format(p.amount or 0) }}</td>
+                <td class="px-4 py-3 text-gray-300 text-sm">
+                    {% set method = p.payment_method or '' %}
+                    {% if method == 'bank_transfer' %}Bank Transfer
+                    {% elif method == 'fps' %}FPS
+                    {% elif method == 'cheque' %}Cheque
+                    {% elif method == 'cash' %}Cash
+                    {% elif method == 'octopus' %}Octopus
+                    {% else %}{{ method|title }}{% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-400 text-sm font-mono">
+                    {{ p.cheque_number or p.bank_reference or '—' }}
+                </td>
+            </tr>
+            {% endfor %}
+
+            {% if not payments %}
+            <tr>
+                <td colspan="7" class="px-4 py-12 text-center text-gray-500">
+                    No transactions recorded yet.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

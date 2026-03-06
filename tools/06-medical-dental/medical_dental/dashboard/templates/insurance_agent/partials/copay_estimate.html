@@ -1,0 +1,36 @@
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4 space-y-3">
+    <h4 class="text-sm font-semibold text-[#d4a843]">Co-pay Breakdown 自付額明細</h4>
+
+    <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+            <span class="text-gray-400">Billed Amount 帳單金額</span>
+            <span class="text-gray-100 font-medium">HK${{ "{:,.2f}".format(estimate.billed_amount) }}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-400">Insurer Pays 保險公司支付</span>
+            <span class="text-green-400 font-medium">−HK${{ "{:,.2f}".format(estimate.insurer_pays) }}</span>
+        </div>
+        {% if estimate.deductible > 0 %}
+        <div class="flex justify-between">
+            <span class="text-gray-400">Deductible 免賠額</span>
+            <span class="text-amber-400 font-medium">HK${{ "{:,.2f}".format(estimate.deductible) }}</span>
+        </div>
+        {% endif %}
+        <div class="border-t border-[#2d3352] pt-2 flex justify-between">
+            <span class="text-gray-200 font-semibold">Patient Co-pay 病人自付</span>
+            <span class="text-[#d4a843] font-bold text-base">HK${{ "{:,.2f}".format(estimate.patient_copay) }}</span>
+        </div>
+    </div>
+
+    {% if estimate.notes %}
+    <div class="bg-[#242b4a] rounded-md px-3 py-2 text-xs text-gray-400">
+        <span class="font-semibold text-amber-300">Note:</span> {{ estimate.notes }}
+    </div>
+    {% endif %}
+
+    {% if estimate.remaining_after is defined %}
+    <p class="text-xs text-gray-500">
+        Remaining after procedure 手術後剩餘: <span class="text-gray-300">HK${{ "{:,.0f}".format(estimate.remaining_after) }}</span>
+    </p>
+    {% endif %}
+</div>

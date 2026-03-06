@@ -1,0 +1,108 @@
+<div class="space-y-6">
+    <!-- Month summary -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-200">This Month's Revenue</h3>
+            <span class="text-2xl font-bold text-[#d4a843]">HK${{ "{:,.2f}".format(month_revenue) }}</span>
+        </div>
+        <canvas id="revenueTrendChart" height="180"></canvas>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Payment method breakdown -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6">
+            <h3 class="text-sm font-semibold text-gray-200 mb-4">Payment Method Breakdown</h3>
+            {% if payment_breakdown %}
+            <div class="space-y-3">
+                {% set payment_labels = {
+                    'cash': 'Cash',
+                    'credit_card': 'Credit Card',
+                    'octopus': 'Octopus',
+                    'fps': 'FPS',
+                    'alipay': 'Alipay',
+                    'wechat_pay': 'WeChat Pay',
+                    'other': 'Other'
+                } %}
+                {% for item in payment_breakdown %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full
+                            {% if item.payment_method == 'cash' %}bg-emerald-400
+                            {% elif item.payment_method == 'credit_card' %}bg-blue-400
+                            {% elif item.payment_method == 'octopus' %}bg-yellow-400
+                            {% elif item.payment_method == 'fps' %}bg-purple-400
+                            {% elif item.payment_method == 'alipay' %}bg-sky-400
+                            {% elif item.payment_method == 'wechat_pay' %}bg-green-400
+                            {% else %}bg-gray-400{% endif %}"></div>
+                        <span class="text-sm text-gray-300">{{ payment_labels.get(item.payment_method, item.payment_method) }}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-sm font-medium text-gray-200">HK${{ "{:,.2f}".format(item.revenue) }}</span>
+                        <span class="text-xs text-gray-500 ml-2">({{ item.transactions }} txn)</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 text-center py-6">No sales data this month</p>
+            {% endif %}
+        </div>
+
+        <!-- Top-selling items -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6">
+            <h3 class="text-sm font-semibold text-gray-200 mb-4">Top Selling Items</h3>
+            {% if top_items %}
+            <div class="space-y-3">
+                {% for item in top_items %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-[#d4a843] w-5 text-right">{{ loop.index }}</span>
+                        <span class="text-sm text-gray-300">{{ item.name }}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-sm font-medium text-gray-200">HK${{ "{:,.2f}".format(item.revenue) }}</span>
+                        <span class="text-xs text-gray-500 ml-2">({{ item.quantity }} sold)</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 text-center py-6">No item data available</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    fetch('/biz-owner-os/analytics/revenue?period=month')
+        .then(r => r.json())
+        .then(data => {
+            const ctx = document.getElementById('revenueTrendChart');
+            if (!ctx) return;
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Daily Revenue (HKD)',
+                        data: data.datasets[0].data,
+                        backgroundColor: 'rgba(212, 168, 67, 0.4)',
+                        borderColor: '#d4a843',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 10 } } },
+                        y: { grid: { color: '#2d3352' }, ticks: { color: '#6b7280', font: { size: 11 }, callback: v => 'HK$' + v.toLocaleString() } }
+                    }
+                }
+            });
+        });
+})();
+</script>

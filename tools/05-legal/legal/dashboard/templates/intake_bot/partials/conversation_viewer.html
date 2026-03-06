@@ -1,0 +1,36 @@
+{% if messages %}
+<div class="space-y-3 p-4 overflow-auto" style="max-height: 500px;">
+    {% for msg in messages %}
+    {% set is_inbound = msg.direction == 'inbound' %}
+    <div class="max-w-[75%] {{ 'mr-auto' if is_inbound else 'ml-auto' }}">
+        <div class="{{ 'chat-inbound' if is_inbound else 'chat-outbound' }} px-4 py-2.5">
+            <p class="text-sm text-gray-200">{{ msg.message_text }}</p>
+        </div>
+        <div class="flex items-center gap-2 mt-1 {{ 'justify-start' if is_inbound else 'justify-end' }}">
+            {% if msg.channel %}
+            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                <span class="w-1.5 h-1.5 rounded-full channel-{{ msg.channel }}"
+                      style="background-color: currentColor;"></span>
+                {{ msg.channel|title }}
+            </span>
+            {% endif %}
+            {% if msg.created_at %}
+            <span class="text-xs text-gray-600">
+                {{ msg.created_at[:16].replace('T', ' ') }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="flex items-center justify-center py-16">
+    <div class="text-center">
+        <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
+        </svg>
+        <p class="text-gray-500 text-sm">No conversation history</p>
+        <p class="text-gray-600 text-xs mt-1">Messages will appear as the client interacts with the intake bot</p>
+    </div>
+</div>
+{% endif %}

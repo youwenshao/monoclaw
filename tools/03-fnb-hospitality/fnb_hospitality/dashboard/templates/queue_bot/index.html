@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}QueueBot{% endblock %}
+
+{% block status_cards %}
+<div class="grid grid-cols-4 gap-4 w-full">
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Queue Length</p>
+        <p class="text-2xl font-bold text-white mt-1" id="stat-queue-length">{{ stats.queue_length | default(0) }}</p>
+        <p class="text-xs text-gray-400 mt-1">{{ stats.parties_waiting | default(0) }} parties waiting</p>
+    </div>
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Avg Wait</p>
+        <p class="text-2xl font-bold text-white mt-1" id="stat-avg-wait">{{ stats.avg_wait | default('0m') }}</p>
+        <p class="text-xs text-[#d4a843] mt-1">Target: {{ stats.target_wait | default('15m') }}</p>
+    </div>
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Seated Today</p>
+        <p class="text-2xl font-bold text-white mt-1" id="stat-seated">{{ stats.seated_today | default(0) }}</p>
+        <p class="text-xs text-emerald-400 mt-1">{{ stats.seated_delta | default('+8%') }} vs avg</p>
+    </div>
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Walkouts</p>
+        <p class="text-2xl font-bold text-white mt-1" id="stat-walkouts">{{ stats.walkouts | default(0) }}</p>
+        <p class="text-xs text-{{ 'emerald' if (stats.walkouts | default(0)) < 3 else 'red' }}-400 mt-1">{{ stats.walkout_rate | default('2%') }} rate</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ showAddWalkin: false, showClearConfirm: false }">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: Live Queue -->
+        <div class="lg:col-span-2">
+            <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+                <div class="p-4 border-b border-[#2d3352] flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-semibold text-[#e0be6a]">Live Queue</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Real-time queue management</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button hx-post="/queue-bot/call-next"
+                                hx-target="#queue-list"
+                                hx-swap="innerHTML"
+                                class="flex items-center gap-1.5 px-3 py-2 bg-[#d4a843] text-[#1a1f36] rounded-lg text-xs font-semibold hover:bg-[#e0be6a] transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 010-7.072m-2.828 9.9a9 9 0 010-12.728"/></svg>
+                            Call Next
+                        </button>
+                        <button @click="showAddWalkin = true"
+                                class="flex items-center gap-1.5 px-3 py-2 bg-[#242b4a] text-gray-300 rounded-lg text-xs font-medium hover:bg-[#2d3352] transition-colors border border-[#3d4466]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            Add Walk-in
+                        </button>
+                        <button @click="showClearConfirm = true"
+                                class="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors border border-red-500/20">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                            Clear Queue
+                        </button>
+                    </div>
+                </div>
+                <div id="queue-list"
+                     hx-get="/queue-bot/partials/queue-list"
+                     hx-trigger="load, every 10s"
+                     hx-swap="innerHTML"
+                     class="divide-y divide-[#2d3352] max-h-[500px] overflow-auto">
+                    <div class="p-8 text-center text-gray-500 text-sm">Loading queue...</div>
+                </div>
+            </div>
+
+            <!-- Wait Time Analytics -->
+            <div class="mt-6 bg-[#1a1f36] rounded-xl border border-[#2d3352] p-6" x-data="waitTimeChart()" x-init="init()">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-[#e0be6a]">Wait Time Analytics</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Average wait times by hour — today</p>
+                    </div>
+                </div>
+                <div class="h-56">
+                    <canvas id="wait-time-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: QR Code + Info -->
+        <div class="space-y-6">
+            <!-- QR Code Display -->
+            <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-6 text-center">
+                <h3 class="text-sm font-semibold text-[#e0be6a] mb-4">Queue Join QR Code</h3>
+                <div class="bg-white rounded-xl p-4 inline-block mx-auto mb-4">
+                    <div id="qr-code" class="w-48 h-48 flex items-center justify-center">
+                        <img src="{{ qr_url | default('/static/img/qr-placeholder.png') }}" alt="QR Code" class="w-full h-full object-contain"
+                             onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs\'>QR Code</div>'">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400">Scan to join the queue</p>
+                <p class="text-xs text-gray-500 mt-1">{{ queue_join_url | default('/queue-bot/join') }}</p>
+                <button class="mt-4 px-4 py-2 bg-[#242b4a] text-gray-300 rounded-lg text-xs hover:bg-[#2d3352] transition-colors border border-[#3d4466]"
+                        onclick="window.print()">
+                    Print QR Code
+                </button>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5">
+                <h3 class="text-sm font-semibold text-[#e0be6a] mb-4">Current Session</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Service started</span>
+                        <span class="text-white font-medium">{{ session.start_time | default('11:30') }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Peak queue</span>
+                        <span class="text-white font-medium">{{ session.peak_queue | default(0) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">Longest wait</span>
+                        <span class="text-white font-medium">{{ session.longest_wait | default('0m') }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-400">SMS sent</span>
+                        <span class="text-white font-medium">{{ session.sms_sent | default(0) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Notifications -->
+            <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5">
+                <h3 class="text-sm font-semibold text-[#e0be6a] mb-3">Recent Notifications</h3>
+                <div class="space-y-2 max-h-48 overflow-auto"
+                     hx-get="/queue-bot/partials/notifications"
+                     hx-trigger="load, every 15s"
+                     hx-swap="innerHTML">
+                    <p class="text-xs text-gray-500">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Walk-in Modal -->
+    <div x-show="showAddWalkin" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showAddWalkin = false">
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-2xl w-full max-w-md mx-4 shadow-2xl" @click.stop>
+            <div class="p-5 border-b border-[#2d3352] flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-[#e0be6a]">Add Walk-in</h3>
+                <button @click="showAddWalkin = false" class="text-gray-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <form hx-post="/queue-bot/add-walkin" hx-target="#queue-list" hx-swap="innerHTML" @htmx:after-request="showAddWalkin = false" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Party Size</label>
+                    <select name="party_size" required class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2.5 text-sm focus:border-[#d4a843] focus:outline-none">
+                        {% for i in range(1, 13) %}
+                        <option value="{{ i }}">{{ i }} {{ 'person' if i == 1 else 'people' }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Phone (optional)</label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 bg-[#2d3352] border border-r-0 border-[#3d4466] rounded-l-lg text-sm text-gray-400">+852</span>
+                        <input type="tel" name="phone" pattern="[0-9]{8}" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-r-lg px-3 py-2.5 text-sm focus:border-[#d4a843] focus:outline-none" placeholder="9123 4567">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Name (optional)</label>
+                    <input type="text" name="name" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2.5 text-sm focus:border-[#d4a843] focus:outline-none" placeholder="Guest name">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Seating Preference</label>
+                    <select name="seating" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2.5 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="any">No Preference</option>
+                        <option value="window">Window</option>
+                        <option value="booth">Booth</option>
+                        <option value="outdoor">Outdoor</option>
+                        <option value="bar">Bar</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="showAddWalkin = false" class="px-4 py-2.5 text-sm text-gray-300 bg-[#242b4a] rounded-lg hover:bg-[#2d3352] transition-colors">Cancel</button>
+                    <button type="submit" class="px-6 py-2.5 text-sm font-semibold text-[#1a1f36] bg-[#d4a843] rounded-lg hover:bg-[#e0be6a] transition-colors">Add to Queue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Clear Queue Confirmation -->
+    <div x-show="showClearConfirm" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showClearConfirm = false">
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-2xl w-full max-w-sm mx-4 shadow-2xl p-6 text-center" @click.stop>
+            <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">Clear Entire Queue?</h3>
+            <p class="text-sm text-gray-400 mb-6">This will remove all waiting entries. Guests will be notified that the queue has been reset.</p>
+            <div class="flex gap-3 justify-center">
+                <button @click="showClearConfirm = false" class="px-4 py-2.5 text-sm text-gray-300 bg-[#242b4a] rounded-lg hover:bg-[#2d3352] transition-colors">Cancel</button>
+                <button hx-post="/queue-bot/clear-queue" hx-target="#queue-list" hx-swap="innerHTML"
+                        @htmx:after-request="showClearConfirm = false"
+                        class="px-6 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">Clear Queue</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function waitTimeChart() {
+    return {
+        chart: null,
+        init() {
+            const ctx = document.getElementById('wait-time-chart').getContext('2d');
+            this.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['11:00','11:30','12:00','12:30','13:00','13:30','14:00','18:00','18:30','19:00','19:30','20:00','20:30','21:00'],
+                    datasets: [{
+                        label: 'Avg Wait (min)',
+                        data: [5,8,15,22,25,18,10,8,14,20,28,25,18,12],
+                        borderColor: '#d4a843',
+                        backgroundColor: '#d4a84320',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#d4a843'
+                    }, {
+                        label: 'Target (15min)',
+                        data: Array(14).fill(15),
+                        borderColor: '#3d4466',
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+                    scales: {
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: '#2d335233' } },
+                        y: { ticks: { color: '#9ca3af' }, grid: { color: '#2d335233' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+<!-- htmx partial: semantic search results -->
+<div class="space-y-4">
+    <!-- Search input -->
+    <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input type="text"
+               name="q"
+               value="{{ query | default('') }}"
+               placeholder="Search across all papers — try a research question, concept, or method..."
+               class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4a843] focus:outline-none"
+               hx-get="/paper-sieve/partials/search-results"
+               hx-trigger="keyup changed delay:400ms"
+               hx-target="#search-panel"
+               hx-swap="innerHTML">
+    </div>
+
+    {% if query %}
+    <p class="text-xs text-gray-500">{{ results | length }} result{{ 's' if results | length != 1 else '' }} for "<span class="text-[#d4a843]">{{ query }}</span>"</p>
+    {% endif %}
+
+    <!-- Results -->
+    <div class="space-y-3">
+        {% for result in results %}
+        <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-4 hover:border-[#3d4466] transition-colors">
+            <!-- Paper info header -->
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1 min-w-0">
+                    {% if result.paper %}
+                    <p class="text-sm font-medium text-white truncate">{{ result.paper.title | default('Untitled') }}</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        {% if result.paper.authors %}
+                        <p class="text-xs text-gray-400">{{ result.paper.authors[:2] | join(", ") }}{% if result.paper.authors | length > 2 %} et al.{% endif %}</p>
+                        {% endif %}
+                        {% if result.paper.year %}
+                        <span class="text-xs text-gray-600">·</span>
+                        <p class="text-xs text-gray-400">{{ result.paper.year }}</p>
+                        {% endif %}
+                        {% if result.paper.journal %}
+                        <span class="text-xs text-gray-600">·</span>
+                        <p class="text-xs text-gray-500 italic">{{ result.paper.journal }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-2 ml-3 shrink-0">
+                    {% if result.section %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[#242b4a] text-gray-300 border border-[#2d3352]">{{ result.section }}</span>
+                    {% endif %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold
+                        {% if result.relevance >= 0.8 %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                        {% elif result.relevance >= 0.6 %}bg-[#d4a843]/10 text-[#d4a843] border border-[#d4a843]/20
+                        {% else %}bg-[#242b4a] text-gray-400 border border-[#2d3352]{% endif %}">
+                        {{ (result.relevance * 100) | round(0) | int }}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Matched passage -->
+            <div class="bg-[#0f1225] rounded-lg p-3 border border-[#2d3352]/50">
+                <p class="text-xs text-gray-300 leading-relaxed">{{ result.text | truncate(400) }}</p>
+            </div>
+        </div>
+        {% else %}
+        {% if query %}
+        <div class="text-center py-12">
+            <svg class="w-10 h-10 mx-auto mb-3 text-gray-600 opacity-40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            <p class="text-sm text-gray-500">No results found</p>
+            <p class="text-xs text-gray-600 mt-1">Try rephrasing your query or upload more papers</p>
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <svg class="w-10 h-10 mx-auto mb-3 text-gray-600 opacity-40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            <p class="text-sm text-gray-500">Semantic search across your paper library</p>
+            <p class="text-xs text-gray-600 mt-1">Type a research question, concept, or method to find relevant passages</p>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>

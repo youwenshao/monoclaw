@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}DeadlineGuardian{% endblock %}
+
+{% block status_cards %}
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Active Deadlines</p>
+    <p class="text-2xl font-bold text-white">{{ total_active }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Due Soon</p>
+    <p class="text-2xl font-bold text-amber-400">{{ due_soon_count }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700 {% if overdue_count > 0 %}ring-1 ring-red-500/50{% endif %}">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Overdue</p>
+    <p class="text-2xl font-bold text-red-400 {% if overdue_count > 0 %}countdown-critical{% endif %}">{{ overdue_count }}</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'overview' }">
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 mb-6 bg-navy-800 rounded-lg p-1 w-fit">
+        <button @click="tab = 'overview'"
+                :class="tab === 'overview' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            Overview
+        </button>
+        <button @click="tab = 'cases'"
+                :class="tab === 'cases' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            Cases
+        </button>
+    </div>
+
+    <!-- ── Overview tab ──────────────────────────────────────────────── -->
+    <div x-show="tab === 'overview'" x-transition>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Urgent deadlines (left 2/3) -->
+            <div class="lg:col-span-2 space-y-3">
+                <h3 class="text-sm font-semibold text-gold-400 mb-2">Urgent Deadlines</h3>
+
+                {% for dl in urgent_deadlines %}
+                <div class="bg-navy-800 rounded-xl border border-navy-700 p-4 hover:border-navy-600 transition-colors">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-gray-300">{{ dl.case_number }}</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-medium bg-navy-600 text-gray-300">
+                                {{ dl.deadline_type|replace('_', ' ')|title }}
+                            </span>
+                        </div>
+                        {% if dl.status == 'overdue' %}
+                        <span class="urgency-red px-2 py-0.5 rounded text-xs font-semibold">Overdue</span>
+                        {% elif dl.status == 'due_soon' %}
+                        <span class="urgency-amber px-2 py-0.5 rounded text-xs font-semibold">Due Soon</span>
+                        {% else %}
+                        <span class="urgency-green px-2 py-0.5 rounded text-xs font-semibold">Upcoming</span>
+                        {% endif %}
+                    </div>
+
+                    <p class="text-sm text-gray-300 mb-2">{{ dl.description }}</p>
+
+                    {% if dl.case_name %}
+                    <p class="text-xs text-gray-500 mb-2">{{ dl.case_name }}</p>
+                    {% endif %}
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400">
+                                Due: <span class="text-gray-200">{{ dl.due_date }}</span>
+                            </span>
+                            <span data-deadline="{{ dl.due_date }}" class="text-xs"></span>
+                        </div>
+                        {% if dl.solicitor_responsible %}
+                        <span class="text-xs text-gray-500">
+                            <svg class="w-3 h-3 inline-block mr-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"/>
+                            </svg>
+                            {{ dl.solicitor_responsible }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not urgent_deadlines %}
+                <div class="bg-navy-800 rounded-xl border border-navy-700 p-8 text-center">
+                    <svg class="w-10 h-10 mx-auto text-emerald-400 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm text-gray-400">No urgent deadlines. All caught up.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Limitation calculator (right 1/3) -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700 p-4">
+                <h3 class="text-sm font-semibold text-gold-400 mb-4">Limitation Calculator</h3>
+                <p class="text-xs text-gray-500 mb-4">HK Limitation Ordinance (Cap 347)</p>
+
+                <form class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Claim Type</label>
+                        <select id="calc-claim-type" name="claim_type"
+                                class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                            <option value="contract">Contract (6 years)</option>
+                            <option value="personal_injury">Personal Injury (3 years)</option>
+                            <option value="defamation">Defamation (1 year)</option>
+                            <option value="latent_damage">Latent Damage (3 years from discovery)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Date of Accrual</label>
+                        <input type="date" id="calc-accrual-date" name="accrual_date"
+                               class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                    </div>
+                    <button type="button"
+                            hx-get="/deadline-guardian/calculate"
+                            hx-include="#calc-claim-type, #calc-accrual-date"
+                            hx-target="#calc-result"
+                            hx-swap="innerHTML"
+                            class="w-full px-4 py-2.5 bg-gold-500 text-navy-900 rounded-lg font-medium text-sm hover:bg-gold-400 transition-colors">
+                        Calculate
+                    </button>
+                </form>
+
+                <div id="calc-result" class="mt-4">
+                    <p class="text-xs text-gray-500 text-center py-4">Select a claim type and accrual date, then press Calculate.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Cases tab ─────────────────────────────────────────────────── -->
+    <div x-show="tab === 'cases'" x-transition>
+        <div class="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+            <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-white">All Cases</h3>
+                <a href="/deadline-guardian/case/new"
+                   class="px-3 py-1.5 text-xs font-medium bg-gold-500 text-navy-900 rounded-lg hover:bg-gold-400 transition-colors">
+                    + New Case
+                </a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-navy-900/50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Case No.</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Case Name</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Court</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Deadlines</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-navy-700">
+                        {% for case in cases %}
+                        <tr class="hover:bg-navy-700/50 transition-colors">
+                            <td class="px-4 py-3 text-xs font-mono text-gray-300">{{ case.case_number }}</td>
+                            <td class="px-4 py-3">
+                                <a href="/deadline-guardian/case/{{ case.id }}" class="text-gray-200 hover:text-gold-400 transition-colors font-medium">
+                                    {{ case.case_name }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 text-gray-400 text-xs">{{ case.court or '—' }}</td>
+                            <td class="px-4 py-3">
+                                {% if case.status == 'active' %}
+                                <span class="urgency-green px-2 py-0.5 rounded text-xs font-medium">Active</span>
+                                {% elif case.status == 'closed' %}
+                                <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-500/15 text-gray-400">Closed</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded text-xs font-medium bg-navy-600 text-gray-300">{{ case.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if case.overdue_count is defined and case.overdue_count > 0 %}
+                                <span class="urgency-red px-2 py-0.5 rounded text-xs font-semibold">{{ case.overdue_count }} overdue</span>
+                                {% elif case.deadline_count is defined %}
+                                <span class="text-xs text-gray-400">{{ case.deadline_count }} total</span>
+                                {% else %}
+                                <span class="text-xs text-gray-500">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                <a href="/deadline-guardian/case/{{ case.id }}"
+                                   class="px-3 py-1.5 text-xs font-medium text-gray-300 bg-navy-600 rounded-lg hover:bg-navy-500 transition-colors">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not cases %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500 text-sm">
+                                No cases found. Click "+ New Case" to create one.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', updateCountdowns);
+</script>
+{% endblock %}

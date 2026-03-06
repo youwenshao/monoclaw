@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}MPFCalc{% endblock %}
+
+{% block status_cards %}
+<div class="flex-1 bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+    <p class="text-xs text-gray-400 uppercase tracking-wider">Total Employees</p>
+    <p class="text-2xl font-bold text-white mt-1">{{ employee_count }}</p>
+</div>
+<div class="flex-1 bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+    <p class="text-xs text-gray-400 uppercase tracking-wider">Next Deadline</p>
+    <p class="text-2xl font-bold text-[#d4a843] mt-1">{{ countdown }} days</p>
+    <p class="text-xs text-gray-500">{{ compliance.next_deadline }}</p>
+</div>
+<div class="flex-1 bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+    <p class="text-xs text-gray-400 uppercase tracking-wider">Monthly Total</p>
+    <p class="text-2xl font-bold text-white mt-1">${{ "%.2f"|format(total_monthly) }}</p>
+</div>
+<div class="flex-1 bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+    <p class="text-xs text-gray-400 uppercase tracking-wider">Compliance</p>
+    {% set total_records = compliance.on_time_count + compliance.late_count + compliance.pending_count %}
+    {% if total_records > 0 %}
+        {% set score = ((compliance.on_time_count / total_records) * 100)|int %}
+    {% else %}
+        {% set score = 100 %}
+    {% endif %}
+    <p class="text-2xl font-bold mt-1 {% if score >= 90 %}text-green-400{% elif score >= 70 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ score }}%</p>
+    <p class="text-xs text-gray-500">{{ compliance.late_count }} late</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'employees' }">
+    <!-- Tab navigation -->
+    <div class="flex gap-1 mb-6 border-b border-[#2d3352]">
+        {% set tabs = [
+            ("employees", "Employees"),
+            ("calculator", "Calculator"),
+            ("remittance", "Remittance"),
+            ("compliance", "Compliance"),
+            ("whatif", "What-If"),
+        ] %}
+        {% for slug, label in tabs %}
+        <button @click="tab = '{{ slug }}'"
+                :class="tab === '{{ slug }}'
+                    ? 'border-b-2 border-[#d4a843] text-[#d4a843]'
+                    : 'text-gray-400 hover:text-gray-200'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors -mb-px">
+            {{ label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- Tab panels -->
+    <div x-show="tab === 'employees'"
+         hx-get="/mpf-calc/partials/employee-table"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <p class="text-gray-500 text-sm py-8 text-center">Loading employees…</p>
+    </div>
+
+    <div x-show="tab === 'calculator'" x-cloak
+         hx-get="/mpf-calc/partials/monthly-calculator"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <p class="text-gray-500 text-sm py-8 text-center">Loading calculator…</p>
+    </div>
+
+    <div x-show="tab === 'remittance'" x-cloak
+         hx-get="/mpf-calc/partials/remittance-preview"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <p class="text-gray-500 text-sm py-8 text-center">Loading remittance…</p>
+    </div>
+
+    <div x-show="tab === 'compliance'" x-cloak
+         hx-get="/mpf-calc/partials/compliance-dashboard"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <p class="text-gray-500 text-sm py-8 text-center">Loading compliance…</p>
+    </div>
+
+    <div x-show="tab === 'whatif'" x-cloak
+         hx-get="/mpf-calc/partials/whatif-calculator"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <p class="text-gray-500 text-sm py-8 text-center">Loading what-if…</p>
+    </div>
+</div>
+{% endblock %}

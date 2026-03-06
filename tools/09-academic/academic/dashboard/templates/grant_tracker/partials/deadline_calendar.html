@@ -1,0 +1,126 @@
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <!-- Calendar -->
+    <div class="xl:col-span-2 bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-white">Deadline Calendar</h3>
+            <button hx-post="/grant-tracker/scrape"
+                    hx-target="#deadline-calendar-container"
+                    hx-swap="innerHTML"
+                    hx-indicator="#scrape-spinner"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2d3352] text-gray-300 rounded-lg text-xs font-medium hover:bg-[#3a4166] transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+                </svg>
+                Scrape Latest
+                <svg id="scrape-spinner" class="htmx-indicator w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                    <path d="M12 2a10 10 0 019.95 9" stroke-opacity="0.75"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap gap-4 mb-4 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> RGC</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> ITF</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500"></span> NSFC</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-purple-500"></span> Other</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Internal</span>
+        </div>
+
+        <div id="fullcalendar" class="rounded-lg overflow-hidden" style="min-height: 480px;"></div>
+    </div>
+
+    <!-- Upcoming deadlines list -->
+    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5">
+        <h3 class="text-sm font-semibold text-[#d4a843] mb-4">Upcoming Deadlines</h3>
+        <div class="space-y-3">
+            {% for d in deadlines %}
+            <div class="bg-[#0f1225] rounded-lg p-3 border border-[#2d3352] hover:border-[#3a4166] transition-colors">
+                <div class="flex items-start justify-between mb-1.5">
+                    <span class="text-xs font-semibold
+                        {% if d.agency == 'RGC' %}text-blue-400
+                        {% elif d.agency == 'ITF' %}text-emerald-400
+                        {% elif d.agency == 'NSFC' %}text-red-400
+                        {% else %}text-purple-400{% endif %}">{{ d.scheme_code }}</span>
+                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full
+                        {% if d.status == 'open' %}bg-emerald-500/20 text-emerald-400
+                        {% elif d.status == 'upcoming' %}bg-sky-500/20 text-sky-400
+                        {% else %}bg-gray-500/20 text-gray-400{% endif %} uppercase">{{ d.status }}</span>
+                </div>
+                <p class="text-sm text-gray-200 mb-1">{{ d.scheme_name }}</p>
+                <div class="flex items-center gap-3 text-[10px] text-gray-500">
+                    {% if d.external_deadline %}
+                    <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+                        </svg>
+                        {{ d.external_deadline }}
+                    </span>
+                    {% endif %}
+                    {% if d.institutional_deadline %}
+                    <span class="text-amber-500">Internal: {{ d.institutional_deadline }}</span>
+                    {% endif %}
+                </div>
+                {% if d.call_url %}
+                <a href="{{ d.call_url }}" target="_blank" class="inline-block mt-2 text-[10px] text-[#d4a843] hover:underline">View Call →</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            {% if not deadlines %}
+            <p class="text-xs text-gray-500 text-center py-4">No upcoming deadlines. Try scraping for the latest.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const calendarEl = document.getElementById('fullcalendar');
+    if (!calendarEl || calendarEl.dataset.initialized) return;
+    calendarEl.dataset.initialized = 'true';
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listMonth',
+        },
+        height: 480,
+        events: '/grant-tracker/calendar-events',
+        themeSystem: 'standard',
+        eventClick: function(info) {
+            if (info.event.url) {
+                window.open(info.event.url, '_blank');
+                info.jsEvent.preventDefault();
+            }
+        },
+        eventDidMount: function(info) {
+            const props = info.event.extendedProps || {};
+            const tip = [];
+            if (props.agency) tip.push('Agency: ' + props.agency);
+            if (props.status) tip.push('Status: ' + props.status);
+            if (props.institutional_deadline) tip.push('Internal: ' + props.institutional_deadline);
+            if (tip.length) info.el.title = tip.join('\n');
+        },
+    });
+
+    const style = document.createElement('style');
+    style.textContent = `
+        #fullcalendar .fc { --fc-border-color: #2d3352; --fc-page-bg-color: #1a1f36; --fc-neutral-bg-color: #0f1225; --fc-today-bg-color: rgba(212,168,67,0.08); --fc-event-text-color: #fff; }
+        #fullcalendar .fc-toolbar-title { color: #e5e7eb; font-size: 1rem; }
+        #fullcalendar .fc-button { background: #2d3352 !important; border-color: #3a4166 !important; color: #d1d5db !important; font-size: 0.75rem; }
+        #fullcalendar .fc-button:hover { background: #3a4166 !important; }
+        #fullcalendar .fc-button-active { background: #d4a843 !important; color: #0f1225 !important; }
+        #fullcalendar .fc-daygrid-day-number { color: #9ca3af; font-size: 0.75rem; }
+        #fullcalendar .fc-col-header-cell-cushion { color: #9ca3af; font-size: 0.7rem; text-transform: uppercase; }
+        #fullcalendar .fc-list-event:hover td { background: #242b4a !important; }
+        #fullcalendar .fc-list-day-cushion { background: #0f1225 !important; }
+        #fullcalendar .fc-list-day-text, #fullcalendar .fc-list-day-side-text { color: #d4a843 !important; font-size: 0.8rem; }
+    `;
+    document.head.appendChild(style);
+    calendar.render();
+})();
+</script>

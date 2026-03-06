@@ -1,0 +1,92 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);"
+     x-data="{ open: true }"
+     x-show="open"
+     x-transition
+     @keydown.escape.window="open = false; setTimeout(() => document.getElementById('modal-area').innerHTML = '', 200)">
+    <div class="bg-navy-800 border border-navy-700 rounded-xl p-6 w-full max-w-lg"
+         @click.outside="open = false; setTimeout(() => document.getElementById('modal-area').innerHTML = '', 200)">
+        <h3 class="text-xl font-semibold text-gold-400 mb-4">
+            {% if client %}Edit Client{% else %}New Client{% endif %}
+        </h3>
+
+        <form hx-post="/intake-bot/clients"
+              hx-target="#client-list"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('modal-area').innerHTML = ''"
+              class="space-y-4">
+
+            {% if client %}
+            <input type="hidden" name="id" value="{{ client.id }}">
+            {% endif %}
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Name (English) *</label>
+                    <input type="text" name="name_en" required
+                           value="{{ client.name_en if client else '' }}"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"
+                           placeholder="John Chan">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Name (Chinese)</label>
+                    <input type="text" name="name_tc"
+                           value="{{ client.name_tc if client else '' }}"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"
+                           placeholder="陳大文">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">HKID Last 4</label>
+                    <input type="text" name="hkid_last4" maxlength="4" pattern="[A-Za-z0-9]{4}"
+                           value="{{ client.hkid_last4 if client else '' }}"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm font-mono"
+                           placeholder="1234">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Phone</label>
+                    <input type="tel" name="phone"
+                           value="{{ client.phone if client else '' }}"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"
+                           placeholder="+852 XXXX XXXX">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Email</label>
+                <input type="email" name="email"
+                       value="{{ client.email if client else '' }}"
+                       class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"
+                       placeholder="john@example.com">
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Source Channel</label>
+                <select name="source_channel"
+                        class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="" {% if not client or not client.source_channel %}selected{% endif %}>Select...</option>
+                    <option value="whatsapp" {% if client and client.source_channel == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
+                    <option value="telegram" {% if client and client.source_channel == 'telegram' %}selected{% endif %}>Telegram</option>
+                    <option value="wechat" {% if client and client.source_channel == 'wechat' %}selected{% endif %}>WeChat</option>
+                    <option value="email" {% if client and client.source_channel == 'email' %}selected{% endif %}>Email</option>
+                    <option value="walk_in" {% if client and client.source_channel == 'walk_in' %}selected{% endif %}>Walk-in</option>
+                    <option value="referral" {% if client and client.source_channel == 'referral' %}selected{% endif %}>Referral</option>
+                    <option value="website" {% if client and client.source_channel == 'website' %}selected{% endif %}>Website</option>
+                </select>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="btn btn-primary">
+                    {% if client %}Update Client{% else %}Add Client{% endif %}
+                </button>
+                <button type="button"
+                        class="btn btn-secondary"
+                        @click="open = false; setTimeout(() => document.getElementById('modal-area').innerHTML = '', 200)">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

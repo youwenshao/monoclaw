@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% block title %}FormAutoFill{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-gold-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Forms Generated</p>
+        <p class="text-lg font-bold text-white">{{ total_apps }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Pending / Draft</p>
+        <p class="text-lg font-bold text-white">{{ draft_apps }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Active Templates</p>
+        <p class="text-lg font-bold text-white">{{ templates_count }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="formAutofill()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <template x-for="tab in ['Generate', 'Applications', 'Templates']" :key="tab">
+            <button @click="subTab = tab.toLowerCase()"
+                    :class="subTab === tab.toLowerCase()
+                        ? 'text-gold-400 border-gold-500 border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="tab"></button>
+        </template>
+    </div>
+
+    <!-- ════════════════ Generate sub-tab ════════════════ -->
+    <div x-show="subTab === 'generate'" x-cloak>
+        <div class="grid grid-cols-3 gap-6">
+
+            <!-- Left: client + scheme selection -->
+            <div class="col-span-1 space-y-4">
+                <div class="bg-navy-800 rounded-lg p-4 space-y-4">
+                    <h3 class="text-sm font-semibold text-gold-400">Select Client</h3>
+                    <select x-model="selectedClientId"
+                            @change="loadClientCard()"
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                        <option value="">— Choose client —</option>
+                        {% for c in clients %}
+                        <option value="{{ c.id }}">{{ c.name_en }}{% if c.nationality %} ({{ c.nationality }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+
+                    <!-- Client card partial (loaded via htmx) -->
+                    <div id="client-card-slot"></div>
+                </div>
+
+                <div class="bg-navy-800 rounded-lg p-4 space-y-3">
+                    <h3 class="text-sm font-semibold text-gold-400">Scheme / Form Type</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <template x-for="s in schemes" :key="s.value">
+                            <button @click="selectedScheme = s.value; selectedFormType = s.form"
+                                    :class="selectedScheme === s.value
+                                        ? 'bg-gold-500 text-navy-900 font-semibold'
+                                        : 'bg-navy-700 text-gray-300 hover:bg-navy-600'"
+                                    class="px-3 py-2 text-xs rounded-lg transition-colors text-center"
+                                    x-text="s.label"></button>
+                        </template>
+                    </div>
+                </div>
+
+                <button @click="generateForm()"
+                        :disabled="!selectedClientId || !selectedFormType || generating"
+                        class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                               bg-gold-500 text-navy-900 hover:bg-gold-400
+                               disabled:opacity-40 disabled:cursor-not-allowed">
+                    <span x-show="!generating">Generate Form</span>
+                    <span x-show="generating" class="flex items-center justify-center gap-2">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Generating…
+                    </span>
+                </button>
+
+                <!-- Generation result -->
+                <div x-show="genResult" class="bg-navy-800 rounded-lg p-4">
+                    <template x-if="genResult && genResult.status === 'generated'">
+                        <div class="space-y-2">
+                            <p class="text-sm text-emerald-400 font-medium">Form generated successfully</p>
+                            <a :href="'/form-autofill/preview/' + genResult.application_id"
+                               target="_blank"
+                               class="inline-flex items-center gap-2 text-xs text-gold-400 hover:underline">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                                </svg>
+                                Download PDF
+                            </a>
+                        </div>
+                    </template>
+                    <template x-if="genResult && genResult.status === 'validation_error'">
+                        <div class="space-y-2">
+                            <p class="text-sm text-red-400 font-medium">Validation errors</p>
+                            <ul class="text-xs text-red-300 space-y-1">
+                                <template x-for="err in genResult.errors" :key="err.field">
+                                    <li class="flex gap-2">
+                                        <span class="text-red-500">&#10005;</span>
+                                        <span><strong x-text="err.field"></strong>: <span x-text="err.message"></span></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Centre + Right: field editor + checklist -->
+            <div class="col-span-2 space-y-4">
+                <div id="field-editor-slot"
+                     class="bg-navy-800 rounded-lg p-4 min-h-[200px]">
+                    <p class="text-sm text-gray-500 py-8 text-center">Select a client and scheme to preview fields</p>
+                </div>
+
+                <div id="checklist-slot"
+                     class="bg-navy-800 rounded-lg p-4 min-h-[100px]"
+                     hx-trigger="formGenerated from:body"
+                     hx-swap="innerHTML">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ════════════════ Applications sub-tab ════════════════ -->
+    <div x-show="subTab === 'applications'" x-cloak>
+        <div class="bg-navy-800 rounded-lg overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-navy-900 text-gray-400 text-xs uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3 text-left">ID</th>
+                        <th class="px-4 py-3 text-left">Client</th>
+                        <th class="px-4 py-3 text-left">Scheme</th>
+                        <th class="px-4 py-3 text-left">Form</th>
+                        <th class="px-4 py-3 text-left">Status</th>
+                        <th class="px-4 py-3 text-left">Created</th>
+                        <th class="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-navy-700">
+                    {% for app in recent_apps %}
+                    <tr class="hover:bg-navy-700 transition-colors">
+                        <td class="px-4 py-3 text-gray-300">#{{ app.id }}</td>
+                        <td class="px-4 py-3 text-white font-medium">{{ app.client_name or '—' }}</td>
+                        <td class="px-4 py-3">
+                            <span class="badge-blue">{{ app.scheme }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-300">{{ app.form_type }}</td>
+                        <td class="px-4 py-3">
+                            {% if app.status == 'generated' %}
+                            <span class="badge-green">Generated</span>
+                            {% elif app.status == 'draft' %}
+                            <span class="badge-amber">Draft</span>
+                            {% elif app.status == 'submitted' %}
+                            <span class="badge-blue">Submitted</span>
+                            {% else %}
+                            <span class="badge-grey">{{ app.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-gray-400 text-xs">{{ app.created_at[:10] if app.created_at else '—' }}</td>
+                        <td class="px-4 py-3 text-right space-x-2">
+                            <a href="/form-autofill/preview/{{ app.id }}" target="_blank"
+                               class="text-gold-400 hover:text-gold-300 text-xs">Download</a>
+                            <button hx-get="/form-autofill/validate/{{ app.id }}"
+                                    hx-target="#validation-result-{{ app.id }}"
+                                    hx-swap="innerHTML"
+                                    class="text-emerald-400 hover:text-emerald-300 text-xs">Validate</button>
+                        </td>
+                    </tr>
+                    <tr class="hidden" id="validation-result-{{ app.id }}"></tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">No applications yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ════════════════ Templates sub-tab ════════════════ -->
+    <div x-show="subTab === 'templates'" x-cloak>
+        <div class="bg-navy-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-gold-400">Form Template Versions</h3>
+                <button hx-get="/form-autofill/templates/status"
+                        hx-target="#template-table-body"
+                        hx-swap="innerHTML"
+                        class="text-xs text-gold-400 hover:text-gold-300">
+                    Check for Updates
+                </button>
+            </div>
+            <table class="w-full text-sm">
+                <thead class="bg-navy-900 text-gray-400 text-xs uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Form Type</th>
+                        <th class="px-4 py-3 text-left">Version</th>
+                        <th class="px-4 py-3 text-left">Source</th>
+                        <th class="px-4 py-3 text-left">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="template-table-body" class="divide-y divide-navy-700">
+                    <tr>
+                        <td colspan="4" class="px-4 py-6 text-center text-gray-500 text-xs">
+                            Click "Check for Updates" to load template status
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formAutofill() {
+    return {
+        subTab: 'generate',
+        selectedClientId: '',
+        selectedScheme: '',
+        selectedFormType: '',
+        generating: false,
+        genResult: null,
+
+        schemes: [
+            { label: 'GEP', value: 'GEP', form: 'GEP' },
+            { label: 'ASMTP', value: 'ASMTP', form: 'ASMTP' },
+            { label: 'QMAS', value: 'QMAS', form: 'QMAS' },
+            { label: 'IANG', value: 'IANG', form: 'IANG' },
+            { label: 'Extension (990A)', value: 'EXTENSION', form: 'ID990A' },
+            { label: 'Change Sponsor (990B)', value: 'CHANGE_SPONSORSHIP', form: 'ID990B' },
+        ],
+
+        loadClientCard() {
+            if (!this.selectedClientId) {
+                document.getElementById('client-card-slot').innerHTML = '';
+                return;
+            }
+            htmx.ajax('GET',
+                '/form-autofill/client-card/partial?client_id=' + this.selectedClientId,
+                { target: '#client-card-slot', swap: 'innerHTML' });
+
+            if (this.selectedFormType) {
+                this.loadFieldEditor();
+            }
+        },
+
+        loadFieldEditor() {
+            if (!this.selectedClientId || !this.selectedFormType) return;
+            htmx.ajax('GET',
+                '/form-autofill/field-editor/partial?form_type=' + this.selectedFormType +
+                '&client_id=' + this.selectedClientId,
+                { target: '#field-editor-slot', swap: 'innerHTML' });
+        },
+
+        async generateForm() {
+            if (!this.selectedClientId || !this.selectedFormType) return;
+            this.generating = true;
+            this.genResult = null;
+            try {
+                const resp = await fetch('/form-autofill/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        client_id: parseInt(this.selectedClientId),
+                        scheme: this.selectedScheme,
+                        form_type: this.selectedFormType,
+                    }),
+                });
+                this.genResult = await resp.json();
+                htmx.trigger(document.body, 'formGenerated');
+            } catch (e) {
+                this.genResult = { status: 'validation_error', errors: [{ field: 'general', message: e.message }] };
+            } finally {
+                this.generating = false;
+            }
+        },
+
+        init() {
+            this.$watch('selectedFormType', () => this.loadFieldEditor());
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,106 @@
+<div x-data="calendarWidget()" x-init="init()">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-100">Content Calendar</h3>
+            <div class="flex items-center gap-2">
+                <button @click="prevMonth()"
+                        class="p-1.5 rounded-lg bg-[#2d3352] hover:bg-[#3d4562] text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                </button>
+                <span class="text-sm font-medium text-gray-200 min-w-[120px] text-center"
+                      x-text="monthLabel"></span>
+                <button @click="nextMonth()"
+                        class="p-1.5 rounded-lg bg-[#2d3352] hover:bg-[#3d4562] text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="ss-calendar" class="rounded-lg overflow-hidden" style="min-height: 500px;"></div>
+    </div>
+
+    <!-- Upcoming HK Events -->
+    <div class="mt-6 bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-[#d4a843] mb-3">Upcoming HK Events</h3>
+        <div class="space-y-2">
+            {% for entry in entries if entry.is_hk_event %}
+            <div class="flex items-center gap-3 p-3 bg-[#0f1225] rounded-lg">
+                <div class="w-10 h-10 rounded-lg bg-red-900/30 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-200">{{ entry.event_name }}</p>
+                    <p class="text-xs text-gray-500">{{ entry.date }} · {{ entry.theme }}</p>
+                </div>
+                <button class="text-xs text-[#d4a843] hover:underline shrink-0">Plan Post</button>
+            </div>
+            {% else %}
+            <p class="text-xs text-gray-500 text-center py-4">No upcoming HK events this period</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+function calendarWidget() {
+    return {
+        year: {{ year }},
+        month: {{ month }},
+        monthLabel: '',
+        calendar: null,
+        init() {
+            this.monthLabel = new Date(this.year, this.month - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+            const entries = {{ entries | tojson }};
+            const events = entries.map(e => ({
+                title: e.event_name || e.theme || 'Post',
+                start: e.date,
+                backgroundColor: e.is_hk_event ? '#991b1b' : '#d4a843',
+                borderColor: e.is_hk_event ? '#dc2626' : '#d4a843',
+                textColor: '#fff',
+                extendedProps: { notes: e.notes, id: e.id }
+            }));
+            const calendarEl = document.getElementById('ss-calendar');
+            this.calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                initialDate: `${this.year}-${String(this.month).padStart(2,'0')}-01`,
+                headerToolbar: false,
+                height: 'auto',
+                events: events,
+                editable: true,
+                eventDrop: (info) => {
+                    console.log('Rescheduled:', info.event.title, '→', info.event.startStr);
+                },
+                dateClick: (info) => {
+                    console.log('Date clicked:', info.dateStr);
+                },
+                eventClassNames: 'text-xs rounded px-1',
+            });
+            this.calendar.render();
+
+            // Dark theme overrides
+            calendarEl.querySelectorAll('.fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid').forEach(el => {
+                el.style.borderColor = '#2d3352';
+            });
+            calendarEl.querySelectorAll('.fc-col-header-cell-cushion, .fc-daygrid-day-number').forEach(el => {
+                el.style.color = '#9ca3af';
+            });
+        },
+        prevMonth() {
+            this.month--;
+            if (this.month < 1) { this.month = 12; this.year--; }
+            htmx.ajax('GET', `/social-sync/partials/content-calendar?year=${this.year}&month=${this.month}`, {target: this.$el.parentElement, swap: 'innerHTML'});
+        },
+        nextMonth() {
+            this.month++;
+            if (this.month > 12) { this.month = 1; this.year++; }
+            htmx.ajax('GET', `/social-sync/partials/content-calendar?year=${this.year}&month=${this.month}`, {target: this.$el.parentElement, swap: 'innerHTML'});
+        }
+    };
+}
+</script>

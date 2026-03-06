@@ -1,0 +1,87 @@
+<!-- htmx partial: queue management list -->
+{% for entry in queue %}
+<div class="flex items-center gap-4 px-5 py-4 hover:bg-[#242b4a]/30 transition-colors group">
+    <!-- Queue Number -->
+    <div class="w-12 h-12 rounded-xl bg-[#242b4a] border border-[#2d3352] flex items-center justify-center shrink-0">
+        <span class="text-lg font-bold text-[#d4a843]">{{ entry.queue_number }}</span>
+    </div>
+
+    <!-- Info -->
+    <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+            <p class="text-sm font-medium text-white truncate">{{ entry.name | default('Guest') }}</p>
+            {% if entry.seating_preference and entry.seating_preference != 'any' %}
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2d3352] text-gray-400">{{ entry.seating_preference }}</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+            <span>{{ entry.party_size }}人</span>
+            <span>·</span>
+            <span>{{ entry.phone | default('—') }}</span>
+            <span>·</span>
+            <span class="{% if entry.wait_minutes > 20 %}text-red-400{% elif entry.wait_minutes > 10 %}text-[#d4a843]{% else %}text-gray-400{% endif %}">
+                {{ entry.wait_minutes }}min wait
+            </span>
+        </div>
+    </div>
+
+    <!-- Status -->
+    <div class="shrink-0">
+        {% if entry.status == 'waiting' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#d4a843]/10 text-[#d4a843] border border-[#d4a843]/20">Waiting</span>
+        {% elif entry.status == 'called' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse">Called</span>
+        {% elif entry.status == 'seated' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Seated</span>
+        {% elif entry.status == 'skipped' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">Skipped</span>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {% if entry.status == 'waiting' %}
+        <button class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                title="Seat"
+                hx-post="/queue-bot/seat/{{ entry.id }}"
+                hx-target="closest div.flex.items-center.gap-4"
+                hx-swap="outerHTML">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        </button>
+        <button class="p-2 rounded-lg bg-[#d4a843]/10 text-[#d4a843] hover:bg-[#d4a843]/20 transition-colors"
+                title="Skip"
+                hx-post="/queue-bot/skip/{{ entry.id }}"
+                hx-target="closest div.flex.items-center.gap-4"
+                hx-swap="outerHTML">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062A1.125 1.125 0 013 16.81V8.688zM12.75 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062a1.125 1.125 0 01-1.683-.977V8.688z"/></svg>
+        </button>
+        {% elif entry.status == 'called' %}
+        <button class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                title="Confirm Seated"
+                hx-post="/queue-bot/seat/{{ entry.id }}"
+                hx-target="closest div.flex.items-center.gap-4"
+                hx-swap="outerHTML">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        </button>
+        {% endif %}
+        {% if entry.status in ['waiting', 'called', 'skipped'] %}
+        <button class="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                title="Remove"
+                hx-delete="/queue-bot/remove/{{ entry.id }}"
+                hx-target="closest div.flex.items-center.gap-4"
+                hx-swap="outerHTML swap:200ms"
+                hx-confirm="Remove from queue?">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="py-16 text-center">
+    <svg class="w-12 h-12 mx-auto mb-3 text-gray-600 opacity-40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+    <p class="text-sm text-gray-500">Queue is empty</p>
+    <p class="text-xs text-gray-600 mt-1">Guests will appear here when they join</p>
+</div>
+{% endfor %}

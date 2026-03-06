@@ -1,0 +1,209 @@
+/* Solopreneur Dashboard — Custom styles */
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.status-dot.green {
+    background-color: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.status-dot.red {
+    background-color: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+}
+
+.status-dot.yellow {
+    background-color: #eab308;
+    box-shadow: 0 0 6px rgba(234, 179, 8, 0.4);
+}
+
+.status-dot.blue {
+    background-color: #3b82f6;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+}
+
+/* KPI cards */
+.kpi-card {
+    background: linear-gradient(135deg, #1a1f36 0%, #242b4a 100%);
+    border: 1px solid #2d3352;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    min-width: 180px;
+}
+
+.kpi-card .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #d4a843;
+    line-height: 1.2;
+}
+
+.kpi-card .kpi-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+}
+
+/* Data tables */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #2d3352;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.data-table td {
+    font-size: 0.875rem;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid #2d3352;
+    color: #e5e7eb;
+}
+
+.data-table tr:hover td {
+    background-color: #242b4a;
+}
+
+/* Badge styles */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-green {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.badge-red {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.badge-yellow {
+    background-color: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+}
+
+.badge-blue {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.badge-gray {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+}
+
+/* Card container */
+.card {
+    background-color: #1a1f36;
+    border: 1px solid #2d3352;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+}
+
+.card-header {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #d4a843;
+    margin-bottom: 0.75rem;
+}
+
+/* Form elements */
+.form-input {
+    width: 100%;
+    background-color: #0f1225;
+    border: 1px solid #2d3352;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #e5e7eb;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    border-color: #d4a843;
+}
+
+/* Action button */
+.btn-primary {
+    background-color: #d4a843;
+    color: #1a1f36;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #e0b954;
+}
+
+.btn-secondary {
+    background-color: #2d3352;
+    color: #e5e7eb;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-secondary:hover {
+    background-color: #3d4562;
+}
+
+/* Chart wrapper */
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* Aging report colors */
+.aging-current { color: #22c55e; }
+.aging-30 { color: #eab308; }
+.aging-60 { color: #f97316; }
+.aging-90 { color: #ef4444; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f1225;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2d3352;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3d4562;
+}

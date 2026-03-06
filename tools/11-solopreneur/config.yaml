@@ -1,0 +1,130 @@
+tool_name: solopreneur
+version: "1.0.0"
+port: 8506
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: zh
+
+database:
+  workspace_path: "~/OpenClawWorkspace/solopreneur"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Business profile (set during first-run wizard)
+  business_name: ""
+  br_number: ""
+  business_type: ""
+  operating_hours: "09:00-18:00"
+  phone: ""
+  base_currency: "HKD"
+
+  # POS settings
+  pos_provider: ""  # ichef, lightspeed, square, csv
+  pos_api_key: ""
+  pos_api_secret: ""
+  pos_webhook_url: ""
+
+  # Payment methods accepted
+  payment_methods:
+    - cash
+    - credit_card
+    - octopus
+    - fps
+    - alipay
+    - wechat_pay
+
+  # MPF settings
+  mpf_trustee: ""  # hsbc, aia, manulife, sunlife, bct
+  mpf_scheme_name: ""
+  mpf_member_number: ""
+  mpf_contribution_day: 10
+  mpf_reminder_days_before: 5
+
+  # Supplier/Ledger defaults
+  default_payment_terms_days: 30
+  overdue_reminder_intervals: [7, 14, 30]
+  primary_bank: ""  # hsbc, hang_seng, standard_chartered, boc_hk
+  statement_generation_day: 1
+
+  # Social accounts
+  instagram_access_token: ""
+  instagram_business_id: ""
+  facebook_page_id: ""
+  facebook_access_token: ""
+
+  # Scheduling defaults
+  digest_time: "08:00"
+  default_posting_times:
+    lunch: "12:30"
+    evening: "19:00"
+    prime: "20:30"
+    late_night: "22:30"
+
+  # Content preferences
+  default_posting_language: "bilingual"  # en, zh, bilingual
+  brand_tone: ""
+
+  # HK tax rates
+  profits_tax_rate_tier1: 0.0825
+  profits_tax_rate_tier2: 0.165
+  profits_tax_tier1_threshold: 2000000
+
+  # HK public holidays 2026
+  public_holidays_2026:
+    - "2026-01-01"  # New Year
+    - "2026-02-17"  # Lunar New Year
+    - "2026-02-18"  # Lunar New Year
+    - "2026-02-19"  # Lunar New Year
+    - "2026-04-03"  # Good Friday
+    - "2026-04-04"  # Day after Good Friday
+    - "2026-04-06"  # Easter Monday
+    - "2026-04-05"  # Ching Ming
+    - "2026-05-01"  # Labour Day
+    - "2026-05-24"  # Buddha's Birthday
+    - "2026-06-19"  # Tuen Ng Festival
+    - "2026-07-01"  # HKSAR Establishment Day
+    - "2026-09-26"  # Day after Mid-Autumn
+    - "2026-10-01"  # National Day
+    - "2026-10-18"  # Chung Yeung Festival
+    - "2026-12-25"  # Christmas Day
+    - "2026-12-26"  # Boxing Day
+
+  # HK seasonal marketing events
+  seasonal_events:
+    - name: "Chinese New Year"
+      date: "2026-02-17"
+    - name: "Valentine's Day"
+      date: "2026-02-14"
+    - name: "Easter"
+      date: "2026-04-05"
+    - name: "Mother's Day"
+      date: "2026-05-10"
+    - name: "Dragon Boat Festival"
+      date: "2026-06-19"
+    - name: "Mid-Autumn Festival"
+      date: "2026-09-25"
+    - name: "National Day Golden Week"
+      date: "2026-10-01"
+    - name: "Singles' Day (11.11)"
+      date: "2026-11-11"
+    - name: "Black Friday"
+      date: "2026-11-27"
+    - name: "Christmas"
+      date: "2026-12-25"
+    - name: "New Year's Eve"
+      date: "2026-12-31"

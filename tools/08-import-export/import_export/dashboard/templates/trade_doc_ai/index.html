@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}TradeDoc AI{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-gold-400">{{ products_count }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Products<br>Registered</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-emerald-400">{{ declarations_filed }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Declarations<br>Filed</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-amber-400">{{ declarations_pending }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Pending<br>Filing</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    {% if strategic_count > 0 %}
+    <span class="text-2xl font-bold text-red-400">{{ strategic_count }}</span>
+    {% else %}
+    <span class="text-2xl font-bold text-gray-500">0</span>
+    {% endif %}
+    <div class="text-xs text-gray-400 leading-tight">Strategic<br>Alerts</div>
+</div>
+{% if deadline_alerts > 0 %}
+<div class="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+    </svg>
+    <div class="text-xs text-red-300 leading-tight font-semibold">{{ deadline_alerts }} filing{{ 's' if deadline_alerts != 1 }}<br>due soon!</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'classifier' }">
+    <!-- Sub-tabs -->
+    <div class="flex gap-1 mb-6 border-b border-navy-700 pb-px overflow-x-auto">
+        {% set tabs = [
+            ("classifier", "HS Classifier"),
+            ("tdec", "TDEC Builder"),
+            ("invoice", "Invoice Builder"),
+            ("co", "CO Form"),
+            ("screening", "Strategic Screening"),
+            ("filing", "Filing Tracker"),
+        ] %}
+        {% for slug, label in tabs %}
+        <button @click="tab='{{ slug }}'"
+                :class="tab==='{{ slug }}' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap">
+            {{ label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- HS Classifier -->
+    <div x-show="tab==='classifier'" x-cloak>
+        <div id="hs-classifier-content"
+             hx-get="/trade-doc-ai/partials/hs-classifier"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading HS Classifier...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TDEC Builder -->
+    <div x-show="tab==='tdec'" x-cloak>
+        <div id="tdec-form-content"
+             hx-get="/trade-doc-ai/partials/tdec-form"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading TDEC form...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Builder -->
+    <div x-show="tab==='invoice'" x-cloak>
+        <div id="invoice-builder-content"
+             hx-get="/trade-doc-ai/partials/invoice-builder"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading Invoice Builder...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CO Form -->
+    <div x-show="tab==='co'" x-cloak>
+        <div id="co-form-content"
+             hx-get="/trade-doc-ai/partials/co-form"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading CO Form...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Strategic Screening -->
+    <div x-show="tab==='screening'" x-cloak>
+        <div id="strategic-alert-content"
+             hx-get="/trade-doc-ai/partials/strategic-alert"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading Strategic Screening...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filing Tracker -->
+    <div x-show="tab==='filing'" x-cloak>
+        <div id="filing-tracker-content"
+             hx-get="/trade-doc-ai/partials/filing-tracker"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading Filing Tracker...</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

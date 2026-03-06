@@ -1,0 +1,98 @@
+[
+  {
+    "title": "HKID Validation",
+    "description": "Validate Hong Kong Identity Card number with check digit algorithm",
+    "code": "import re\n\ndef validate_hkid(hkid: str) -> bool:\n    cleaned = hkid.strip().upper().replace(' ', '')\n    match = re.match(r'^([A-Z]{1,2})(\\d{6})\\(?([0-9A])\\)?$', cleaned)\n    if not match:\n        return False\n    prefix, digits_str, check_char = match.groups()\n    if len(prefix) == 1:\n        values = [36, ord(prefix) - 55]\n    else:\n        values = [ord(prefix[0]) - 55, ord(prefix[1]) - 55]\n    values.extend(int(d) for d in digits_str)\n    weights = [9, 8, 7, 6, 5, 4, 3, 2]\n    total = sum(v * w for v, w in zip(values, weights))\n    remainder = total % 11\n    if remainder == 0:\n        expected = '0'\n    elif remainder == 1:\n        expected = 'A'\n    else:\n        expected = str(11 - remainder)\n    return check_char == expected",
+    "language": "python",
+    "category": "validation",
+    "tags": ["hkid", "identity", "validation", "hong-kong"]
+  },
+  {
+    "title": "HK Phone Formatter",
+    "description": "Format and validate Hong Kong phone numbers with +852 prefix",
+    "code": "import re\n\ndef format_hk_phone(phone: str) -> str:\n    digits = re.sub(r'\\D', '', phone)\n    if digits.startswith('852') and len(digits) == 11:\n        digits = digits[3:]\n    if len(digits) != 8:\n        raise ValueError(f'HK phone numbers must be 8 digits, got {len(digits)}')\n    return f'+852 {digits[:4]} {digits[4:]}'\n\ndef is_mobile(phone: str) -> bool:\n    digits = re.sub(r'\\D', '', phone)\n    if digits.startswith('852') and len(digits) == 11:\n        digits = digits[3:]\n    return len(digits) == 8 and digits[0] in '5679'",
+    "language": "python",
+    "category": "formatting",
+    "tags": ["phone", "hk", "formatting", "mobile"]
+  },
+  {
+    "title": "FPS QR Code Generation",
+    "description": "Generate HKMA-standard FPS EMV QR code for payments",
+    "code": "import qrcode\nfrom io import BytesIO\n\ndef _tlv(tag: str, value: str) -> str:\n    return f'{tag}{len(value):02d}{value}'\n\ndef _crc16(data: bytes) -> str:\n    crc = 0xFFFF\n    for byte in data:\n        crc ^= byte << 8\n        for _ in range(8):\n            crc = (crc << 1) ^ 0x1021 if crc & 0x8000 else crc << 1\n            crc &= 0xFFFF\n    return f'{crc:04X}'\n\ndef generate_fps_qr(proxy_id: str, amount: float, currency: str = 'HKD') -> bytes:\n    parts = [\n        _tlv('00', '01'),\n        _tlv('01', '12'),\n        _tlv('26', _tlv('00', 'hk.com.hkicl') + _tlv('01', '01') + _tlv('02', proxy_id)),\n        _tlv('52', '0000'),\n        _tlv('53', '344'),\n        _tlv('54', f'{amount:.2f}'),\n        _tlv('58', 'HK'),\n    ]\n    raw = ''.join(parts) + '6304'\n    payload = raw + _crc16(raw.encode('ascii'))\n    qr = qrcode.make(payload)\n    buf = BytesIO()\n    qr.save(buf, format='PNG')\n    return buf.getvalue()",
+    "language": "python",
+    "category": "payment",
+    "tags": ["fps", "qr", "payment", "hkma", "emv"]
+  },
+  {
+    "title": "GovHK Weather API",
+    "description": "Fetch current weather from Hong Kong Observatory REST API",
+    "code": "import httpx\n\nasync def get_hk_weather(lang: str = 'en') -> dict:\n    url = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php'\n    params = {'dataType': 'rhrread', 'lang': lang}\n    async with httpx.AsyncClient() as client:\n        resp = await client.get(url, params=params)\n        resp.raise_for_status()\n        return resp.json()\n\nasync def get_9day_forecast(lang: str = 'en') -> dict:\n    url = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php'\n    params = {'dataType': 'fnd', 'lang': lang}\n    async with httpx.AsyncClient() as client:\n        resp = await client.get(url, params=params)\n        resp.raise_for_status()\n        return resp.json()",
+    "language": "python",
+    "category": "api",
+    "tags": ["weather", "govhk", "observatory", "api", "hong-kong"]
+  },
+  {
+    "title": "HK Address Parser",
+    "description": "Parse Hong Kong addresses into structured components",
+    "code": "import re\nfrom dataclasses import dataclass\n\n@dataclass\nclass HKAddress:\n    territory: str = ''\n    district: str = ''\n    building: str = ''\n    floor: str = ''\n    unit: str = ''\n    street: str = ''\n\ndef parse_hk_address(address: str) -> HKAddress:\n    result = HKAddress()\n    text = address.strip()\n    lower = text.lower()\n    for key, val in {'hong kong': 'Hong Kong Island', 'kowloon': 'Kowloon', 'new territories': 'New Territories'}.items():\n        if key in lower:\n            result.territory = val\n            break\n    fm = re.search(r'(\\d{1,3})\\s*/\\s*[Ff]|(\\d{1,3})[Ff]\\b|[Ff]loor\\s*(\\d{1,3})', text)\n    if fm:\n        result.floor = next(g for g in fm.groups() if g)\n    um = re.search(r'(?:Unit|Flat|Room)\\s*([A-Za-z0-9]+)', text, re.I)\n    if um:\n        result.unit = um.group(1)\n    bm = re.search(r'([\\w\\s]+?(?:Building|Tower|Mansion|Court|House|Plaza|Centre))', text, re.I)\n    if bm:\n        result.building = bm.group(1).strip()\n    sm = re.search(r'(\\d+[-–]?\\d*\\s+[\\w\\s]+?(?:Road|Street|Avenue|Lane))', text, re.I)\n    if sm:\n        result.street = sm.group(1).strip()\n    return result",
+    "language": "python",
+    "category": "utility",
+    "tags": ["address", "parser", "hk", "formatting"]
+  },
+  {
+    "title": "Octopus Payment Integration",
+    "description": "Octopus card merchant payment client with tap-authorize-confirm flow",
+    "code": "import httpx\nfrom datetime import datetime, timezone\n\nclass OctopusClient:\n    def __init__(self, base_url: str, api_key: str):\n        self.base_url = base_url.rstrip('/')\n        self.api_key = api_key\n\n    async def create_payment(self, merchant_id: str, amount: float, reference: str = '') -> dict:\n        headers = {'X-Api-Key': self.api_key, 'Content-Type': 'application/json'}\n        async with httpx.AsyncClient() as client:\n            # Phase 1+2: initiate and authorize\n            resp = await client.post(\n                f'{self.base_url}/payments',\n                headers=headers,\n                json={'merchant_id': merchant_id, 'amount': amount, 'reference': reference},\n            )\n            resp.raise_for_status()\n            txn = resp.json()\n            # Phase 3: confirm\n            confirm = await client.post(f'{self.base_url}/payments/{txn[\"transaction_id\"]}/confirm', headers=headers)\n            confirm.raise_for_status()\n            return confirm.json()",
+    "language": "python",
+    "category": "payment",
+    "tags": ["octopus", "payment", "merchant", "hong-kong"]
+  },
+  {
+    "title": "Bilingual String Handler",
+    "description": "Utility for handling bilingual (English/Chinese) string pairs common in HK apps",
+    "code": "from dataclasses import dataclass\nfrom typing import Literal\n\n@dataclass\nclass BilingualText:\n    en: str\n    zh: str\n\n    def get(self, lang: Literal['en', 'zh'] = 'en') -> str:\n        return self.zh if lang == 'zh' else self.en\n\n    def __str__(self) -> str:\n        return f'{self.en} / {self.zh}'\n\n    def to_dict(self) -> dict:\n        return {'en': self.en, 'zh': self.zh}\n\n    @classmethod\n    def from_dict(cls, data: dict) -> 'BilingualText':\n        return cls(en=data.get('en', ''), zh=data.get('zh', ''))\n\n# Usage:\nname = BilingualText(en='Central', zh='中環')\nprint(name.get('zh'))  # 中環",
+    "language": "python",
+    "category": "utility",
+    "tags": ["bilingual", "i18n", "chinese", "english", "hong-kong"]
+  },
+  {
+    "title": "HK Date Formatting",
+    "description": "Format dates in Hong Kong conventions (DD/MM/YYYY) with Chinese calendar support",
+    "code": "from datetime import date, datetime\n\nDAY_NAMES_ZH = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']\nMONTH_NAMES_ZH = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']\n\ndef format_hk_date(d: date, lang: str = 'en') -> str:\n    if lang == 'zh':\n        return f'{d.year}年{d.month}月{d.day}日 ({DAY_NAMES_ZH[d.weekday()]})'\n    return d.strftime('%d/%m/%Y (%A)')\n\ndef format_hk_datetime(dt: datetime, lang: str = 'en') -> str:\n    if lang == 'zh':\n        period = '上午' if dt.hour < 12 else '下午'\n        hour = dt.hour if dt.hour <= 12 else dt.hour - 12\n        return f'{dt.year}年{dt.month}月{dt.day}日 {period}{hour}:{dt.minute:02d}'\n    return dt.strftime('%d/%m/%Y %I:%M %p')\n\n# Usage:\ntoday = date.today()\nprint(format_hk_date(today, 'en'))  # 06/03/2026 (Friday)\nprint(format_hk_date(today, 'zh'))  # 2026年3月6日 (星期五)",
+    "language": "python",
+    "category": "formatting",
+    "tags": ["date", "formatting", "chinese", "calendar", "hong-kong"]
+  },
+  {
+    "title": "HK Business Registration Validator",
+    "description": "Validate Hong Kong Business Registration (BR) number format",
+    "code": "import re\n\ndef validate_br_number(br: str) -> bool:\n    \"\"\"Validate HK Business Registration number.\n\n    Format: 8 digits followed by 3 digits (branch),\n    e.g., 12345678-001\n    \"\"\"\n    cleaned = re.sub(r'[\\s-]', '', br)\n    if not re.match(r'^\\d{8}\\d{3}$', cleaned):\n        return False\n    main_number = cleaned[:8]\n    branch = cleaned[8:]\n    return int(main_number) > 0 and int(branch) >= 0\n\ndef format_br_number(br: str) -> str:\n    cleaned = re.sub(r'[\\s-]', '', br)\n    if len(cleaned) == 11:\n        return f'{cleaned[:8]}-{cleaned[8:]}'\n    return br",
+    "language": "python",
+    "category": "validation",
+    "tags": ["business-registration", "br", "validation", "hong-kong"]
+  },
+  {
+    "title": "MTR Station Lookup",
+    "description": "Look up MTR station information and line connections",
+    "code": "from dataclasses import dataclass, field\n\n@dataclass\nclass MTRStation:\n    code: str\n    name_en: str\n    name_zh: str\n    lines: list[str] = field(default_factory=list)\n\nMTR_STATIONS = {\n    'CEN': MTRStation('CEN', 'Central', '中環', ['ISL', 'TWL']),\n    'ADM': MTRStation('ADM', 'Admiralty', '金鐘', ['ISL', 'TWL', 'SIL', 'EAL']),\n    'TST': MTRStation('TST', 'Tsim Sha Tsui', '尖沙咀', ['TWL']),\n    'MKK': MTRStation('MKK', 'Mong Kok', '旺角', ['KTL']),\n    'KOT': MTRStation('KOT', 'Kowloon Tong', '九龍塘', ['KTL', 'EAL']),\n    'TKO': MTRStation('TKO', 'Tseung Kwan O', '將軍澳', ['TKL']),\n    'SHT': MTRStation('SHT', 'Sha Tin', '沙田', ['EAL']),\n}\n\ndef find_station(query: str) -> list[MTRStation]:\n    q = query.lower()\n    return [\n        s for s in MTR_STATIONS.values()\n        if q in s.name_en.lower() or q in s.name_zh or q == s.code.lower()\n    ]",
+    "language": "python",
+    "category": "utility",
+    "tags": ["mtr", "station", "transport", "hong-kong"]
+  },
+  {
+    "title": "HK Currency Formatter",
+    "description": "Format monetary amounts in HKD with proper locale conventions",
+    "code": "from decimal import Decimal, ROUND_HALF_UP\n\ndef format_hkd(amount: float | Decimal, lang: str = 'en') -> str:\n    d = Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)\n    formatted = f'{d:,.2f}'\n    if lang == 'zh':\n        return f'港幣 {formatted} 元'\n    return f'HK${formatted}'\n\ndef parse_hkd(text: str) -> Decimal:\n    cleaned = text.replace('HK$', '').replace('港幣', '').replace('元', '').replace(',', '').strip()\n    return Decimal(cleaned)\n\n# Usage:\nprint(format_hkd(12345.60))         # HK$12,345.60\nprint(format_hkd(12345.60, 'zh'))   # 港幣 12,345.60 元",
+    "language": "python",
+    "category": "formatting",
+    "tags": ["currency", "hkd", "money", "formatting", "hong-kong"]
+  },
+  {
+    "title": "GovHK Transport ETA",
+    "description": "Fetch real-time bus ETA from KMB open data API",
+    "code": "import httpx\nfrom datetime import datetime\n\nKMB_BASE = 'https://data.etabus.gov.hk/v1/transport/kmb'\n\nasync def get_bus_eta(stop_id: str, route: str) -> list[dict]:\n    url = f'{KMB_BASE}/eta/{stop_id}/{route}/1'\n    async with httpx.AsyncClient() as client:\n        resp = await client.get(url, timeout=10)\n        resp.raise_for_status()\n        data = resp.json()\n    results = []\n    for item in data.get('data', []):\n        if item.get('eta'):\n            eta_time = datetime.fromisoformat(item['eta'])\n            results.append({\n                'route': item.get('route', route),\n                'destination': item.get('dest_en', ''),\n                'eta': eta_time.strftime('%H:%M'),\n                'remarks': item.get('rmk_en', ''),\n            })\n    return results",
+    "language": "python",
+    "category": "api",
+    "tags": ["transport", "bus", "eta", "kmb", "hong-kong"]
+  }
+]

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-construction"
+version = "1.0.0"
+description = "Construction Dashboard — PermitTracker, SafetyForm Bot, DefectsManager, SiteCoordinator"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    # PermitTracker — BD portal scraping
+    "playwright>=1.40",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "plotly>=5.18",
+    "PyPDF2>=3.0",
+    # SafetyForm / DefectsManager — images & PDF
+    "Pillow>=10.0",
+    "exifread>=3.0",
+    "reportlab>=4.1",
+    # SiteCoordinator — scheduling & maps
+    "ortools>=9.8",
+    "folium>=0.15",
+    "geopy>=2.4",
+    # Shared
+    "python-dateutil>=2.9",
+    "sse-starlette>=1.6",
+    "pandas>=2.1",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+macos = ["pyobjc-framework-Vision>=10.0"]
+all = ["openclaw-construction[mlx,messaging,macos]"]
+
+[tool.setuptools.packages.find]
+include = ["construction*"]

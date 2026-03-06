@@ -1,0 +1,34 @@
+{% for d in deliveries %}
+<tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+    <td class="px-4 py-3 text-gray-300">{{ d.date }}</td>
+    <td class="px-4 py-3 text-gray-200 font-medium">{{ d.supplier }}</td>
+    <td class="px-4 py-3 text-gray-300">{{ d.description }}</td>
+    <td class="px-4 py-3 text-gray-300">{{ d.site_name }}</td>
+    <td class="px-4 py-3">
+        <span class="text-sm font-mono text-gold-400">{{ d.eta or '—' }}</span>
+    </td>
+    <td class="px-4 py-3">
+        {% if d.status == 'delivered' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-green-900/60 text-green-300">Delivered</span>
+        {% elif d.status == 'in_transit' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-blue-900/60 text-blue-300">In Transit</span>
+        {% elif d.status == 'scheduled' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-purple-900/60 text-purple-300">Scheduled</span>
+        {% elif d.status == 'delayed' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-amber-900/60 text-amber-300">Delayed</span>
+        {% elif d.status == 'cancelled' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-red-900/60 text-red-300">Cancelled</span>
+        {% else %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-navy-700 text-gray-300">{{ d.status or 'Unknown' }}</span>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if not deliveries %}
+<tr>
+    <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+        No deliveries scheduled. Deliveries will appear here when suppliers confirm dispatch.
+    </td>
+</tr>
+{% endif %}

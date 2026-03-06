@@ -1,0 +1,118 @@
+<div class="space-y-6">
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Streak card -->
+        <div class="bg-navy-800 rounded-lg p-4 text-center">
+            <p class="text-xs text-gray-400">Current Streak</p>
+            <p class="text-3xl font-bold text-gold-400 mt-1">{{ streak }}</p>
+            <p class="text-xs text-gray-500 mt-1">consecutive days</p>
+        </div>
+
+        <!-- Radar chart -->
+        <div class="col-span-2 bg-navy-800 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-gold-400 mb-3">Topic Progress</h3>
+            <canvas id="topicRadarChart" class="max-h-[250px]"></canvas>
+        </div>
+    </div>
+
+    <!-- Topic breakdown table -->
+    <div class="bg-navy-800 rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-navy-900 text-gray-400 text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-3 text-left">Topic</th>
+                    <th class="px-4 py-3 text-left">Solved / Attempted</th>
+                    <th class="px-4 py-3 text-left">Solve Rate</th>
+                    <th class="px-4 py-3 text-left">Strength</th>
+                    <th class="px-4 py-3 text-left">Avg Time</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-700">
+                {% for p in progress %}
+                <tr class="hover:bg-navy-700 transition-colors">
+                    <td class="px-4 py-3 text-white font-medium capitalize">{{ p.topic }}</td>
+                    <td class="px-4 py-3 text-gray-300">{{ p.problems_solved }} / {{ p.problems_attempted }}</td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-16 bg-navy-900 rounded-full h-1.5">
+                                <div class="h-1.5 rounded-full {% if p.solve_rate >= 0.7 %}bg-emerald-500{% elif p.solve_rate >= 0.3 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+                                     style="width: {{ (p.solve_rate * 100)|int }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-400">{{ (p.solve_rate * 100)|int }}%</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="text-xs px-2 py-0.5 rounded
+                              {% if p.strength_level == 'strong' %}bg-emerald-500/20 text-emerald-400
+                              {% elif p.strength_level == 'developing' %}bg-amber-500/20 text-amber-400
+                              {% else %}bg-red-500/20 text-red-400{% endif %}">{{ p.strength_level }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">{{ (p.avg_time_seconds or 0)|int }}s</td>
+                </tr>
+                {% endfor %}
+
+                {% if not progress %}
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">No progress data yet. Start solving problems!</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Weak areas -->
+    {% if weaknesses %}
+    <div class="bg-navy-800 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-amber-400 mb-3">Areas for Improvement</h3>
+        <div class="space-y-2">
+            {% for w in weaknesses %}
+            <div class="flex items-center justify-between px-3 py-2 bg-navy-900 rounded-lg">
+                <div>
+                    <span class="text-sm text-white capitalize">{{ w.topic }}</span>
+                    <span class="text-xs text-gray-500 ml-2">{{ (w.solve_rate * 100)|int }}% solve rate</span>
+                </div>
+                <p class="text-xs text-gray-400 max-w-xs text-right">{{ w.recommendation }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    const ctx = document.getElementById('topicRadarChart');
+    if (!ctx) return;
+    const progress = {{ progress | tojson }};
+    if (!progress.length) return;
+
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: progress.map(p => p.topic),
+            datasets: [{
+                label: 'Solve Rate',
+                data: progress.map(p => ((p.solve_rate || 0) * 100).toFixed(0)),
+                backgroundColor: 'rgba(251, 191, 36, 0.15)',
+                borderColor: 'rgba(251, 191, 36, 0.8)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(251, 191, 36, 1)',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    angleLines: { color: 'rgba(255,255,255,0.05)' },
+                    pointLabels: { color: '#9ca3af', font: { size: 11 } },
+                    ticks: { display: false }
+                }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+})();
+</script>

@@ -1,0 +1,130 @@
+<!-- Connector gallery partial — loaded into #connector-gallery via htmx -->
+<div class="space-y-3">
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gold-400">HK API Connectors</h3>
+        <button hx-get="/api/hk-dev-kit/connectors"
+                hx-target="#connector-gallery"
+                hx-swap="innerHTML"
+                class="text-xs text-gray-400 hover:text-gold-400 transition-colors">
+            Refresh
+        </button>
+    </div>
+
+    <div class="grid grid-cols-4 gap-4">
+
+        <!-- FPS -->
+        <div class="card space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-2xl">💸</span>
+                {% if connectors.fps.configured %}
+                <span class="badge badge-green">Connected</span>
+                {% else %}
+                <span class="badge badge-grey">Not configured</span>
+                {% endif %}
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-white">FPS (Faster Payment)</h4>
+                <p class="text-xs text-gray-400 mt-1">Generate QR codes and initiate instant HKD payments via the Faster Payment System.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button hx-post="/api/hk-dev-kit/fps/qr"
+                        hx-vals='{"proxy_id":"test","amount":1,"proxy_type":"mobile","currency":"HKD"}'
+                        hx-target="#connector-test-result"
+                        hx-swap="innerHTML"
+                        class="btn btn-secondary btn-sm">
+                    Test
+                </button>
+                <a href="https://www.hkma.gov.hk/eng/key-functions/international-financial-centre/financial-market-infrastructure/faster-payment-system-fps/"
+                   target="_blank" rel="noopener"
+                   class="text-xs text-gold-400 hover:text-gold-300">Docs</a>
+            </div>
+        </div>
+
+        <!-- Octopus -->
+        <div class="card space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-2xl">🐙</span>
+                {% if connectors.octopus.configured %}
+                <span class="badge badge-green">Connected</span>
+                {% else %}
+                <span class="badge badge-grey">Not configured</span>
+                {% endif %}
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-white">Octopus Pay</h4>
+                <p class="text-xs text-gray-400 mt-1">Accept Octopus card and app payments via the merchant payment gateway API.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button hx-post="/api/hk-dev-kit/octopus/payment"
+                        hx-vals='{"merchant_id":"test","amount":1,"reference":"ping"}'
+                        hx-target="#connector-test-result"
+                        hx-swap="innerHTML"
+                        class="btn btn-secondary btn-sm">
+                    Test
+                </button>
+                <a href="https://www.octopus.com.hk/en/business/payment-solutions.html"
+                   target="_blank" rel="noopener"
+                   class="text-xs text-gold-400 hover:text-gold-300">Docs</a>
+            </div>
+        </div>
+
+        <!-- GovHK Weather -->
+        <div class="card space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-2xl">🌤️</span>
+                {% if connectors.govhk_weather.configured %}
+                <span class="badge badge-green">Connected</span>
+                {% else %}
+                <span class="badge badge-amber">Public API</span>
+                {% endif %}
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-white">GovHK Weather</h4>
+                <p class="text-xs text-gray-400 mt-1">Real-time Hong Kong weather data from the Hong Kong Observatory open data API.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button hx-get="/api/hk-dev-kit/govhk/weather"
+                        hx-target="#connector-test-result"
+                        hx-swap="innerHTML"
+                        class="btn btn-secondary btn-sm">
+                    Test
+                </button>
+                <a href="https://data.gov.hk/en-data/dataset/hk-hko-rss-current-weather-report"
+                   target="_blank" rel="noopener"
+                   class="text-xs text-gold-400 hover:text-gold-300">Docs</a>
+            </div>
+        </div>
+
+        <!-- GovHK Transport -->
+        <div class="card space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-2xl">🚇</span>
+                {% if connectors.govhk_transport.configured %}
+                <span class="badge badge-green">Connected</span>
+                {% else %}
+                <span class="badge badge-amber">Public API</span>
+                {% endif %}
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-white">GovHK Transport</h4>
+                <p class="text-xs text-gray-400 mt-1">Public transport ETA, route info, and real-time data from HK Transport Department.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button hx-get="/api/hk-dev-kit/govhk/transport"
+                        hx-target="#connector-test-result"
+                        hx-swap="innerHTML"
+                        class="btn btn-secondary btn-sm">
+                    Test
+                </button>
+                <a href="https://data.gov.hk/en-data/dataset/hk-td-tis_21-etaxml"
+                   target="_blank" rel="noopener"
+                   class="text-xs text-gold-400 hover:text-gold-300">Docs</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Test result area -->
+    <div id="connector-test-result" class="hidden">
+    </div>
+</div>

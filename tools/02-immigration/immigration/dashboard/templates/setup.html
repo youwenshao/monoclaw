@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard{% endblock %}
+
+{% block content %}
+<div x-data="{ step: 1 }" class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-gold-400 mb-6">First-Run Configuration</h2>
+
+    <form method="post" action="/setup/" class="space-y-6">
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="s in [1,2,3,4,5,6]">
+                <div class="flex items-center gap-2">
+                    <div :class="step >= s ? 'bg-gold-500 text-navy-900' : 'bg-navy-700 text-gray-400'"
+                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                         x-text="s"></div>
+                    <div x-show="s < 6" class="w-8 h-px" :class="step > s ? 'bg-gold-500' : 'bg-navy-700'"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Step 1: Practice Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Practice Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Firm Name</label>
+                    <input type="text" name="firm_name" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="ABC Immigration Consultancy">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Consultant Registration No.</label>
+                    <input type="text" name="consultant_reg" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="IC-12345">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Office Address</label>
+                    <input type="text" name="office_address" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Business Hours (Mon-Fri)</label>
+                    <input type="text" name="business_hours" value="09:00-18:00" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Saturday Hours</label>
+                    <input type="text" name="saturday_hours" value="09:00-13:00" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: OCR Settings -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">OCR Settings</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Primary OCR Engine</label>
+                    <select name="ocr_engine" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="vision">macOS Vision Framework (recommended)</option>
+                        <option value="tesseract">Tesseract OCR</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Vision runs on Apple Neural Engine for fast, accurate Chinese/English OCR.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Auto-Accept Threshold</label>
+                        <input type="number" name="confidence_auto" value="0.85" step="0.01" min="0" max="1"
+                               class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Fields above this confidence are auto-accepted.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Review Threshold</label>
+                        <input type="number" name="confidence_review" value="0.70" step="0.01" min="0" max="1"
+                               class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Fields between review and auto-accept need human check.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Messaging -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">Messaging Setup</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Account SID</label>
+                    <input type="text" name="twilio_sid" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="ACxxxxxxxx">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Auth Token</label>
+                    <input type="password" name="twilio_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">WhatsApp From Number</label>
+                    <input type="text" name="whatsapp_from" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="+852XXXXXXXX">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Telegram Bot Token</label>
+                    <input type="password" name="telegram_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Language</label>
+                    <select name="default_language" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="en">English</option>
+                        <option value="zh">繁體中文</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Monitoring Sources -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">Policy Monitoring Sources</h3>
+            <div class="space-y-3">
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="monitor_gazette" value="1" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                        <div>
+                            <p class="text-sm font-medium">Government Gazette</p>
+                            <p class="text-xs text-gray-400">Legal Notices related to Immigration Ordinance (Cap. 115)</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="monitor_immd" value="1" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                        <div>
+                            <p class="text-sm font-medium">Immigration Department</p>
+                            <p class="text-xs text-gray-400">Press releases, scheme announcements, form updates</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="monitor_legco" value="1" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                        <div>
+                            <p class="text-sm font-medium">LegCo Panel on Security</p>
+                            <p class="text-xs text-gray-400">Immigration policy papers and government responses</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="monitor_talent" value="1" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                        <div>
+                            <p class="text-sm font-medium">Talent List</p>
+                            <p class="text-xs text-gray-400">Updates to eligible professions for streamlined processing</p>
+                        </div>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">ImmD Scrape Frequency (hours)</label>
+                    <input type="number" name="immd_frequency" value="24" min="1" max="168"
+                           class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Sample Data -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data</h3>
+            <div class="p-4 bg-navy-800 rounded-lg">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500 focus:ring-gold-500">
+                    <div>
+                        <p class="text-sm font-medium">Seed demo data for testing</p>
+                        <p class="text-xs text-gray-400">Creates sample clients, visa applications, policy documents, and conversations so you can explore the dashboard.</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 6: Connection Test -->
+        <div x-show="step === 6" class="space-y-4">
+            <h3 class="text-lg font-semibold">Connection Test</h3>
+            <div id="connection-results" class="space-y-3"
+                 hx-get="/api/connection-test" hx-trigger="intersect once" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Testing connections...
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex justify-between pt-4 border-t border-navy-700">
+            <button type="button" @click="step = Math.max(1, step-1)" x-show="step > 1"
+                    class="px-4 py-2 text-sm text-gray-300 bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors">
+                Back
+            </button>
+            <div class="ml-auto">
+                <button type="button" @click="step++" x-show="step < 6"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Next
+                </button>
+                <button type="submit" x-show="step === 6"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Complete Setup
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+<div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-[#0f1225] text-gray-400 text-xs uppercase tracking-wider">
+            <tr>
+                <th class="px-4 py-3 text-left">Title</th>
+                <th class="px-4 py-3 text-left">Authors</th>
+                <th class="px-4 py-3 text-left w-16">Year</th>
+                <th class="px-4 py-3 text-left">Journal</th>
+                <th class="px-4 py-3 text-left">DOI</th>
+                <th class="px-4 py-3 text-left w-24">Style</th>
+                <th class="px-4 py-3 text-left">Formatted</th>
+                <th class="px-4 py-3 text-right w-32">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2d3352]">
+            {% for c in citations %}
+            <tr class="hover:bg-[#242b4a] transition-colors group">
+                <td class="px-4 py-3 text-white font-medium max-w-[200px] truncate" title="{{ c.title }}">
+                    {{ c.title or '—' }}
+                    {% if c.verified %}
+                    <svg class="inline w-3.5 h-3.5 text-emerald-400 ml-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-300 max-w-[160px] truncate" title="{{ c.authors }}">{{ c.authors or '—' }}</td>
+                <td class="px-4 py-3 text-gray-300">{{ c.year or '—' }}</td>
+                <td class="px-4 py-3 text-gray-400 max-w-[120px] truncate" title="{{ c.journal }}">{{ c.journal or '—' }}</td>
+                <td class="px-4 py-3">
+                    {% if c.doi %}
+                    <a href="https://doi.org/{{ c.doi }}" target="_blank"
+                       class="text-[#d4a843] hover:underline text-xs truncate block max-w-[120px]" title="{{ c.doi }}">
+                        {{ c.doi }}
+                    </a>
+                    {% else %}
+                    <span class="text-gray-600 text-xs">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    <select onchange="htmx.ajax('GET', '/cite-bot/format/{{ c.id }}?style=' + this.value, {target: '#citation-preview-slot', swap: 'innerHTML'})"
+                            class="bg-[#0f1225] border border-[#2d3352] rounded px-2 py-1 text-xs text-gray-300 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                        <option value="apa7" {{ 'selected' if c.formatted_style == 'apa7' else '' }}>APA 7</option>
+                        <option value="harvard" {{ 'selected' if c.formatted_style == 'harvard' else '' }}>Harvard</option>
+                        <option value="ieee" {{ 'selected' if c.formatted_style == 'ieee' else '' }}>IEEE</option>
+                        <option value="gbt7714" {{ 'selected' if c.formatted_style == 'gbt7714' else '' }}>GB/T 7714</option>
+                        <option value="chicago" {{ 'selected' if c.formatted_style == 'chicago' else '' }}>Chicago</option>
+                        <option value="mla9" {{ 'selected' if c.formatted_style == 'mla9' else '' }}>MLA 9</option>
+                    </select>
+                </td>
+                <td class="px-4 py-3 text-gray-400 text-xs max-w-[200px] truncate italic" title="{{ c.formatted_text or '' }}">
+                    {{ c.formatted_text or '—' }}
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button hx-get="/cite-bot/format/{{ c.id }}?style=apa7"
+                                hx-target="#citation-preview-slot"
+                                hx-swap="innerHTML"
+                                class="text-[#d4a843] hover:text-[#c49a38] text-xs" title="Preview">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </button>
+                        <button onclick="navigator.clipboard.writeText(this.closest('tr').querySelector('.italic')?.textContent?.trim() || '')"
+                                class="text-gray-400 hover:text-white text-xs" title="Copy formatted">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                            </svg>
+                        </button>
+                        <button hx-delete="/cite-bot/citations/{{ c.id }}"
+                                hx-target="#bibliography-table-slot"
+                                hx-swap="innerHTML"
+                                hx-confirm="Delete this citation?"
+                                class="text-red-400 hover:text-red-300 text-xs" title="Delete">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not citations %}
+            <tr>
+                <td colspan="8" class="px-4 py-8 text-center text-gray-500">No citations yet — add one to get started</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

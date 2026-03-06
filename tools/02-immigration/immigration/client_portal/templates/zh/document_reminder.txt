@@ -1,0 +1,15 @@
+親愛的 {client_name}，
+
+此為有關您個案 {case_ref} 的文件提醒。
+
+以下文件將於 {days_remaining} 天後到期：
+
+文件類型：{document_type}
+說明：{description}
+截止日期：{deadline}
+
+請盡快提交此文件，以免延誤申請處理。
+
+如您已提交此文件，請忽略此訊息。
+
+— 您的移民顧問團隊

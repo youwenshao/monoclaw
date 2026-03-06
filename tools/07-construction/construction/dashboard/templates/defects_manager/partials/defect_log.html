@@ -1,0 +1,81 @@
+{% for defect in defects %}
+<tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors cursor-pointer"
+    hx-get="/defects-manager/defect/{{ defect.id }}/partial"
+    hx-target="#defect-detail-panel"
+    hx-swap="innerHTML"
+    hx-trigger="click">
+    <td class="px-4 py-3">
+        <span class="font-mono text-gold-400 text-sm">DEF-{{ '%04d'|format(defect.id) }}</span>
+    </td>
+    <td class="px-4 py-3 text-gray-200">{{ defect.property_name|default('—') }}</td>
+    <td class="px-4 py-3 text-gray-300 text-sm">
+        {{ defect.floor|default('—') }} / {{ defect.unit|default('—') }}
+    </td>
+    <td class="px-4 py-3">
+        {% set cat = defect.category|default('other') %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium
+            {% if cat == 'plumbing' %}bg-blue-900/60 text-blue-300
+            {% elif cat == 'electrical' %}bg-yellow-900/60 text-yellow-300
+            {% elif cat == 'structural' %}bg-red-900/60 text-red-300
+            {% elif cat == 'waterproofing' %}bg-cyan-900/60 text-cyan-300
+            {% elif cat == 'fire_safety' %}bg-orange-900/60 text-orange-300
+            {% elif cat == 'hvac' %}bg-indigo-900/60 text-indigo-300
+            {% elif cat == 'finishing' %}bg-purple-900/60 text-purple-300
+            {% elif cat == 'common_area' %}bg-teal-900/60 text-teal-300
+            {% else %}bg-navy-700 text-gray-300{% endif %}">
+            {{ cat.replace('_', ' ').title() }}
+        </span>
+    </td>
+    <td class="px-4 py-3 text-gray-300 text-sm max-w-[200px] truncate">
+        {{ defect.description|default('')|truncate(60) }}
+    </td>
+    <td class="px-4 py-3">
+        {% set pri = defect.priority|default('normal') %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium
+            {% if pri == 'emergency' %}bg-red-500/20 text-red-400
+            {% elif pri == 'urgent' %}bg-amber-500/20 text-amber-400
+            {% elif pri == 'normal' %}bg-blue-500/20 text-blue-400
+            {% else %}bg-gray-500/20 text-gray-400{% endif %}">
+            {{ pri.title() }}
+        </span>
+    </td>
+    <td class="px-4 py-3">
+        {% set st = defect.status|default('open') %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium
+            {% if st == 'open' %}bg-red-900/60 text-red-300
+            {% elif st == 'in_progress' %}bg-amber-900/60 text-amber-300
+            {% elif st == 'pending_review' %}bg-blue-900/60 text-blue-300
+            {% elif st == 'resolved' %}bg-emerald-900/60 text-emerald-300
+            {% elif st == 'closed' %}bg-gray-700 text-gray-400
+            {% else %}bg-navy-700 text-gray-300{% endif %}">
+            {{ st.replace('_', ' ').title() }}
+        </span>
+    </td>
+    <td class="px-4 py-3 text-sm text-gray-400">
+        {{ defect.reported_at[:10] if defect.reported_at else '—' }}
+    </td>
+    <td class="px-4 py-3">
+        <div class="flex items-center gap-1">
+            <button class="p-1.5 rounded-lg hover:bg-navy-700 text-gray-400 hover:text-gold-400 transition-colors"
+                    title="View detail"
+                    hx-get="/defects-manager/defect/{{ defect.id }}/partial"
+                    hx-target="#defect-detail-panel"
+                    hx-swap="innerHTML"
+                    @click.stop>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </button>
+        </div>
+    </td>
+</tr>
+{% endfor %}
+
+{% if not defects %}
+<tr>
+    <td colspan="9" class="px-4 py-12 text-center text-gray-500">
+        No defects found. Click "Report Defect" to log a new one.
+    </td>
+</tr>
+{% endif %}

@@ -1,0 +1,118 @@
+<!-- htmx partial: guest visit history timeline -->
+<div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] max-w-2xl">
+    <!-- Guest Header -->
+    <div class="p-5 border-b border-[#2d3352]">
+        <div class="flex items-start gap-4">
+            <div class="w-14 h-14 rounded-xl bg-[#242b4a] border border-[#2d3352] flex items-center justify-center shrink-0">
+                {% if guest.photo %}
+                <img src="{{ guest.photo }}" alt="{{ guest.name }}" class="w-full h-full rounded-xl object-cover">
+                {% else %}
+                <span class="text-xl font-bold text-[#d4a843]">{{ guest.name[0] }}</span>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-semibold text-white">{{ guest.name }}</h3>
+                    {% if guest.tier == 'vvip' %}
+                    <span class="tier-vvip inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-[#d4a843]/20 text-[#d4a843] border border-[#d4a843]/30">VVIP</span>
+                    {% elif guest.tier == 'vip' %}
+                    <span class="tier-vip inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">VIP</span>
+                    {% endif %}
+                </div>
+                <p class="text-sm text-gray-400 mt-0.5">{{ guest.phone | default('—') }} · {{ guest.total_visits }} visits · Avg ${{ guest.avg_spend }}/head</p>
+
+                {% if guest.allergies %}
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                    {% for allergy in guest.allergies %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
+                        {% if allergy.severity == 'anaphylactic' %}allergy-anaphylactic bg-red-500/15 text-red-400 border border-red-500/30
+                        {% elif allergy.severity == 'severe' %}allergy-severe bg-orange-500/15 text-orange-400 border border-orange-500/30
+                        {% elif allergy.severity == 'moderate' %}allergy-moderate bg-[#d4a843]/15 text-[#d4a843] border border-[#d4a843]/30
+                        {% else %}allergy-mild bg-[#242b4a] text-gray-400 border border-[#2d3352]{% endif %}">
+                        {{ allergy.name }}{% if allergy.severity == 'anaphylactic' %} ⚠{% endif %}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <button class="p-2 rounded-lg hover:bg-[#242b4a] text-gray-400 hover:text-white transition-colors"
+                    hx-get="/sommelier-memory/guests/{{ guest.id }}/edit"
+                    hx-target="closest div.bg-\\[\\#1a1f36\\]"
+                    hx-swap="innerHTML">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Preferences Summary -->
+    {% if guest.preferences or guest.dietary_flags %}
+    <div class="px-5 py-3 border-b border-[#2d3352] bg-[#242b4a]/30">
+        <div class="flex flex-wrap gap-1.5">
+            {% for flag in guest.dietary_flags %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{{ flag }}</span>
+            {% endfor %}
+            {% for pref in guest.preferences %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-[#242b4a] text-gray-300 border border-[#2d3352]">{{ pref }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Visit Timeline -->
+    <div class="p-5">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Visit History</h4>
+
+        <div class="relative">
+            <div class="absolute left-4 top-0 bottom-0 w-px bg-[#2d3352]"></div>
+
+            <div class="space-y-6">
+                {% for visit in visits %}
+                <div class="relative flex gap-4 pl-4">
+                    <!-- Timeline dot -->
+                    <div class="absolute left-[11px] w-2.5 h-2.5 rounded-full mt-1.5 shrink-0
+                        {% if visit.is_latest %}bg-[#d4a843] shadow-[0_0_8px_rgba(212,168,67,0.3)]{% else %}bg-[#3d4466]{% endif %}">
+                    </div>
+
+                    <div class="flex-1 ml-6 bg-[#242b4a] rounded-lg p-4 border border-[#2d3352]">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-medium text-white">{{ visit.date }}</span>
+                                <span class="text-xs text-gray-500">{{ visit.time }}</span>
+                            </div>
+                            <span class="text-xs text-gray-400">{{ visit.party_size }}人 · Table {{ visit.table_label }}</span>
+                        </div>
+
+                        {% if visit.orders %}
+                        <div class="mb-2">
+                            <p class="text-xs text-gray-500 mb-1">Orders:</p>
+                            <div class="flex flex-wrap gap-1">
+                                {% for item in visit.orders %}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1f36] text-gray-400">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-500">Total: <span class="text-white font-medium">${{ visit.total_spend }}</span></span>
+                            {% if visit.notes %}
+                            <span class="text-gray-500 italic truncate ml-4">{{ visit.notes }}</span>
+                            {% endif %}
+                        </div>
+
+                        {% if visit.staff_notes %}
+                        <div class="mt-2 pt-2 border-t border-[#2d3352]">
+                            <p class="text-[10px] text-gray-600">Staff note: <span class="text-gray-400">{{ visit.staff_notes }}</span></p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="pl-12 py-4 text-center">
+                    <p class="text-sm text-gray-500">No visit history yet</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>

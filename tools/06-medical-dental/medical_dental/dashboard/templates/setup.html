@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard{% endblock %}
+
+{% block content %}
+<div x-data="{ step: 1 }" class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-[#d4a843] mb-6">First-Run Configuration</h2>
+
+    <form method="post" action="/setup/" class="space-y-6">
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="s in [1,2,3,4,5,6,7,8]">
+                <div class="flex items-center gap-2">
+                    <div :class="step >= s ? 'bg-[#d4a843] text-[#1a1f36]' : 'bg-[#2d3352] text-gray-400'"
+                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                         x-text="s"></div>
+                    <div x-show="s < 8" class="w-6 h-px" :class="step > s ? 'bg-[#d4a843]' : 'bg-[#2d3352]'"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Step 1: Clinic Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Clinic Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Clinic Name</label>
+                    <input type="text" name="clinic_name" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="e.g. 康健診所 Wellness Clinic">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">HKMA Registration Number</label>
+                    <input type="text" name="hkma_registration" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="M12345">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Phone</label>
+                    <input type="text" name="clinic_phone" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="+852 XXXX XXXX">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Address</label>
+                    <input type="text" name="clinic_address" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="Room 1201, 12/F, Central Building, Des Voeux Road Central">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Morning Hours</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="text" name="morning_start" value="09:00" class="w-20 bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-center">
+                        <span class="text-gray-500">-</span>
+                        <input type="text" name="morning_end" value="13:00" class="w-20 bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-center">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Afternoon Hours</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="text" name="afternoon_start" value="14:30" class="w-20 bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-center">
+                        <span class="text-gray-500">-</span>
+                        <input type="text" name="afternoon_end" value="18:00" class="w-20 bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-center">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Saturday Hours</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="text" name="saturday_start" value="09:00" class="w-20 bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-center">
+                        <span class="text-gray-500">-</span>
+                        <input type="text" name="saturday_end" value="13:00" class="w-20 bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-center">
+                    </div>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2 text-sm text-gray-400">
+                        <input type="checkbox" name="evening_enabled" class="w-4 h-4 rounded border-[#3d4466] bg-[#0f1225] text-[#d4a843]">
+                        Enable evening session
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Practitioners -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">Practitioners</h3>
+            <p class="text-sm text-gray-400">Add doctors after setup via the ClinicScheduler dashboard. Enter your primary practitioner details here.</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Doctor Name (English)</label>
+                    <input type="text" name="doctor_name_en" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="Dr. Ho Wing Kei">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Specialty</label>
+                    <select name="doctor_specialty" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        <option value="gp">General Practice</option>
+                        <option value="cardiology">Cardiology</option>
+                        <option value="dermatology">Dermatology</option>
+                        <option value="ent">ENT</option>
+                        <option value="orthopaedics">Orthopaedics</option>
+                        <option value="dentistry">Dentistry</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Slot Duration (min)</label>
+                    <input type="number" name="slot_duration" value="15" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Insurer Portal Credentials -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">Insurer Portal Credentials</h3>
+            <p class="text-sm text-gray-400">Provider login details for insurance verification. Can be configured later.</p>
+            <div class="space-y-4">
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium insurer-bupa">Bupa HK</h4>
+                    <input type="text" name="bupa_username" placeholder="Portal username" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    <input type="password" name="bupa_password" placeholder="Portal password" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium insurer-axa">AXA Hong Kong</h4>
+                    <input type="text" name="axa_username" placeholder="Portal username" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    <input type="password" name="axa_password" placeholder="Portal password" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium insurer-cigna">Cigna Hong Kong</h4>
+                    <input type="text" name="cigna_username" placeholder="Portal username" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    <input type="password" name="cigna_password" placeholder="Portal password" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Messaging Setup -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">Messaging Setup</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Account SID</label>
+                    <input type="text" name="twilio_sid" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="ACxxxxxxxx">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Auth Token</label>
+                    <input type="password" name="twilio_token" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">WhatsApp From Number</label>
+                    <input type="text" name="whatsapp_from" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="+852XXXXXXXX">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Telegram Bot Token</label>
+                    <input type="password" name="telegram_token" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Language</label>
+                    <select name="default_language" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        <option value="zh">繁體中文</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Fee Schedule -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">Fee Schedule</h3>
+            <p class="text-sm text-gray-400">Default HK private clinic rates. Customise for your clinic.</p>
+            <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">GP Consultation (HKD)</label>
+                        <input type="number" name="fee_gp" value="500" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Specialist (HKD)</label>
+                        <input type="number" name="fee_specialist" value="1200" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Dental Check-up (HKD)</label>
+                        <input type="number" name="fee_dental_checkup" value="800" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Dental Scaling (HKD)</label>
+                        <input type="number" name="fee_dental_scaling" value="1200" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Audio / STT Settings -->
+        <div x-show="step === 6" class="space-y-4">
+            <h3 class="text-lg font-semibold">ScribeAI — Audio Settings</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Whisper Model Size</label>
+                    <select name="whisper_model" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        <option value="small">Small (~1GB RAM, faster)</option>
+                        <option value="medium">Medium (~3GB RAM, more accurate)</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Small is recommended for 16GB M4 devices</p>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Transcription Language</label>
+                    <select name="stt_language" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        <option value="auto">Auto-detect</option>
+                        <option value="en">English</option>
+                        <option value="zh">Cantonese / Traditional Chinese</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2 text-sm text-gray-400">
+                        <input type="checkbox" name="auto_delete_audio" checked class="w-4 h-4 rounded border-[#3d4466] bg-[#0f1225] text-[#d4a843]">
+                        Auto-delete audio recordings after note finalization (PDPO compliance)
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 7: Sample Data -->
+        <div x-show="step === 7" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data</h3>
+            <div class="p-4 bg-[#242b4a] rounded-lg">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="w-4 h-4 rounded border-[#3d4466] bg-[#0f1225] text-[#d4a843] focus:ring-[#d4a843]">
+                    <div>
+                        <p class="text-sm font-medium">Seed demo data for testing</p>
+                        <p class="text-xs text-gray-400">Creates sample patients, insurance policies, appointments, medications, and consultation notes so you can explore the dashboard before going live.</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 8: Connection Test -->
+        <div x-show="step === 8" class="space-y-4">
+            <h3 class="text-lg font-semibold">Connection Test</h3>
+            <div id="connection-results" class="space-y-3"
+                 hx-get="/api/connection-test" hx-trigger="intersect once" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Testing connections...
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex justify-between pt-4 border-t border-[#2d3352]">
+            <button type="button" @click="step = Math.max(1, step-1)" x-show="step > 1"
+                    class="px-4 py-2 text-sm text-gray-300 bg-[#242b4a] rounded-lg hover:bg-[#2d3352] transition-colors">
+                Back
+            </button>
+            <div class="ml-auto">
+                <button type="button" @click="step++" x-show="step < 8"
+                        class="px-6 py-2 text-sm font-semibold text-[#1a1f36] bg-[#d4a843] rounded-lg hover:bg-[#e0be6a] transition-colors">
+                    Next
+                </button>
+                <button type="submit" x-show="step === 8"
+                        class="px-6 py-2 text-sm font-semibold text-[#1a1f36] bg-[#d4a843] rounded-lg hover:bg-[#e0be6a] transition-colors">
+                    Complete Setup
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

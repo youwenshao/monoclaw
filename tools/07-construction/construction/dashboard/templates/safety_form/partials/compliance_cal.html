@@ -1,0 +1,91 @@
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gold-400">Compliance Calendar</h3>
+        <div class="flex items-center gap-3">
+            <button class="text-gray-400 hover:text-white transition-colors" title="Previous month">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                </svg>
+            </button>
+            <span class="text-sm font-medium text-gray-200" id="cal-month-label">{{ month_label|default('March 2026') }}</span>
+            <button class="text-gray-400 hover:text-white transition-colors" title="Next month">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <!-- Day headers -->
+        <div class="grid grid-cols-7 border-b border-navy-700 bg-navy-800">
+            {% for day_name in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+            <div class="px-2 py-2 text-center text-xs font-medium text-gray-400 uppercase">{{ day_name }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Calendar grid -->
+        <div class="grid grid-cols-7">
+            {% for week in calendar_weeks|default([]) %}
+                {% for day in week %}
+                <div class="min-h-[80px] border-b border-r border-navy-800 p-1.5
+                     {% if day.is_today %}bg-navy-700/50{% elif not day.in_month %}bg-navy-950/50{% else %}bg-navy-900{% endif %}">
+                    {% if day.number %}
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-medium {% if day.is_today %}text-gold-400{% elif not day.in_month %}text-gray-600{% else %}text-gray-300{% endif %}">
+                            {{ day.number }}
+                        </span>
+                    </div>
+                    {% if day.events %}
+                        {% for event in day.events[:3] %}
+                        <div class="text-xs px-1.5 py-0.5 rounded mb-0.5 truncate
+                            {% if event.type == 'inspection' %}bg-blue-900/40 text-blue-400
+                            {% elif event.type == 'audit' %}bg-amber-900/40 text-amber-400
+                            {% elif event.type == 'renewal' %}bg-red-900/40 text-red-400
+                            {% elif event.type == 'training' %}bg-green-900/40 text-green-400
+                            {% else %}bg-navy-700 text-gray-400{% endif %}"
+                             title="{{ event.title }}">
+                            {{ event.title }}
+                        </div>
+                        {% endfor %}
+                        {% if day.events|length > 3 %}
+                        <div class="text-xs text-gray-500 px-1.5">+{{ day.events|length - 3 }} more</div>
+                        {% endif %}
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% endfor %}
+
+            {% if not calendar_weeks %}
+                {% for row in range(5) %}
+                    {% for col in range(7) %}
+                    <div class="min-h-[80px] border-b border-r border-navy-800 p-1.5 bg-navy-900">
+                        <span class="text-xs text-gray-600">—</span>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="flex items-center gap-4 text-xs">
+        <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded bg-blue-900/60 border border-blue-700/50"></span>
+            <span class="text-gray-400">Inspection</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded bg-amber-900/60 border border-amber-700/50"></span>
+            <span class="text-gray-400">Audit</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded bg-red-900/60 border border-red-700/50"></span>
+            <span class="text-gray-400">Renewal Due</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded bg-green-900/60 border border-green-700/50"></span>
+            <span class="text-gray-400">Training</span>
+        </div>
+    </div>
+</div>

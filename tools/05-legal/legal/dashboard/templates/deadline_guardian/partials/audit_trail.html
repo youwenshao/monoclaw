@@ -1,0 +1,64 @@
+{% if events %}
+<div class="space-y-0 relative">
+    {% for event in events %}
+    <div class="relative pl-8 pb-4 {% if not loop.last %}border-l-2 border-navy-600 ml-[15px]{% endif %}">
+        <!-- Timeline dot -->
+        <div class="absolute left-0 top-1 w-[32px] h-[32px] flex items-center justify-center -translate-x-[calc(50%-15px)]">
+            {% if event.type == 'created' %}
+            <div class="w-7 h-7 rounded-full bg-sky-500/15 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+            </div>
+            {% elif event.type == 'completed' %}
+            <div class="w-7 h-7 rounded-full bg-emerald-500/15 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                </svg>
+            </div>
+            {% elif event.type == 'overdue' %}
+            <div class="w-7 h-7 rounded-full bg-red-500/15 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+            </div>
+            {% elif event.type == 'updated' %}
+            <div class="w-7 h-7 rounded-full bg-amber-500/15 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                </svg>
+            </div>
+            {% elif event.type == 'reminder' %}
+            <div class="w-7 h-7 rounded-full bg-violet-500/15 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                </svg>
+            </div>
+            {% else %}
+            <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center">
+                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Event content -->
+        <div class="pt-0.5">
+            <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-medium text-gray-200">{{ event.description }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">{{ event.timestamp }}</span>
+                {% if event.user %}
+                <span class="text-xs text-gray-500">·</span>
+                <span class="text-xs text-gray-400">{{ event.user }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-6">
+    <p class="text-xs text-gray-500">No activity recorded yet.</p>
+</div>
+{% endif %}

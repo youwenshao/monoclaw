@@ -1,0 +1,36 @@
+<div class="space-y-3">
+    {% set entity_groups = [
+        ('medication', 'Medications 藥物', entities.medications | default([])),
+        ('diagnosis', 'Diagnoses 診斷', entities.diagnoses | default([])),
+        ('procedure', 'Procedures 治療', entities.procedures | default([])),
+        ('followup', 'Follow-up 覆診', entities.followups | default([])),
+    ] %}
+
+    {% for type, label, items in entity_groups %}
+    {% if items %}
+    <div>
+        <p class="text-xs text-gray-500 mb-1.5">{{ label }}</p>
+        <div class="flex flex-wrap gap-1.5">
+            {% for entity in items %}
+            <span class="entity-tag entity-{{ type }}"
+                  hx-get="/scribe-ai/api/entity/{{ entity.id }}/detail" hx-target="#entity-detail-popup" hx-swap="innerHTML"
+                  title="{{ entity.description | default('') }}">
+                {{ entity.name }}
+                {% if entity.confidence and entity.confidence < 0.8 %}
+                <svg class="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+                </svg>
+                {% endif %}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% if not entities or (not entities.medications and not entities.diagnoses and not entities.procedures and not entities.followups) %}
+    <p class="text-xs text-gray-600 py-2 text-center">No entities detected yet. 尚未識別到實體。</p>
+    {% endif %}
+
+    <div id="entity-detail-popup"></div>
+</div>

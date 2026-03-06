@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+{% block title %}SupplierBot{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Active Suppliers</div>
+    <div class="card-value">{{ supplier_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Open Orders</div>
+    <div class="card-value text-amber-400">{{ active_orders|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Unread Messages</div>
+    <div class="card-value text-red-400">{{ unread_conversations|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Pending Pings</div>
+    <div class="card-value text-green-400">{{ pending_pings|default(0) }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="supplierBotApp()" x-init="init()" class="space-y-6">
+
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-2 border-b border-navy-700 pb-2">
+        <button @click="activeSubTab = 'directory'"
+                :class="activeSubTab === 'directory' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Supplier Directory
+        </button>
+        <button @click="activeSubTab = 'composer'"
+                :class="activeSubTab === 'composer' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Message Composer
+        </button>
+        <button @click="activeSubTab = 'conversations'"
+                :class="activeSubTab === 'conversations' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Conversation History
+        </button>
+        <button @click="activeSubTab = 'orders'"
+                :class="activeSubTab === 'orders' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Order Board
+        </button>
+        <button @click="activeSubTab = 'price'"
+                :class="activeSubTab === 'price' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Price Comparison
+        </button>
+    </div>
+
+    <!-- ═══════ Supplier Directory ═══════ -->
+    <div x-show="activeSubTab === 'directory'" x-transition class="tab-section">
+        <div id="supplier-directory-container"
+             hx-get="/supplier-bot/partials/supplier-directory"
+             hx-trigger="load, supplierUpdated from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading suppliers…</p>
+        </div>
+    </div>
+
+    <!-- ═══════ Message Composer ═══════ -->
+    <div x-show="activeSubTab === 'composer'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Message Composer</h3>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Compose -->
+            <div class="card p-4 space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Supplier</label>
+                    <select x-model="composerForm.supplier_id"
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select supplier…</option>
+                        <template x-for="s in suppliers" :key="s.id">
+                            <option :value="s.id" x-text="s.company_name_cn + (s.company_name_en ? ' / ' + s.company_name_en : '')"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Message</label>
+                    <textarea x-model="composerForm.text" rows="6" placeholder="Type your message…"
+                              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+                    <p class="text-xs text-gray-500 mt-1"><span x-text="composerForm.text.length"></span> characters</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input type="checkbox" x-model="composerForm.translate"
+                               class="rounded bg-navy-900 border-navy-600 text-gold-500 focus:ring-gold-500">
+                        Auto-translate
+                    </label>
+                    <select x-model="composerForm.langDirection"
+                            class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-1 text-xs">
+                        <option value="en-zh">EN → CN</option>
+                        <option value="zh-en">CN → EN</option>
+                    </select>
+                </div>
+                <button @click="sendMessage()" :disabled="!composerForm.supplier_id || !composerForm.text.trim() || composerSending"
+                        class="btn btn-primary w-full">
+                    <span x-show="!composerSending">Send Message</span>
+                    <span x-show="composerSending" class="flex items-center justify-center gap-1">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Sending…
+                    </span>
+                </button>
+            </div>
+
+            <!-- Translation preview -->
+            <div class="card p-4">
+                <h4 class="text-sm font-semibold text-gray-300 mb-3">Translation Preview</h4>
+                <div x-show="!translationPreview" class="text-center text-gray-500 py-12">
+                    <p>Type a message and enable auto-translate to see a preview</p>
+                </div>
+                <div x-show="translationPreview" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Original</label>
+                        <div class="bg-navy-900 rounded-lg px-3 py-2 text-sm text-gray-300 whitespace-pre-wrap"
+                             x-text="translationPreview?.original || ''"></div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Translated</label>
+                        <div class="bg-navy-900 rounded-lg px-3 py-2 text-sm text-gold-400 whitespace-pre-wrap"
+                             x-text="translationPreview?.translated || ''"></div>
+                    </div>
+                </div>
+                <button @click="previewTranslation()" :disabled="!composerForm.text.trim() || translating"
+                        class="btn btn-secondary w-full mt-4">
+                    <span x-show="!translating">Preview Translation</span>
+                    <span x-show="translating">Translating…</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Conversation History ═══════ -->
+    <div x-show="activeSubTab === 'conversations'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Conversation History</h3>
+            <div class="flex items-center gap-3">
+                <label class="text-sm text-gray-400">Supplier:</label>
+                <select x-model="selectedConvSupplier" @change="loadConversations()"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm min-w-[240px]">
+                    <option value="">Select supplier…</option>
+                    <template x-for="s in suppliers" :key="s.id">
+                        <option :value="s.id" x-text="s.company_name_cn + (s.company_name_en ? ' / ' + s.company_name_en : '')"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+
+        <div class="card p-0 overflow-hidden" style="min-height: 400px;">
+            <div id="conversation-thread" class="p-4 space-y-3 overflow-auto" style="max-height: 600px;">
+                <template x-if="!selectedConvSupplier">
+                    <p class="text-center text-gray-500 py-12">Select a supplier to view messages</p>
+                </template>
+                <template x-if="selectedConvSupplier && conversations.length === 0">
+                    <p class="text-center text-gray-500 py-12">No conversations yet</p>
+                </template>
+                <template x-for="msg in conversations" :key="msg.id">
+                    <div :class="msg.direction === 'outbound' ? 'ml-auto bg-gold-500/20 border border-gold-500/30' : 'mr-auto bg-navy-800'"
+                         class="max-w-[75%] rounded-xl px-4 py-2.5">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-medium"
+                                  :class="msg.direction === 'outbound' ? 'text-gold-400' : 'text-blue-400'"
+                                  x-text="msg.direction === 'outbound' ? '→ Outbound' : '← Inbound'"></span>
+                            <span x-show="msg.message_type && msg.message_type !== 'text'"
+                                  class="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-gray-400"
+                                  x-text="msg.message_type"></span>
+                        </div>
+                        <p class="text-sm text-gray-200 whitespace-pre-wrap" x-text="msg.original_text"></p>
+                        <div x-show="msg.translated_text" class="mt-2 pt-2 border-t border-navy-600">
+                            <p class="text-xs text-gray-400 mb-0.5">Translation:</p>
+                            <p class="text-sm text-gold-300 whitespace-pre-wrap" x-text="msg.translated_text"></p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1" x-text="new Date(msg.timestamp).toLocaleString('en-HK')"></p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Order Board ═══════ -->
+    <div x-show="activeSubTab === 'orders'" x-transition class="tab-section">
+        <div id="order-board-container"
+             hx-get="/supplier-bot/partials/order-board"
+             hx-trigger="load, orderUpdated from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading orders…</p>
+        </div>
+    </div>
+
+    <!-- ═══════ Price Comparison ═══════ -->
+    <div x-show="activeSubTab === 'price'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Price Comparison</h3>
+            <div class="flex items-center gap-3">
+                <input type="text" x-model="priceSearch" placeholder="Search product…"
+                       @input.debounce.400ms="loadPriceComparison()"
+                       class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm min-w-[280px]">
+            </div>
+        </div>
+
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-navy-700 text-left text-gray-400">
+                        <th class="px-4 py-3 font-medium">Supplier</th>
+                        <th class="px-4 py-3 font-medium">Product</th>
+                        <th class="px-4 py-3 font-medium">Unit Price</th>
+                        <th class="px-4 py-3 font-medium">MOQ</th>
+                        <th class="px-4 py-3 font-medium">Lead Time</th>
+                        <th class="px-4 py-3 font-medium">Quality Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-if="priceData.length === 0">
+                        <tr>
+                            <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                                Search for a product to compare supplier prices
+                            </td>
+                        </tr>
+                    </template>
+                    <template x-for="row in priceData" :key="row.order_id">
+                        <tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+                            <td class="px-4 py-3">
+                                <div class="text-gray-200" x-text="row.company_name_cn"></div>
+                                <div class="text-xs text-gray-500" x-text="row.company_name_en || ''"></div>
+                            </td>
+                            <td class="px-4 py-3 text-gray-300" x-text="row.product_description"></td>
+                            <td class="px-4 py-3">
+                                <span class="text-gold-400 font-medium" x-text="row.unit_price ? row.currency + ' ' + row.unit_price.toFixed(2) : '—'"></span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-300" x-text="row.quantity ? row.quantity.toLocaleString() : '—'"></td>
+                            <td class="px-4 py-3 text-gray-300" x-text="row.lead_time || '—'"></td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-1">
+                                    <template x-for="i in 5">
+                                        <svg class="w-3.5 h-3.5" :class="i <= Math.round(row.reliability_score || 0) ? 'text-gold-400' : 'text-navy-700'"
+                                             fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                        </svg>
+                                    </template>
+                                    <span class="text-xs text-gray-500 ml-1" x-text="(row.reliability_score || 0).toFixed(1)"></span>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════ Add Supplier Modal ═══════ -->
+    <div x-show="showAddSupplier" x-transition
+         class="flex items-center justify-center p-4"
+         style="position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="showAddSupplier = false">
+        <div @click.outside="showAddSupplier = false"
+             class="bg-navy-800 border border-navy-700 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-semibold text-gold-400 mb-4">Add Supplier</h3>
+            <form @submit.prevent="submitNewSupplier()" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Company Name (CN) *</label>
+                        <input type="text" x-model="supplierForm.company_name_cn" required
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Company Name (EN)</label>
+                        <input type="text" x-model="supplierForm.company_name_en"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Factory Location</label>
+                        <input type="text" x-model="supplierForm.factory_location" placeholder="e.g. Shenzhen, Guangdong"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Contact Person</label>
+                        <input type="text" x-model="supplierForm.contact_person"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">WeChat ID</label>
+                        <input type="text" x-model="supplierForm.wechat_id"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Phone</label>
+                        <input type="text" x-model="supplierForm.phone" placeholder="+86…"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Product Categories (comma-separated)</label>
+                    <input type="text" x-model="supplierForm.product_categories_str" placeholder="e.g. Electronics, LED"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Payment Terms</label>
+                    <input type="text" x-model="supplierForm.payment_terms" placeholder="e.g. 30% deposit, 70% before shipping"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary" :disabled="supplierSubmitting">
+                        <span x-show="!supplierSubmitting">Add Supplier</span>
+                        <span x-show="supplierSubmitting" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Adding…
+                        </span>
+                    </button>
+                    <button type="button" @click="showAddSupplier = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('supplierBotApp', () => ({
+        activeSubTab: 'directory',
+        suppliers: [],
+        showAddSupplier: false,
+        supplierSubmitting: false,
+        supplierForm: {
+            company_name_cn: '', company_name_en: '', factory_location: '',
+            contact_person: '', wechat_id: '', phone: '',
+            product_categories_str: '', payment_terms: ''
+        },
+
+        composerForm: { supplier_id: '', text: '', translate: true, langDirection: 'en-zh' },
+        composerSending: false,
+        translationPreview: null,
+        translating: false,
+
+        selectedConvSupplier: '',
+        conversations: [],
+
+        priceSearch: '',
+        priceData: [],
+
+        async init() {
+            await this.loadSuppliers();
+        },
+
+        async loadSuppliers() {
+            const resp = await fetch('/supplier-bot/api/suppliers');
+            this.suppliers = await resp.json();
+        },
+
+        async submitNewSupplier() {
+            if (this.supplierSubmitting) return;
+            this.supplierSubmitting = true;
+            try {
+                const cats = this.supplierForm.product_categories_str
+                    ? this.supplierForm.product_categories_str.split(',').map(c => c.trim()).filter(Boolean)
+                    : null;
+                const resp = await fetch('/supplier-bot/api/suppliers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_name_cn: this.supplierForm.company_name_cn,
+                        company_name_en: this.supplierForm.company_name_en || null,
+                        factory_location: this.supplierForm.factory_location || null,
+                        contact_person: this.supplierForm.contact_person || null,
+                        wechat_id: this.supplierForm.wechat_id || null,
+                        phone: this.supplierForm.phone || null,
+                        product_categories: cats,
+                        payment_terms: this.supplierForm.payment_terms || null
+                    })
+                });
+                const data = await resp.json();
+                if (data.supplier_id) {
+                    this.showAddSupplier = false;
+                    this.supplierForm = {
+                        company_name_cn: '', company_name_en: '', factory_location: '',
+                        contact_person: '', wechat_id: '', phone: '',
+                        product_categories_str: '', payment_terms: ''
+                    };
+                    await this.loadSuppliers();
+                    htmx.trigger(document.body, 'supplierUpdated');
+                }
+            } catch (e) { alert('Failed to add supplier: ' + e.message); }
+            this.supplierSubmitting = false;
+        },
+
+        async sendMessage() {
+            if (this.composerSending) return;
+            this.composerSending = true;
+            try {
+                const resp = await fetch('/supplier-bot/api/send-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        supplier_id: parseInt(this.composerForm.supplier_id),
+                        text: this.composerForm.text,
+                        translate: this.composerForm.translate
+                    })
+                });
+                const data = await resp.json();
+                if (data.message_id) {
+                    if (data.translated_text) {
+                        this.translationPreview = { original: data.original_text, translated: data.translated_text };
+                    }
+                    this.composerForm.text = '';
+                }
+            } catch (e) { alert('Failed to send: ' + e.message); }
+            this.composerSending = false;
+        },
+
+        async previewTranslation() {
+            if (!this.composerForm.text.trim()) return;
+            this.translating = true;
+            try {
+                const [src, tgt] = this.composerForm.langDirection.split('-');
+                const resp = await fetch('/supplier-bot/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: this.composerForm.text, source_lang: src, target_lang: tgt })
+                });
+                this.translationPreview = await resp.json();
+            } catch (e) { console.error('Translation failed:', e); }
+            this.translating = false;
+        },
+
+        async loadConversations() {
+            if (!this.selectedConvSupplier) { this.conversations = []; return; }
+            const resp = await fetch(`/supplier-bot/api/conversations/${this.selectedConvSupplier}`);
+            const data = await resp.json();
+            this.conversations = data.reverse();
+        },
+
+        async loadPriceComparison() {
+            if (!this.priceSearch.trim()) { this.priceData = []; return; }
+            const resp = await fetch('/supplier-bot/api/orders');
+            const all = await resp.json();
+            const q = this.priceSearch.toLowerCase();
+            this.priceData = all
+                .filter(o => (o.product_description || '').toLowerCase().includes(q))
+                .map(o => ({
+                    order_id: o.id,
+                    company_name_cn: o.company_name_cn || '',
+                    company_name_en: o.company_name_en || '',
+                    product_description: o.product_description || '',
+                    unit_price: o.unit_price,
+                    currency: o.currency || 'USD',
+                    quantity: o.quantity,
+                    lead_time: o.expected_delivery ? Math.ceil((new Date(o.expected_delivery) - new Date(o.order_date)) / 86400000) + ' days' : null,
+                    reliability_score: 5.0
+                }));
+        },
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }));
+});
+</script>
+{% endblock %}

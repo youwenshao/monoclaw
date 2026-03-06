@@ -1,0 +1,65 @@
+tool_name: academic
+version: "1.0.0"
+port: 8509
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/academic"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Researcher profile (set during first-run wizard)
+  researcher_name_en: ""
+  researcher_name_tc: ""
+  institution: ""
+  department: ""
+  research_areas: ""
+  appointment_date: ""
+  orcid: ""
+  google_scholar_id: ""
+
+  # PaperSieve settings
+  chroma_collection: "paper_sieve"
+  chunk_size_tokens: 500
+  chunk_overlap_tokens: 50
+  embedding_model: "paraphrase-multilingual-MiniLM-L12-v2"
+  watched_folders: []
+
+  # CiteBot settings
+  default_citation_style: "apa7"
+  doi_check_delay_ms: 100
+  crossref_email: ""
+
+  # TranslateAssist settings
+  default_source_language: "tc"
+  default_target_language: "en"
+  selected_domains:
+    - "general"
+  translation_context_paragraphs: 1
+
+  # GrantTracker settings
+  grant_schemes:
+    - "RGC"
+    - "ITF"
+    - "NSFC"
+  institutional_deadline_offset_days: -21
+  reminder_days: [60, 30, 14, 7, 3]
+  ra_salary_monthly_hkd: 18000
+  postdoc_salary_monthly_hkd: 33000

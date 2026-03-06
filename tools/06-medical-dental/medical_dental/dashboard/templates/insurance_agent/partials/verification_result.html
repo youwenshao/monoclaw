@@ -1,0 +1,61 @@
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5 space-y-4">
+    <div class="flex items-start justify-between">
+        <div>
+            <h4 class="text-base font-semibold text-gray-100">{{ patient.name }}</h4>
+            <p class="text-xs text-gray-400 mt-0.5">{{ patient.phone }} · HKID {{ patient.hkid_masked }}</p>
+        </div>
+        <span class="policy-{{ policy.status | default('unknown') }} text-xs font-semibold px-2.5 py-1 rounded-full uppercase">
+            {{ policy.status | default('Unknown') }}
+        </span>
+    </div>
+
+    {% if policy %}
+    <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+            <p class="text-xs text-gray-500 mb-1">Insurer 保險公司</p>
+            <p class="text-gray-200 font-medium insurer-{{ policy.insurer | lower | default('') }}">{{ policy.insurer }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 mb-1">Policy No. 保單號碼</p>
+            <p class="text-gray-200 font-medium">{{ policy.policy_number }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 mb-1">Benefit Limit 保障額度</p>
+            <p class="text-gray-200 font-medium">HK${{ "{:,.0f}".format(policy.benefit_limit | default(0)) }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 mb-1">Remaining 剩餘額度</p>
+            <p class="text-gray-200 font-medium {% if policy.remaining < policy.benefit_limit * 0.2 %}text-red-400{% endif %}">
+                HK${{ "{:,.0f}".format(policy.remaining | default(0)) }}
+            </p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 mb-1">Valid Period 有效期</p>
+            <p class="text-gray-200">{{ policy.valid_from }} — {{ policy.valid_to }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 mb-1">Co-pay Rate 自付比例</p>
+            <p class="text-gray-200 font-medium">{{ policy.copay_rate | default(20) }}%</p>
+        </div>
+    </div>
+
+    {% if policy.notes %}
+    <div class="bg-[#242b4a] rounded-md px-3 py-2 text-xs text-amber-300">
+        <span class="font-semibold">Note:</span> {{ policy.notes }}
+    </div>
+    {% endif %}
+
+    <div class="flex gap-2 pt-2">
+        <button hx-post="/insurance-agent/api/verify/{{ patient.id }}" hx-target="#verification-result" hx-swap="innerHTML"
+                class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+            Verify Now 立即驗證
+        </button>
+        <button onclick="document.getElementById('copay-patient-id').value='{{ patient.id }}'"
+                class="bg-[#2d3352] text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#3d4466] transition-colors">
+            Estimate Co-pay 估算自付額
+        </button>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 py-4">No policy found for this patient. 未找到該病人的保單。</p>
+    {% endif %}
+</div>

@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% block title %}StudyBuddy{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Courses</div>
+    <div class="card-value">{{ course_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Documents</div>
+    <div class="card-value">{{ doc_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Flashcards Due</div>
+    <div class="card-value text-amber-400">{{ flashcards_due|default(0) }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="studyBuddyApp()" x-init="init()" class="space-y-6">
+
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-2 border-b border-navy-700 pb-2">
+        <template x-for="tab in tabs" :key="tab.id">
+            <button @click="activeSubTab = tab.id"
+                    :class="activeSubTab === tab.id ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    x-text="tab.label">
+            </button>
+        </template>
+    </div>
+
+    <!-- ═══════ Courses Tab ═══════ -->
+    <div x-show="activeSubTab === 'courses'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">My Courses</h3>
+            <button @click="newCourseModal = true" class="btn btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Course
+            </button>
+        </div>
+
+        <div id="course-browser"
+             hx-get="/study-buddy/course-browser/partial"
+             hx-trigger="load, courseUpdated from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-8">Loading courses...</p>
+        </div>
+
+        <!-- Upload section -->
+        <div class="mt-6" x-show="selectedCourseId">
+            <h4 class="text-md font-semibold text-gray-300 mb-3">
+                Documents for <span class="text-gold-400" x-text="selectedCourseName"></span>
+            </h4>
+            <div id="document-uploader"
+                 hx-get="/study-buddy/document-uploader/partial"
+                 hx-trigger="courseSelected from:body"
+                 hx-swap="innerHTML"
+                 hx-vals="js:{course_id: document.querySelector('[x-data]').__x.$data.selectedCourseId}">
+            </div>
+            <div class="card p-4 mt-3 border-2 border-dashed border-navy-600 hover:border-gold-500/50 transition-colors">
+                <form @submit.prevent="uploadFile()" enctype="multipart/form-data" class="text-center">
+                    <input type="file" x-ref="fileInput" @change="selectedFile = $event.target.files[0]"
+                           accept=".pdf,.pptx,.docx,.txt,.md"
+                           class="hidden">
+                    <div @click="$refs.fileInput.click()"
+                         @dragover.prevent="dragOver = true"
+                         @dragleave="dragOver = false"
+                         @drop.prevent="dragOver = false; selectedFile = $event.dataTransfer.files[0]"
+                         :class="dragOver ? 'bg-navy-700' : ''"
+                         class="cursor-pointer py-6 rounded-lg transition-colors">
+                        <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                        </svg>
+                        <p class="text-sm text-gray-400" x-show="!selectedFile">Drop files here or click to browse</p>
+                        <p class="text-sm text-gold-400" x-show="selectedFile" x-text="selectedFile?.name"></p>
+                    </div>
+                    <button type="submit" x-show="selectedFile" :disabled="uploading"
+                            class="btn btn-primary mt-3">
+                        <span x-show="!uploading">Upload</span>
+                        <span x-show="uploading" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Uploading...
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Search Tab ═══════ -->
+    <div x-show="activeSubTab === 'search'" x-transition class="tab-section">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Semantic Search</h3>
+        <div class="flex gap-3 mb-4">
+            <input type="text" x-model="searchQuery" placeholder="Search your course materials..."
+                   @keydown.enter="doSearch()"
+                   class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-4 py-2.5 text-sm">
+            <select x-model="searchCourseId"
+                    class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-sm min-w-[180px]">
+                <option value="">All Courses</option>
+                <template x-for="c in courses" :key="c.id">
+                    <option :value="c.id" x-text="c.course_code + ' — ' + c.course_name"></option>
+                </template>
+            </select>
+            <button @click="doSearch()" :disabled="!searchQuery.trim()" class="btn btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                Search
+            </button>
+        </div>
+        <div id="search-results"
+             hx-get="/study-buddy/search-results/partial"
+             hx-trigger="searchTriggered from:body"
+             hx-swap="innerHTML"
+             hx-include="[name='search_query'],[name='search_course_id']">
+        </div>
+        <input type="hidden" name="search_query" :value="searchQuery">
+        <input type="hidden" name="search_course_id" :value="searchCourseId">
+    </div>
+
+    <!-- ═══════ Q&A Tab ═══════ -->
+    <div x-show="activeSubTab === 'qa'" x-transition class="tab-section">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Ask Your Materials</h3>
+        <div class="card p-0 overflow-hidden" style="min-height: 400px;">
+            <div id="qa-messages" class="p-4 space-y-4 overflow-auto" style="max-height: 500px;">
+                <p class="text-center text-gray-500 py-12">Ask a question about your study materials</p>
+            </div>
+            <div class="border-t border-navy-700 p-3 flex gap-2">
+                <select x-model="qaCourseId"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-2 text-xs min-w-[140px]">
+                    <option value="">All Courses</option>
+                    <template x-for="c in courses" :key="c.id">
+                        <option :value="c.id" x-text="c.course_code"></option>
+                    </template>
+                </select>
+                <input type="text" x-model="qaQuery" placeholder="Ask a question..."
+                       @keydown.enter="askQuestion()"
+                       class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                <button @click="askQuestion()" :disabled="!qaQuery.trim() || qaLoading" class="btn btn-primary text-sm">
+                    <span x-show="!qaLoading">Ask</span>
+                    <span x-show="qaLoading" class="flex items-center gap-1">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Thinking...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Flashcards Tab ═══════ -->
+    <div x-show="activeSubTab === 'flashcards'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Flashcard Review</h3>
+            <div class="flex items-center gap-3">
+                <select x-model="flashcardCourseId" @change="loadFlashcard()"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm">
+                    <option value="">All Courses</option>
+                    <template x-for="c in courses" :key="c.id">
+                        <option :value="c.id" x-text="c.course_code + ' — ' + c.course_name"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+        <div id="flashcard-area"
+             hx-get="/study-buddy/flashcard-review/partial"
+             hx-trigger="load, flashcardUpdated from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-8">Loading flashcards...</p>
+        </div>
+    </div>
+
+    <!-- ═══════ Summaries Tab ═══════ -->
+    <div x-show="activeSubTab === 'summaries'" x-transition class="tab-section">
+        <h3 class="text-lg font-semibold text-gold-400 mb-4">Document Summaries</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Course</label>
+                <select x-model="summaryCourseId" @change="loadSummaryDocs()"
+                        class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Course...</option>
+                    <template x-for="c in courses" :key="c.id">
+                        <option :value="c.id" x-text="c.course_code + ' — ' + c.course_name"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Document</label>
+                <select x-model="summaryDocId"
+                        class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Document...</option>
+                    <template x-for="d in summaryDocs" :key="d.id">
+                        <option :value="d.id" x-text="d.title || d.filename"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Detail Level</label>
+                <div class="flex gap-2">
+                    <select x-model="summaryLevel"
+                            class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="brief">Brief</option>
+                        <option value="detailed">Detailed</option>
+                        <option value="key_concepts">Key Concepts</option>
+                    </select>
+                    <button @click="generateSummary()" :disabled="!summaryDocId || summaryLoading"
+                            class="btn btn-primary">
+                        <span x-show="!summaryLoading">Generate</span>
+                        <span x-show="summaryLoading" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="summary-viewer">
+        </div>
+    </div>
+
+    <!-- ═══════ New Course Modal ═══════ -->
+    <div x-show="newCourseModal" x-transition
+         class="flex items-center justify-center p-4"
+         style="position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="newCourseModal = false">
+        <div @click.outside="newCourseModal = false"
+             class="bg-navy-800 border border-navy-700 rounded-xl p-6 w-full max-w-lg">
+            <h3 class="text-xl font-semibold text-gold-400 mb-4">Add Course</h3>
+            <form @submit.prevent="submitCourse()" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Course Code *</label>
+                        <input type="text" x-model="courseForm.course_code" required placeholder="e.g. CS101"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Course Name *</label>
+                        <input type="text" x-model="courseForm.course_name" required placeholder="e.g. Intro to CS"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Semester</label>
+                        <input type="text" x-model="courseForm.semester" placeholder="e.g. 2025-26 Sem 2"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Instructor</label>
+                        <input type="text" x-model="courseForm.instructor"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary" :disabled="courseSubmitting">
+                        <span x-show="!courseSubmitting">Create Course</span>
+                        <span x-show="courseSubmitting">Creating...</span>
+                    </button>
+                    <button type="button" @click="newCourseModal = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('studyBuddyApp', () => ({
+        tabs: [
+            { id: 'courses', label: 'Courses' },
+            { id: 'search', label: 'Search' },
+            { id: 'qa', label: 'Q&A' },
+            { id: 'flashcards', label: 'Flashcards' },
+            { id: 'summaries', label: 'Summaries' },
+        ],
+        activeSubTab: 'courses',
+        courses: [],
+        newCourseModal: false,
+        courseSubmitting: false,
+        courseForm: { course_code: '', course_name: '', semester: '', instructor: '' },
+
+        selectedCourseId: '',
+        selectedCourseName: '',
+        selectedFile: null,
+        uploading: false,
+        dragOver: false,
+
+        searchQuery: '',
+        searchCourseId: '',
+
+        qaQuery: '',
+        qaCourseId: '',
+        qaLoading: false,
+
+        flashcardCourseId: '',
+
+        summaryCourseId: '',
+        summaryDocId: '',
+        summaryLevel: 'detailed',
+        summaryDocs: [],
+        summaryLoading: false,
+
+        async init() {
+            await this.loadCourses();
+        },
+
+        async loadCourses() {
+            try {
+                const resp = await fetch('/study-buddy/courses');
+                this.courses = await resp.json();
+            } catch (e) { console.error('Failed to load courses:', e); }
+        },
+
+        selectCourse(id, name) {
+            this.selectedCourseId = id;
+            this.selectedCourseName = name;
+            htmx.ajax('GET', `/study-buddy/document-uploader/partial?course_id=${id}`, '#document-uploader');
+        },
+
+        async submitCourse() {
+            if (this.courseSubmitting) return;
+            this.courseSubmitting = true;
+            try {
+                const resp = await fetch('/study-buddy/courses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.courseForm)
+                });
+                const data = await resp.json();
+                if (data.course_id) {
+                    this.newCourseModal = false;
+                    this.courseForm = { course_code: '', course_name: '', semester: '', instructor: '' };
+                    await this.loadCourses();
+                    htmx.trigger(document.body, 'courseUpdated');
+                }
+            } catch (e) { alert('Failed to create course: ' + e.message); }
+            this.courseSubmitting = false;
+        },
+
+        async uploadFile() {
+            if (!this.selectedFile || !this.selectedCourseId) return;
+            this.uploading = true;
+            try {
+                const form = new FormData();
+                form.append('file', this.selectedFile);
+                form.append('course_id', this.selectedCourseId);
+                const resp = await fetch('/study-buddy/upload', { method: 'POST', body: form });
+                const data = await resp.json();
+                if (data.document_id) {
+                    this.selectedFile = null;
+                    htmx.ajax('GET', `/study-buddy/document-uploader/partial?course_id=${this.selectedCourseId}`, '#document-uploader');
+                    htmx.trigger(document.body, 'courseUpdated');
+                }
+            } catch (e) { alert('Upload failed: ' + e.message); }
+            this.uploading = false;
+        },
+
+        doSearch() {
+            if (!this.searchQuery.trim()) return;
+            const params = new URLSearchParams({ query: this.searchQuery });
+            if (this.searchCourseId) params.set('course_id', this.searchCourseId);
+            htmx.ajax('GET', `/study-buddy/search-results/partial?${params}`, '#search-results');
+        },
+
+        async askQuestion() {
+            if (!this.qaQuery.trim() || this.qaLoading) return;
+            this.qaLoading = true;
+            const container = document.getElementById('qa-messages');
+
+            container.innerHTML += `<div class="max-w-[75%] ml-auto bg-gold-500/20 border border-gold-500/30 rounded-xl px-4 py-2.5">
+                <p class="text-sm text-gray-200">${this.escapeHtml(this.qaQuery)}</p>
+            </div>`;
+
+            try {
+                const resp = await fetch('/study-buddy/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query_text: this.qaQuery, course_id: this.qaCourseId ? parseInt(this.qaCourseId) : null })
+                });
+                const data = await resp.json();
+
+                let citHtml = '';
+                if (data.citations && data.citations.length) {
+                    citHtml = '<div class="mt-2 pt-2 border-t border-navy-600"><p class="text-xs text-gray-500 mb-1">Sources:</p>';
+                    data.citations.forEach(c => {
+                        citHtml += `<p class="text-xs text-gray-400">• ${this.escapeHtml(c.document_title || '')} p.${c.page_number}</p>`;
+                    });
+                    citHtml += '</div>';
+                }
+
+                container.innerHTML += `<div class="max-w-[85%] mr-auto bg-navy-800 rounded-xl px-4 py-2.5">
+                    <p class="text-sm text-gray-200 whitespace-pre-wrap">${this.escapeHtml(data.answer || 'No answer generated.')}</p>
+                    ${citHtml}
+                </div>`;
+            } catch (e) {
+                container.innerHTML += `<div class="max-w-[85%] mr-auto bg-red-900/30 border border-red-700 rounded-xl px-4 py-2.5">
+                    <p class="text-sm text-red-300">Error: ${this.escapeHtml(e.message)}</p>
+                </div>`;
+            }
+
+            this.qaQuery = '';
+            this.qaLoading = false;
+            container.scrollTop = container.scrollHeight;
+        },
+
+        loadFlashcard() {
+            const params = this.flashcardCourseId ? `?course_id=${this.flashcardCourseId}` : '';
+            htmx.ajax('GET', `/study-buddy/flashcard-review/partial${params}`, '#flashcard-area');
+        },
+
+        async loadSummaryDocs() {
+            if (!this.summaryCourseId) { this.summaryDocs = []; return; }
+            try {
+                const resp = await fetch(`/study-buddy/documents?course_id=${this.summaryCourseId}`);
+                this.summaryDocs = await resp.json();
+            } catch (e) { this.summaryDocs = []; }
+        },
+
+        async generateSummary() {
+            if (!this.summaryDocId || this.summaryLoading) return;
+            this.summaryLoading = true;
+            try {
+                const resp = await fetch('/study-buddy/summary/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ document_id: parseInt(this.summaryDocId), detail_level: this.summaryLevel })
+                });
+                const data = await resp.json();
+                const params = new URLSearchParams({ summary: data.summary || '', detail_level: data.detail_level || '' });
+                htmx.ajax('GET', `/study-buddy/summary-viewer/partial?${params}`, '#summary-viewer');
+            } catch (e) { alert('Summary generation failed: ' + e.message); }
+            this.summaryLoading = false;
+        },
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }));
+});
+</script>
+{% endblock %}

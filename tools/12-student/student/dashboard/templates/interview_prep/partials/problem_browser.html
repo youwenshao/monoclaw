@@ -1,0 +1,26 @@
+<div class="space-y-2">
+    {% for p in problems %}
+    <button onclick="selectProblem({{ p.id }})"
+            class="w-full text-left px-4 py-3 rounded-lg bg-navy-800 hover:bg-navy-700 transition-colors group flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            {% if p.solved %}
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">✓</span>
+            {% else %}
+            <span class="w-5 h-5 rounded-full bg-navy-700 flex items-center justify-center text-xs text-gray-500">○</span>
+            {% endif %}
+            <div>
+                <p class="text-sm font-medium text-white group-hover:text-gold-400">{{ p.title }}</p>
+                <p class="text-xs text-gray-500">{{ p.topic }}{% if p.subtopic %} · {{ p.subtopic }}{% endif %}</p>
+            </div>
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded
+              {% if p.difficulty == 'easy' %}bg-emerald-500/20 text-emerald-400
+              {% elif p.difficulty == 'medium' %}bg-amber-500/20 text-amber-400
+              {% else %}bg-red-500/20 text-red-400{% endif %}">{{ p.difficulty }}</span>
+    </button>
+    {% endfor %}
+
+    {% if not problems %}
+    <p class="text-sm text-gray-500 text-center py-8">No problems found. Run setup to seed demo data.</p>
+    {% endif %}
+</div>

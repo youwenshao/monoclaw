@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting Room 候診室 — MonoClaw</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4/cdn.min.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body { background: #0a0e1a; }
+        .queue-number { font-size: 5rem; font-weight: 800; line-height: 1; }
+        .now-serving-number { font-size: 10rem; font-weight: 900; line-height: 1; }
+        @keyframes fade-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .serving-pulse { animation: fade-pulse 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="h-full text-gray-100 overflow-hidden">
+    <div class="h-full flex flex-col" hx-get="/clinic-scheduler/api/waiting-room" hx-trigger="load, every 5s" hx-target="#queue-display" hx-swap="innerHTML">
+
+        <!-- Header -->
+        <div class="bg-[#1a1f36] border-b border-[#2d3352] px-8 py-4 flex items-center justify-between shrink-0">
+            <div>
+                <h1 class="text-2xl font-bold text-[#d4a843]">MonoClaw Clinic</h1>
+                <p class="text-sm text-gray-400">Waiting Room Queue 候診室輪候</p>
+            </div>
+            <div class="text-right">
+                <p class="text-3xl font-bold text-gray-100" id="current-time"></p>
+                <p class="text-sm text-gray-400" id="current-date"></p>
+            </div>
+        </div>
+
+        <!-- Main display -->
+        <div id="queue-display" class="flex-1 flex">
+            <!-- Now Serving (left half) -->
+            <div class="flex-1 flex flex-col items-center justify-center border-r border-[#2d3352] px-8">
+                <p class="text-lg text-gray-400 uppercase tracking-widest mb-4">Now Serving 現正服務</p>
+                <div class="walkin-display serving-pulse">
+                    <div class="now-serving-number text-[#d4a843]">{{ now_serving.number | default('—') }}</div>
+                    <p class="text-2xl text-gray-300 mt-4">{{ now_serving.name | default('') }}</p>
+                    <p class="text-base text-gray-500 mt-2">{{ now_serving.service | default('') }}</p>
+                </div>
+            </div>
+
+            <!-- Queue list (right half) -->
+            <div class="flex-1 flex flex-col px-8 py-6">
+                <div class="flex items-center justify-between mb-6">
+                    <p class="text-lg text-gray-400 uppercase tracking-widest">Queue 輪候</p>
+                    <p class="text-sm text-gray-500">
+                        <span id="queue-total">{{ queue | length | default(0) }}</span> waiting 等候中
+                    </p>
+                </div>
+
+                <div class="flex-1 space-y-3 overflow-hidden">
+                    {% for item in queue | default([]) %}
+                    <div class="flex items-center justify-between bg-[#1a1f36] border border-[#2d3352] rounded-xl px-6 py-4">
+                        <div class="flex items-center gap-6">
+                            <span class="queue-number text-[#d4a843]">{{ item.number }}</span>
+                            <div>
+                                <p class="text-xl text-gray-100 font-semibold">{{ item.name }}</p>
+                                <p class="text-sm text-gray-500">{{ item.service }}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-bold text-gray-300">~{{ item.est_wait }}<span class="text-base font-normal text-gray-500"> min</span></p>
+                            <p class="text-xs text-gray-600">Est. wait 預計等候</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="flex items-center justify-center h-full">
+                        <p class="text-2xl text-gray-600">No patients waiting 暫無等候病人</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer ticker -->
+        <div class="bg-[#1a1f36] border-t border-[#2d3352] px-8 py-3 shrink-0">
+            <div class="flex items-center gap-6 text-sm text-gray-500">
+                <span class="status-dot green"></span>
+                <span>System Online 系統運作正常</span>
+                <span class="mx-4">|</span>
+                <span>Please wait for your number to be called. 請等候叫號。</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            var now = new Date();
+            var el = document.getElementById('current-time');
+            var dateEl = document.getElementById('current-date');
+            if (el) el.textContent = now.toLocaleTimeString('en-HK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (dateEl) dateEl.textContent = now.toLocaleDateString('zh-HK', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>

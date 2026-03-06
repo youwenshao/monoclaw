@@ -1,0 +1,220 @@
+<form hx-post="/social-sync/posts" hx-swap="none"
+      x-data="{
+          platforms: [],
+          hashtags: [],
+          uploading: false,
+          imagePaths: [],
+          videoPath: '',
+          scheduleMode: false,
+          loadingTags: false,
+          togglePlatform(p) {
+              const i = this.platforms.indexOf(p);
+              i === -1 ? this.platforms.push(p) : this.platforms.splice(i, 1);
+          }
+      }"
+      @htmx:after-request.window="if(event.detail.successful) { $el.reset(); imagePaths=[]; videoPath=''; hashtags=[]; platforms=[]; $dispatch('notify', {message:'Post saved!'}); }">
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: Editor -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Caption (English)</label>
+                <textarea name="content_text" rows="5"
+                          class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843] outline-none resize-none"
+                          placeholder="Write your post caption..."
+                          @input.debounce.500ms="loadingTags=true; fetch(`/social-sync/hashtags/suggest?text=${encodeURIComponent($el.value)}`).then(r=>r.json()).then(d=>{hashtags=d.hashtags; loadingTags=false;})"></textarea>
+
+                <label class="block text-sm font-medium text-gray-300 mb-2 mt-4">Caption (繁體中文) <span class="text-gray-500">— optional</span></label>
+                <textarea name="content_text_tc" rows="3"
+                          class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843] outline-none resize-none"
+                          placeholder="輸入繁體中文字幕..."></textarea>
+            </div>
+
+            <!-- Media Upload -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+                <label class="block text-sm font-medium text-gray-300 mb-3">Media</label>
+                <div class="border-2 border-dashed border-[#2d3352] rounded-lg p-8 text-center hover:border-[#d4a843] transition-colors cursor-pointer"
+                     @click="$refs.fileInput.click()"
+                     @dragover.prevent="$el.classList.add('border-[#d4a843]')"
+                     @dragleave.prevent="$el.classList.remove('border-[#d4a843]')"
+                     @drop.prevent="
+                         $el.classList.remove('border-[#d4a843]');
+                         const f = $event.dataTransfer.files[0];
+                         if (f) {
+                             uploading = true;
+                             const fd = new FormData(); fd.append('file', f);
+                             fetch('/social-sync/media/upload', {method:'POST', body:fd})
+                                 .then(r=>r.json())
+                                 .then(d => { if(f.type.startsWith('video')) videoPath=d.path; else imagePaths.push(d.path); uploading=false; });
+                         }
+                     ">
+                    <input type="file" x-ref="fileInput" class="hidden" accept="image/*,video/*"
+                           @change="
+                               uploading = true;
+                               const f = $refs.fileInput.files[0];
+                               const fd = new FormData(); fd.append('file', f);
+                               fetch('/social-sync/media/upload', {method:'POST', body:fd})
+                                   .then(r=>r.json())
+                                   .then(d => { if(f.type.startsWith('video')) videoPath=d.path; else imagePaths.push(d.path); uploading=false; });
+                           ">
+                    <svg class="w-10 h-10 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                    </svg>
+                    <p class="text-sm text-gray-400" x-show="!uploading">Click or drag to upload image/video</p>
+                    <p class="text-sm text-[#d4a843]" x-show="uploading">Uploading...</p>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mt-3" x-show="imagePaths.length > 0 || videoPath">
+                    <template x-for="(p, i) in imagePaths" :key="i">
+                        <span class="inline-flex items-center gap-1 bg-[#2d3352] text-xs text-gray-300 px-2 py-1 rounded">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91"/></svg>
+                            Image <span x-text="i+1"></span>
+                            <button type="button" @click="imagePaths.splice(i,1)" class="text-red-400 hover:text-red-300">&times;</button>
+                        </span>
+                    </template>
+                    <span x-show="videoPath" class="inline-flex items-center gap-1 bg-[#2d3352] text-xs text-gray-300 px-2 py-1 rounded">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+                        Video
+                        <button type="button" @click="videoPath=''" class="text-red-400 hover:text-red-300">&times;</button>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Hashtags -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+                <label class="block text-sm font-medium text-gray-300 mb-3">Hashtag Suggestions</label>
+                <div class="flex flex-wrap gap-2" x-show="hashtags.length > 0">
+                    <template x-for="tag in hashtags" :key="tag">
+                        <button type="button"
+                                class="text-xs px-2.5 py-1 rounded-full border border-[#2d3352] text-gray-300 hover:border-[#d4a843] hover:text-[#d4a843] transition-colors"
+                                x-text="tag"></button>
+                    </template>
+                </div>
+                <p class="text-xs text-gray-500 mt-2" x-show="hashtags.length === 0 && !loadingTags">Start typing your caption to get suggestions</p>
+                <p class="text-xs text-[#d4a843]" x-show="loadingTags">Loading suggestions...</p>
+            </div>
+
+            <!-- CTA -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+                <label class="block text-sm font-medium text-gray-300 mb-3">Call to Action</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <input type="text" name="cta_text"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843] outline-none"
+                               placeholder="Button text (e.g. Order Now)">
+                    </div>
+                    <div>
+                        <input type="text" name="cta_link"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843] outline-none"
+                               placeholder="Link (wa.me/852... or URL)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Platform & Schedule -->
+        <div class="space-y-4">
+            <!-- Platforms -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+                <label class="block text-sm font-medium text-gray-300 mb-3">Publish To</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242b4a] cursor-pointer transition-colors"
+                           :class="platforms.includes('instagram_feed') && 'bg-[#242b4a] ring-1 ring-[#d4a843]'">
+                        <input type="checkbox" class="hidden" @change="togglePlatform('instagram_feed')">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C16.67.014 16.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-200">Instagram Feed</p>
+                            <p class="text-xs text-gray-500">1080×1080 photo post</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242b4a] cursor-pointer transition-colors"
+                           :class="platforms.includes('instagram_story') && 'bg-[#242b4a] ring-1 ring-[#d4a843]'">
+                        <input type="checkbox" class="hidden" @change="togglePlatform('instagram_story')">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8m-4-4h8"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-200">Instagram Story</p>
+                            <p class="text-xs text-gray-500">1080×1920 vertical</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242b4a] cursor-pointer transition-colors"
+                           :class="platforms.includes('instagram_reel') && 'bg-[#242b4a] ring-1 ring-[#d4a843]'">
+                        <input type="checkbox" class="hidden" @change="togglePlatform('instagram_reel')">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-200">Instagram Reel</p>
+                            <p class="text-xs text-gray-500">Short video (up to 90s)</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242b4a] cursor-pointer transition-colors"
+                           :class="platforms.includes('facebook_page') && 'bg-[#242b4a] ring-1 ring-[#d4a843]'">
+                        <input type="checkbox" class="hidden" @change="togglePlatform('facebook_page')">
+                        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-200">Facebook Page</p>
+                            <p class="text-xs text-gray-500">1200×630 link/photo post</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242b4a] cursor-pointer transition-colors"
+                           :class="platforms.includes('whatsapp_status') && 'bg-[#242b4a] ring-1 ring-[#d4a843]'">
+                        <input type="checkbox" class="hidden" @change="togglePlatform('whatsapp_status')">
+                        <div class="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-200">WhatsApp Status</p>
+                            <p class="text-xs text-gray-500">Manual post + broadcast</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Schedule -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-sm font-medium text-gray-300">Schedule</label>
+                    <button type="button" @click="scheduleMode = !scheduleMode"
+                            :class="scheduleMode ? 'bg-[#d4a843] text-[#1a1f36]' : 'bg-[#2d3352] text-gray-400'"
+                            class="text-xs px-3 py-1 rounded-full font-medium transition-colors">
+                        <span x-text="scheduleMode ? 'ON' : 'OFF'"></span>
+                    </button>
+                </div>
+                <div x-show="scheduleMode" x-transition class="space-y-3">
+                    <input type="datetime-local" name="scheduled_time"
+                           :value="'{{ suggested_time }}'"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843] outline-none">
+                    <p class="text-xs text-gray-500">Suggested: next HK optimal time slot</p>
+                </div>
+            </div>
+
+            <!-- Hidden fields for JSON arrays -->
+            <input type="hidden" name="image_paths" :value="JSON.stringify(imagePaths)">
+            <input type="hidden" name="video_path" :value="videoPath">
+            <input type="hidden" name="hashtags" :value="JSON.stringify(hashtags)">
+            <input type="hidden" name="platforms" :value="JSON.stringify(platforms)">
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <button type="submit"
+                        class="flex-1 bg-[#d4a843] hover:bg-[#c49a3a] text-[#1a1f36] font-semibold py-3 px-4 rounded-xl text-sm transition-colors"
+                        x-text="scheduleMode ? 'Schedule Post' : 'Publish Now'">
+                </button>
+                <button type="button"
+                        class="bg-[#2d3352] hover:bg-[#3d4562] text-gray-300 font-medium py-3 px-4 rounded-xl text-sm transition-colors">
+                    Save Draft
+                </button>
+            </div>
+        </div>
+    </div>
+</form>

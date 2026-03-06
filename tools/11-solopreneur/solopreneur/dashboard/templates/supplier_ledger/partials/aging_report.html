@@ -1,0 +1,122 @@
+{% macro aging_section(title, data, color_prefix) %}
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-[#2d3352]">
+        <h4 class="text-sm font-semibold text-[#d4a843]">{{ title }}</h4>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[#2d3352] text-left text-gray-400">
+                    <th class="px-4 py-2.5 font-medium w-1/5">Company</th>
+                    <th class="px-4 py-2.5 font-medium text-right">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>Current
+                        </span>
+                    </th>
+                    <th class="px-4 py-2.5 font-medium text-right">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-yellow-500"></span>1–30 days
+                        </span>
+                    </th>
+                    <th class="px-4 py-2.5 font-medium text-right">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-orange-500"></span>31–60 days
+                        </span>
+                    </th>
+                    <th class="px-4 py-2.5 font-medium text-right">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span>90+ days
+                        </span>
+                    </th>
+                    <th class="px-4 py-2.5 font-medium text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set all_companies = {} %}
+                {% for bucket_key in ['current', 'days_30', 'days_60', 'days_90_plus'] %}
+                    {% for inv in data[bucket_key].invoices %}
+                        {% set name = inv.company_name or ('Contact #' ~ inv.contact_id) %}
+                        {% if name not in all_companies %}
+                            {% set _ = all_companies.update({name: {'current': 0, 'days_30': 0, 'days_60': 0, 'days_90_plus': 0}}) %}
+                        {% endif %}
+                        {% set _ = all_companies[name].update({bucket_key: all_companies[name][bucket_key] + (inv.balance or 0)}) %}
+                    {% endfor %}
+                {% endfor %}
+
+                {% for company, buckets in all_companies.items() %}
+                {% set row_total = buckets.current + buckets.days_30 + buckets.days_60 + buckets.days_90_plus %}
+                <tr class="border-b border-[#2d3352]/50 hover:bg-[#242b4a]/50 transition-colors">
+                    <td class="px-4 py-2.5 text-gray-200 font-medium">{{ company }}</td>
+                    <td class="px-4 py-2.5 text-right {% if buckets.current > 0 %}text-green-400{% else %}text-gray-600{% endif %}">
+                        {{ "HK${:,.0f}".format(buckets.current) if buckets.current > 0 else '—' }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right {% if buckets.days_30 > 0 %}text-yellow-400{% else %}text-gray-600{% endif %}">
+                        {{ "HK${:,.0f}".format(buckets.days_30) if buckets.days_30 > 0 else '—' }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right {% if buckets.days_60 > 0 %}text-orange-400{% else %}text-gray-600{% endif %}">
+                        {{ "HK${:,.0f}".format(buckets.days_60) if buckets.days_60 > 0 else '—' }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right {% if buckets.days_90_plus > 0 %}text-red-400 font-semibold{% else %}text-gray-600{% endif %}">
+                        {{ "HK${:,.0f}".format(buckets.days_90_plus) if buckets.days_90_plus > 0 else '—' }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right text-gray-200 font-semibold">HK${{ "{:,.0f}".format(row_total) }}</td>
+                </tr>
+                {% endfor %}
+
+                {% if not all_companies %}
+                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No outstanding invoices</td></tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr class="border-t border-[#2d3352] bg-[#0f1225]/50 font-semibold text-gray-200">
+                    <td class="px-4 py-2.5">Total</td>
+                    <td class="px-4 py-2.5 text-right text-green-400">HK${{ "{:,.0f}".format(data.current.total) }}</td>
+                    <td class="px-4 py-2.5 text-right text-yellow-400">HK${{ "{:,.0f}".format(data.days_30.total) }}</td>
+                    <td class="px-4 py-2.5 text-right text-orange-400">HK${{ "{:,.0f}".format(data.days_60.total) }}</td>
+                    <td class="px-4 py-2.5 text-right text-red-400">HK${{ "{:,.0f}".format(data.days_90_plus.total) }}</td>
+                    <td class="px-4 py-2.5 text-right">HK${{ "{:,.0f}".format(data.current.total + data.days_30.total + data.days_60.total + data.days_90_plus.total) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endmacro %}
+
+<div class="space-y-6">
+    <!-- Summary bars -->
+    <div class="grid grid-cols-2 gap-4">
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+            <h4 class="text-xs text-gray-400 mb-2">Payables Aging</h4>
+            <div class="flex gap-1 h-6 rounded-lg overflow-hidden">
+                {% set p = aging.payables_aging %}
+                {% set p_total = p.current.total + p.days_30.total + p.days_60.total + p.days_90_plus.total %}
+                {% if p_total > 0 %}
+                <div class="bg-green-600" style="width: {{ (p.current.total / p_total * 100)|round }}%" title="Current: HK${{ '{:,.0f}'.format(p.current.total) }}"></div>
+                <div class="bg-yellow-500" style="width: {{ (p.days_30.total / p_total * 100)|round }}%" title="30d: HK${{ '{:,.0f}'.format(p.days_30.total) }}"></div>
+                <div class="bg-orange-500" style="width: {{ (p.days_60.total / p_total * 100)|round }}%" title="60d: HK${{ '{:,.0f}'.format(p.days_60.total) }}"></div>
+                <div class="bg-red-600" style="width: {{ (p.days_90_plus.total / p_total * 100)|round }}%" title="90+d: HK${{ '{:,.0f}'.format(p.days_90_plus.total) }}"></div>
+                {% else %}
+                <div class="bg-[#2d3352] w-full flex items-center justify-center text-xs text-gray-500">No payables</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+            <h4 class="text-xs text-gray-400 mb-2">Receivables Aging</h4>
+            <div class="flex gap-1 h-6 rounded-lg overflow-hidden">
+                {% set r = aging.receivables_aging %}
+                {% set r_total = r.current.total + r.days_30.total + r.days_60.total + r.days_90_plus.total %}
+                {% if r_total > 0 %}
+                <div class="bg-green-600" style="width: {{ (r.current.total / r_total * 100)|round }}%" title="Current: HK${{ '{:,.0f}'.format(r.current.total) }}"></div>
+                <div class="bg-yellow-500" style="width: {{ (r.days_30.total / r_total * 100)|round }}%" title="30d: HK${{ '{:,.0f}'.format(r.days_30.total) }}"></div>
+                <div class="bg-orange-500" style="width: {{ (r.days_60.total / r_total * 100)|round }}%" title="60d: HK${{ '{:,.0f}'.format(r.days_60.total) }}"></div>
+                <div class="bg-red-600" style="width: {{ (r.days_90_plus.total / r_total * 100)|round }}%" title="90+d: HK${{ '{:,.0f}'.format(r.days_90_plus.total) }}"></div>
+                {% else %}
+                <div class="bg-[#2d3352] w-full flex items-center justify-center text-xs text-gray-500">No receivables</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {{ aging_section("Payables Aging", aging.payables_aging, "blue") }}
+    {{ aging_section("Receivables Aging", aging.receivables_aging, "green") }}
+</div>

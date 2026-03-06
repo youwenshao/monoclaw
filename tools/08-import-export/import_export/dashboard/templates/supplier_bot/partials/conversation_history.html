@@ -1,0 +1,63 @@
+<div class="flex justify-between items-center mb-4">
+    <h3 class="text-lg font-semibold text-gold-400">Conversation History</h3>
+    <div class="flex items-center gap-3">
+        <label class="text-sm text-gray-400">Supplier:</label>
+        <select x-model="selectedConvSupplier" @change="loadConversations()"
+                class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm min-w-[240px]">
+            <option value="">Select supplier…</option>
+            <template x-for="s in suppliers" :key="s.id">
+                <option :value="s.id"
+                        x-text="s.company_name_cn + (s.company_name_en ? ' / ' + s.company_name_en : '')"></option>
+            </template>
+        </select>
+    </div>
+</div>
+
+<div class="card p-0 overflow-hidden" style="min-height: 400px;">
+    <div class="p-4 space-y-3 overflow-auto" style="max-height: 600px;">
+        <template x-if="!selectedConvSupplier">
+            <p class="text-center text-gray-500 py-12">Select a supplier to view message history</p>
+        </template>
+        <template x-if="selectedConvSupplier && conversations.length === 0">
+            <p class="text-center text-gray-500 py-12">No conversations with this supplier yet</p>
+        </template>
+
+        <template x-for="msg in conversations" :key="msg.id">
+            <div :class="msg.direction === 'outbound'
+                    ? 'ml-auto bg-gold-500/20 border border-gold-500/30'
+                    : 'mr-auto bg-navy-800'"
+                 class="max-w-[75%] rounded-xl px-4 py-2.5">
+
+                <!-- Direction indicator and badges -->
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-medium"
+                          :class="msg.direction === 'outbound' ? 'text-gold-400' : 'text-blue-400'"
+                          x-text="msg.direction === 'outbound' ? '→ Outbound' : '← Inbound'"></span>
+                    <span x-show="msg.message_type && msg.message_type !== 'text'"
+                          class="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-gray-400"
+                          x-text="msg.message_type"></span>
+                    <span x-show="msg.channel"
+                          class="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-green-400"
+                          x-text="msg.channel"></span>
+                </div>
+
+                <!-- Original text -->
+                <p class="text-sm text-gray-200 whitespace-pre-wrap" x-text="msg.original_text"></p>
+
+                <!-- Translated text -->
+                <div x-show="msg.translated_text" class="mt-2 pt-2 border-t border-navy-600">
+                    <p class="text-xs text-gray-400 mb-0.5">
+                        Translation
+                        <span x-show="msg.original_language" class="text-gray-500"
+                              x-text="'(' + msg.original_language + ')'"></span>
+                    </p>
+                    <p class="text-sm text-gold-300 whitespace-pre-wrap" x-text="msg.translated_text"></p>
+                </div>
+
+                <!-- Timestamp -->
+                <p class="text-xs text-gray-500 mt-1"
+                   x-text="new Date(msg.timestamp).toLocaleString('en-HK', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })"></p>
+            </div>
+        </template>
+    </div>
+</div>

@@ -1,0 +1,70 @@
+tool_name: vibe-coder
+version: "1.0.0"
+port: 8010
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/vibe-coder"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Developer profile (set during first-run wizard)
+  developer_name: ""
+  preferred_languages:
+    - python
+    - javascript
+    - typescript
+  coding_style: "pep8"
+  default_output_language: "en"
+
+  # CodeQwen settings
+  model_mode: "warm"
+  context_window: 32768
+  completion_max_tokens: 256
+  explanation_max_tokens: 1024
+  fim_enabled: true
+  cache_completions: true
+  latency_target_short_ms: 500
+  latency_target_long_ms: 2000
+
+  # DocuWriter settings
+  doc_style: "api_reference"
+  doc_detail_level: "standard"
+  freshness_check_on_commit: false
+
+  # GitAssistant settings
+  default_base_branch: "main"
+  commit_format: "conventional"
+  github_token_source: "gh_auth"
+  pr_description_style: "structured"
+  reviewer_count: 3
+
+  # HKDevKit settings
+  fps_bank_adapters:
+    - "hsbc"
+    - "standard_chartered"
+  govhk_cache_ttl_weather_seconds: 3600
+  govhk_cache_ttl_demographic_seconds: 86400
+  octopus_merchant_id: ""
+  fps_proxy_type: "mobile"
+
+  # Project directories
+  default_project_dirs: []
+  boilerplate_output_dir: "~/OpenClawWorkspace/vibe-coder/generated"

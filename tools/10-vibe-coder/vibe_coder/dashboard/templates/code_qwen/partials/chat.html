@@ -1,0 +1,31 @@
+<!-- htmx partial: chat message history (initial load / refresh) -->
+<div class="space-y-4">
+    {% if messages|length == 0 %}
+    <div class="flex flex-col items-center justify-center py-12 text-center">
+        <div class="w-16 h-16 rounded-full bg-navy-700 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-gold-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+            </svg>
+        </div>
+        <p class="text-gray-400 text-sm">No conversation history</p>
+        <p class="text-gray-600 text-xs mt-1">Start chatting to see messages here</p>
+    </div>
+    {% else %}
+    {% for msg in messages %}
+    <div class="{{ 'flex justify-end' if msg.role == 'user' else 'flex justify-start' }}">
+        <div class="max-w-[80%] px-4 py-3 text-sm
+            {{ 'bg-gold-500/20 text-gold-100 rounded-2xl rounded-br-md' if msg.role == 'user'
+               else 'bg-navy-700 text-gray-200 rounded-2xl rounded-bl-md' }}">
+            {% if msg.role == 'user' %}
+            <p>{{ msg.content }}</p>
+            {% else %}
+            <div class="prose-sm prose-invert">
+                {{ msg.content_html|safe if msg.content_html else msg.content }}
+            </div>
+            {% endif %}
+            <p class="text-[10px] mt-1.5 opacity-40">{{ msg.timestamp }}</p>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>

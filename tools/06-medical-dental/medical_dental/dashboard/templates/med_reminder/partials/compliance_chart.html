@@ -1,0 +1,43 @@
+<canvas id="compliance-chart" class="w-full" height="200"
+        data-labels='{{ labels | tojson }}'
+        data-values='{{ values | tojson }}'></canvas>
+
+<script>
+(function() {
+    var el = document.getElementById('compliance-chart');
+    if (el && typeof buildComplianceChart === 'function') {
+        try {
+            var labels = JSON.parse(el.dataset.labels || '[]');
+            var values = JSON.parse(el.dataset.values || '[]');
+            if (labels.length > 0) {
+                buildComplianceChart('compliance-chart', labels, values);
+            }
+        } catch (e) {
+            console.warn('Failed to build compliance chart:', e);
+        }
+    }
+})();
+</script>
+
+{% if breakdown %}
+<div class="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
+    <div class="bg-[#242b4a] rounded p-2">
+        <p class="text-gray-500">7-Day Avg 七日平均</p>
+        <p class="text-lg font-bold {% if breakdown.week >= 80 %}compliance-high{% elif breakdown.week >= 60 %}compliance-medium{% else %}compliance-low{% endif %}">
+            {{ breakdown.week }}%
+        </p>
+    </div>
+    <div class="bg-[#242b4a] rounded p-2">
+        <p class="text-gray-500">30-Day Avg 三十日平均</p>
+        <p class="text-lg font-bold {% if breakdown.month >= 80 %}compliance-high{% elif breakdown.month >= 60 %}compliance-medium{% else %}compliance-low{% endif %}">
+            {{ breakdown.month }}%
+        </p>
+    </div>
+    <div class="bg-[#242b4a] rounded p-2">
+        <p class="text-gray-500">Overall 總體</p>
+        <p class="text-lg font-bold {% if breakdown.overall >= 80 %}compliance-high{% elif breakdown.overall >= 60 %}compliance-medium{% else %}compliance-low{% endif %}">
+            {{ breakdown.overall }}%
+        </p>
+    </div>
+</div>
+{% endif %}

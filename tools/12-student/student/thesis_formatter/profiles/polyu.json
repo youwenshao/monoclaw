@@ -1,0 +1,23 @@
+{
+    "university": "PolyU",
+    "font_name": "Times New Roman",
+    "font_size": 12,
+    "line_spacing": 1.5,
+    "margins": {
+        "top": 25,
+        "bottom": 25,
+        "left": 40,
+        "right": 25
+    },
+    "required_sections": [
+        "cover", "title", "declaration", "abstract_en",
+        "acknowledgments", "toc", "lof", "lot", "chapter", "bibliography"
+    ],
+    "heading_styles": {
+        "1": {"font_size": 16, "bold": true, "all_caps": false},
+        "2": {"font_size": 14, "bold": true, "all_caps": false},
+        "3": {"font_size": 12, "bold": true, "all_caps": false}
+    },
+    "citation_style": "apa",
+    "notes": "Binding margin 40mm left. PolyU logo on cover page. A4 paper."
+}

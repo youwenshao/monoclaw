@@ -1,0 +1,82 @@
+{% set day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+{% set trade_colors = {
+    'demolition': 'bg-gray-700/60 text-gray-300 border-gray-500',
+    'formwork': 'bg-amber-900/60 text-amber-200 border-amber-600',
+    'rebar': 'bg-purple-900/60 text-purple-300 border-purple-500',
+    'concreting': 'bg-gray-600/60 text-gray-200 border-gray-400',
+    'plumbing': 'bg-blue-900/60 text-blue-300 border-blue-500',
+    'electrical': 'bg-amber-800/60 text-amber-300 border-amber-500',
+    'hvac': 'bg-cyan-900/60 text-cyan-300 border-cyan-500',
+    'fire': 'bg-red-900/60 text-red-300 border-red-500',
+    'plastering': 'bg-violet-900/60 text-violet-300 border-violet-500',
+    'tiling': 'bg-teal-900/60 text-teal-300 border-teal-500',
+    'painting': 'bg-orange-900/60 text-orange-300 border-orange-500',
+    'carpentry': 'bg-amber-900/50 text-amber-200 border-amber-700',
+    'glazing': 'bg-sky-900/60 text-sky-300 border-sky-500',
+    'waterproofing': 'bg-cyan-950/60 text-cyan-200 border-cyan-600',
+    'landscaping': 'bg-green-900/60 text-green-300 border-green-500'
+} %}
+{% set status_dots = {
+    'scheduled': 'bg-blue-400',
+    'dispatched': 'bg-purple-400',
+    'in_progress': 'bg-amber-400',
+    'completed': 'bg-green-400',
+    'cancelled': 'bg-red-400'
+} %}
+
+<div class="overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+        <thead>
+            <tr class="border-b border-navy-700">
+                <th class="px-3 py-2 text-left text-gray-400 font-medium sticky left-0 bg-navy-950 min-w-[160px]">Contractor</th>
+                {% for i in range(7) %}
+                {% set day_date = week_start | add_days(i) if week_start | add_days is defined else '' %}
+                <th class="px-2 py-2 text-center text-gray-400 font-medium min-w-[130px]">
+                    <div>{{ day_names[i] }}</div>
+                    {% if week_start %}
+                    <div class="text-xs text-gray-500 font-normal">
+                        {{ (week_start | add_days(i)).strftime('%d/%m') if week_start | add_days is defined else '' }}
+                    </div>
+                    {% endif %}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for contractor in contractors %}
+            <tr class="border-b border-navy-700/50 hover:bg-navy-800/30">
+                <td class="px-3 py-2 sticky left-0 bg-navy-950">
+                    <div class="text-gray-200 font-medium text-sm">{{ contractor.company_name }}</div>
+                    <div class="text-xs text-gray-500">{{ contractor.trade }}</div>
+                </td>
+                {% for day_offset in range(7) %}
+                <td class="px-1 py-1 align-top">
+                    {% set day_assignments = [] %}
+                    {% for a in assignments if a.contractor_id == contractor.id and a.day_offset == day_offset %}
+                    {% set trade = contractor.trade|lower|replace(' ', '') if contractor.trade else 'demolition' %}
+                    {% set colors = trade_colors.get(trade, 'bg-navy-700/60 text-gray-300 border-navy-500') %}
+                    {% set dot = status_dots.get(a.status, 'bg-gray-400') %}
+                    <div class="mb-1 px-2 py-1.5 rounded-md border-l-2 text-xs {{ colors }} cursor-pointer hover:opacity-90 transition-opacity"
+                         title="{{ a.status | replace('_', ' ') | title }}">
+                        <div class="flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full {{ dot }} shrink-0"></span>
+                            <span class="font-medium truncate">{{ a.site_name }}</span>
+                        </div>
+                        <div class="text-[11px] opacity-80 truncate mt-0.5">{{ a.scope }}</div>
+                    </div>
+                    {% endfor %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+
+            {% if not contractors %}
+            <tr>
+                <td colspan="8" class="px-4 py-12 text-center text-gray-500">
+                    No contractors registered. Add contractors in Settings to start scheduling.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

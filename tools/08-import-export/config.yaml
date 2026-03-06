@@ -1,0 +1,119 @@
+tool_name: import-export
+version: "1.0.0"
+port: 8008
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  wechat_app_id: ""
+  wechat_app_secret: ""
+  wechat_work_corp_id: ""
+  wechat_work_agent_id: ""
+  wechat_work_secret: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/import-export"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Company profile (set during first-run wizard)
+  company_name: ""
+  br_number: ""
+  base_currency: "HKD"
+  principal_business: "import-export"
+
+  # Trade filing
+  tradelink_username: ""
+  tradelink_password: ""
+  filing_provider: "tradelink"
+
+  # Factory communication
+  factory_working_hours_start: "08:00"
+  factory_working_hours_end: "17:30"
+  auto_ping_enabled: false
+
+  # FX settings
+  fx_rate_source: "exchangerate-api"
+  fx_fetch_interval_hours: 1
+  monitored_currencies: ["USD", "CNH", "EUR", "GBP", "JPY"]
+  hkd_peg_low: 7.75
+  hkd_peg_high: 7.85
+
+  # Invoice settings
+  invoice_prefix: "INV"
+  invoice_fiscal_year_start: "01-01"
+
+  # TDEC filing deadline (days)
+  tdec_filing_deadline_days: 14
+
+  # Reconciliation
+  fuzzy_match_threshold: 80
+  ocr_engine: "tesseract"
+
+  # Banking
+  bank_accounts: []
+
+  # Data retention (days)
+  data_retention_days: 365
+  conversation_retention_days: 365
+
+  # HK public holidays 2026
+  public_holidays:
+    - "2026-01-01"
+    - "2026-01-29"
+    - "2026-01-30"
+    - "2026-01-31"
+    - "2026-04-03"
+    - "2026-04-04"
+    - "2026-04-06"
+    - "2026-05-01"
+    - "2026-05-24"
+    - "2026-06-19"
+    - "2026-07-01"
+    - "2026-09-26"
+    - "2026-10-01"
+    - "2026-10-19"
+    - "2026-10-20"
+    - "2026-12-25"
+    - "2026-12-26"
+
+  # Mainland China public holidays 2026 (factory closures)
+  mainland_holidays:
+    - "2026-01-01"
+    - "2026-01-26"
+    - "2026-01-27"
+    - "2026-01-28"
+    - "2026-01-29"
+    - "2026-01-30"
+    - "2026-01-31"
+    - "2026-02-01"
+    - "2026-04-04"
+    - "2026-04-05"
+    - "2026-04-06"
+    - "2026-05-01"
+    - "2026-05-02"
+    - "2026-05-03"
+    - "2026-06-19"
+    - "2026-06-20"
+    - "2026-06-21"
+    - "2026-10-01"
+    - "2026-10-02"
+    - "2026-10-03"
+    - "2026-10-04"
+    - "2026-10-05"
+    - "2026-10-06"
+    - "2026-10-07"

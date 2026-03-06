@@ -1,0 +1,96 @@
+{% if change %}
+<div class="space-y-4">
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+        {% if change.urgency == 'urgent' %}
+        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-400">URGENT</span>
+        {% elif change.urgency == 'important' %}
+        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400">Important</span>
+        {% else %}
+        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-gray-500/20 text-gray-400">Routine</span>
+        {% endif %}
+        <span class="text-xs text-gray-500">{{ change.change_type or 'change' }} · {{ change.detected_at[:10] if change.detected_at else '' }}</span>
+    </div>
+
+    <!-- Diff display -->
+    {% if previous_document and current_document %}
+    <div class="grid grid-cols-2 gap-px bg-navy-700 rounded-lg overflow-hidden">
+        <!-- Previous (left) -->
+        <div class="bg-navy-800 p-4">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Previous Version</h4>
+                {% if previous_document.published_date %}
+                <span class="text-xs text-gray-500 ml-auto">{{ previous_document.published_date }}</span>
+                {% endif %}
+            </div>
+            <pre class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono bg-navy-900 rounded p-3 max-h-80 overflow-auto">
+                {%- if previous_document.content_text -%}
+                    {{ previous_document.content_text }}
+                {%- else -%}
+                    (No previous content available)
+                {%- endif -%}
+            </pre>
+        </div>
+
+        <!-- Current (right) -->
+        <div class="bg-navy-800 p-4">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Current Version</h4>
+                {% if current_document.published_date %}
+                <span class="text-xs text-gray-500 ml-auto">{{ current_document.published_date }}</span>
+                {% endif %}
+            </div>
+            <pre class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono bg-navy-900 rounded p-3 max-h-80 overflow-auto">
+                {%- if current_document.content_text -%}
+                    {{ current_document.content_text }}
+                {%- else -%}
+                    (No content available)
+                {%- endif -%}
+            </pre>
+        </div>
+    </div>
+    {% elif current_document %}
+    <!-- Single document (no previous version) -->
+    <div class="bg-navy-800 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">New Document</h4>
+        </div>
+        <pre class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono bg-navy-900 rounded p-3 max-h-96 overflow-auto">
+            {%- if current_document.content_text -%}
+                {{ current_document.content_text }}
+            {%- else -%}
+                (Content not yet retrieved)
+            {%- endif -%}
+        </pre>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 text-center py-4">No document content available for diff comparison.</p>
+    {% endif %}
+
+    <!-- Change summary -->
+    {% if change.change_summary %}
+    <div class="bg-navy-800/50 rounded-lg p-4 border border-navy-700">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Change Summary</h4>
+        <p class="text-sm text-gray-300 leading-relaxed">{{ change.change_summary }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Affected schemes -->
+    {% if change.affected_schemes %}
+    <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-500">Affected:</span>
+        {% for scheme in change.affected_schemes.split(',') %}
+        {% set s = scheme.strip() %}
+        {% if s %}
+        <span class="px-2 py-0.5 rounded text-xs font-medium bg-navy-700 text-gray-300">{{ s }}</span>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<p class="text-sm text-gray-500 text-center py-8">Change data not found.</p>
+{% endif %}

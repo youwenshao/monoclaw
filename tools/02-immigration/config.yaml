@@ -1,0 +1,82 @@
+tool_name: immigration
+version: "1.0.0"
+port: 8002
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/immigration"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Practice profile (set during first-run wizard)
+  firm_name: ""
+  consultant_registration_number: ""
+  office_address: ""
+  business_hours: "09:00-18:00"
+  saturday_hours: "09:00-13:00"
+
+  # OCR settings
+  ocr_engine: "vision"
+  confidence_threshold_auto: 0.85
+  confidence_threshold_review: 0.70
+  max_concurrent_ocr_pages: 4
+
+  # Data retention (days)
+  data_retention_days: 90
+  conversation_retention_days: 180
+
+  # PolicyWatcher scrape schedule
+  immd_scrape_frequency_hours: 24
+  gazette_scrape_day: "friday"
+  gazette_scrape_time: "10:00"
+  legco_scrape_day: "monday"
+  legco_scrape_time: "09:00"
+
+  # ImmD processing time estimates (weeks)
+  processing_times:
+    GEP: { min: 4, max: 6 }
+    ASMTP: { min: 4, max: 6 }
+    QMAS: { min: 36, max: 48 }
+    TTPS: { min: 4, max: 4 }
+    IANG: { min: 2, max: 4 }
+    Dependant: { min: 4, max: 6 }
+
+  # Document deadline reminders (days before deadline)
+  reminder_intervals: [7, 3, 1]
+
+  # HK public holidays 2026
+  public_holidays:
+    - "2026-01-01"
+    - "2026-01-29"
+    - "2026-01-30"
+    - "2026-01-31"
+    - "2026-04-03"
+    - "2026-04-04"
+    - "2026-04-06"
+    - "2026-05-01"
+    - "2026-05-24"
+    - "2026-06-19"
+    - "2026-07-01"
+    - "2026-09-26"
+    - "2026-10-01"
+    - "2026-10-19"
+    - "2026-10-20"
+    - "2026-12-25"
+    - "2026-12-26"

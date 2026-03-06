@@ -1,0 +1,142 @@
+/* MonoClaw Legal Dashboard — supplementary styles */
+
+:root {
+    --navy-950: #0f1225;
+    --navy-900: #1a1f36;
+    --navy-800: #242b4a;
+    --navy-700: #2d3352;
+    --navy-600: #3d4466;
+    --gold-500: #d4a843;
+    --gold-400: #e0be6a;
+}
+
+/* Tailwind-compatible utility overrides for dark navy palette */
+.bg-navy-950 { background-color: var(--navy-950); }
+.bg-navy-900 { background-color: var(--navy-900); }
+.bg-navy-800 { background-color: var(--navy-800); }
+.bg-navy-700 { background-color: var(--navy-700); }
+.bg-navy-600 { background-color: var(--navy-600); }
+.border-navy-700 { border-color: var(--navy-700); }
+.border-navy-600 { border-color: var(--navy-600); }
+.text-gold-400 { color: var(--gold-400); }
+.text-gold-500 { color: var(--gold-500); }
+.bg-gold-400 { background-color: var(--gold-400); }
+.bg-gold-500 { background-color: var(--gold-500); }
+.text-navy-900 { color: var(--navy-900); }
+
+/* Status dots */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.status-dot.green  { background-color: #22c55e; }
+.status-dot.red    { background-color: #ef4444; }
+.status-dot.amber  { background-color: #f59e0b; }
+.status-dot.blue   { background-color: #3b82f6; }
+.status-dot.grey   { background-color: #6b7280; }
+
+/* Anomaly severity indicators (clause sidebar) */
+.anomaly-standard { border-left: 4px solid #22c55e; }
+.anomaly-unusual  { border-left: 4px solid #f59e0b; }
+.anomaly-flagged  { border-left: 4px solid #ef4444; }
+
+/* Deadline urgency badges */
+.urgency-green  { background-color: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.urgency-amber  { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.urgency-red    { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+/* Privilege status badges */
+.privilege-privileged    { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.privilege-not_privileged { background-color: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.privilege-partial       { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.privilege-needs_review  { background-color: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+
+/* Relevance tier badges */
+.relevance-directly_relevant   { background-color: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.relevance-potentially_relevant { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.relevance-not_relevant        { background-color: rgba(107, 114, 128, 0.15); color: #6b7280; }
+
+/* Conflict status badges */
+.conflict-clear             { background-color: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.conflict-potential_conflict { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.conflict-confirmed_conflict { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+/* Channel icons */
+.channel-whatsapp  { color: #25d366; }
+.channel-telegram  { color: #0088cc; }
+.channel-wechat    { color: #09b83e; }
+.channel-email     { color: #3b82f6; }
+.channel-walk_in   { color: #8b5cf6; }
+.channel-referral  { color: #f59e0b; }
+.channel-website   { color: #6b7280; }
+
+/* Comparison diff highlights */
+.diff-added   { background-color: rgba(34, 197, 94, 0.15); }
+.diff-removed { background-color: rgba(239, 68, 68, 0.15); }
+.diff-changed { background-color: rgba(245, 158, 11, 0.15); }
+
+/* Calendar date cells */
+.calendar-cell {
+    min-width: 40px;
+    min-height: 40px;
+    transition: background-color 0.2s;
+    border-radius: 4px;
+}
+.calendar-cell:hover { background-color: var(--navy-700); }
+
+/* Countdown timer */
+.countdown-critical {
+    color: #ef4444;
+    font-weight: 700;
+    animation: pulse-red 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Drag-and-drop zones */
+.dragover {
+    outline: 2px dashed var(--gold-500);
+    outline-offset: -2px;
+    background-color: rgba(212, 168, 67, 0.05);
+}
+
+/* Document upload area */
+.upload-zone {
+    border: 2px dashed var(--navy-600);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: var(--gold-500);
+    background-color: rgba(212, 168, 67, 0.05);
+}
+
+/* Timeline connector */
+.timeline-line {
+    position: absolute;
+    left: 15px;
+    top: 28px;
+    bottom: 0;
+    width: 2px;
+    background-color: var(--navy-600);
+}
+
+/* Conversation chat bubbles */
+.chat-inbound {
+    background-color: var(--navy-800);
+    border-radius: 12px 12px 12px 4px;
+}
+.chat-outbound {
+    background-color: rgba(212, 168, 67, 0.15);
+    border-radius: 12px 12px 4px 12px;
+}

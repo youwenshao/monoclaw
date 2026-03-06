@@ -1,0 +1,157 @@
+<div class="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+    <!-- Header -->
+    <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <h3 class="text-sm font-semibold text-white">Document #{{ document.id }}</h3>
+            <span class="text-xs text-gray-400 uppercase">{{ document.doc_type or 'unknown' }}</span>
+            {% if document.status == 'processed' %}
+            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/20 text-emerald-400">Processed</span>
+            {% elif document.status == 'review' %}
+            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/20 text-amber-400">Needs Review</span>
+            {% elif document.status == 'approved' %}
+            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gold-500/20 text-gold-400">Approved</span>
+            {% endif %}
+        </div>
+        <button onclick="document.getElementById('document-viewer').innerHTML = ''"
+                class="text-gray-400 hover:text-white transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Side-by-side layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-navy-700">
+        <!-- Left: Document image -->
+        <div class="p-4">
+            <div class="bg-navy-900 rounded-lg border border-navy-700 aspect-[3/4] flex items-center justify-center">
+                {% if document.file_path and document.file_path.endswith(('.jpg', '.jpeg', '.png', '.tiff')) %}
+                <img src="/static/uploads/{{ document.file_path.split('/')[-1] }}"
+                     alt="Document image"
+                     class="max-w-full max-h-full object-contain rounded"
+                     onerror="this.parentElement.innerHTML = '<div class=\'text-center\'><svg class=\'w-16 h-16 mx-auto text-gray-600 mb-3\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z\'/></svg><p class=\'text-sm text-gray-500\'>Document preview unavailable</p></div>'">
+                {% else %}
+                <div class="text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                    </svg>
+                    <p class="text-sm text-gray-500">Document preview</p>
+                    <p class="text-xs text-gray-600 mt-1">{{ document.file_path.split('/')[-1] if document.file_path else 'No file' }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right: Extracted fields -->
+        <div class="p-4">
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Extracted Fields</h4>
+
+            {% if document.ocr_result and document.ocr_result.lines %}
+            <form id="field-corrections" class="space-y-3">
+                {% for line in document.ocr_result.lines %}
+                {% set conf = (line.confidence * 100)|round|int if line.confidence else 0 %}
+                <div class="group">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[10px] text-gray-500 uppercase">Line {{ loop.index }}</label>
+                        {% if conf >= 85 %}
+                        <span class="text-[10px] font-medium text-emerald-400">{{ conf }}%</span>
+                        {% elif conf >= 70 %}
+                        <span class="text-[10px] font-medium text-amber-400">{{ conf }}%</span>
+                        {% else %}
+                        <span class="text-[10px] font-medium text-red-400">{{ conf }}%</span>
+                        {% endif %}
+                    </div>
+                    <input type="text"
+                           name="line_{{ loop.index0 }}"
+                           value="{{ line.text }}"
+                           class="w-full bg-navy-900 border rounded-lg px-3 py-2 text-sm text-gray-200
+                                  focus:outline-none focus:border-gold-400 transition-colors
+                                  {% if conf >= 85 %}border-emerald-500/30{% elif conf >= 70 %}border-amber-500/30{% else %}border-red-500/30{% endif %}">
+                </div>
+                {% endfor %}
+            </form>
+            {% elif document.ocr_result %}
+            <div class="bg-navy-900 rounded-lg p-3 border border-navy-700">
+                <pre class="text-xs text-gray-300 whitespace-pre-wrap font-mono">{{ document.ocr_result.raw_text if document.ocr_result.raw_text else 'No text extracted' }}</pre>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-sm text-gray-500">No OCR data available</p>
+                <p class="text-xs text-gray-600 mt-1">Process this document to extract fields</p>
+            </div>
+            {% endif %}
+
+            <!-- Overall confidence -->
+            {% if document.confidence_score is not none %}
+            {% set overall = (document.confidence_score * 100)|round|int %}
+            <div class="mt-4 pt-3 border-t border-navy-700">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-gray-400">Overall Confidence</span>
+                    {% if overall >= 85 %}
+                    <span class="text-sm font-bold text-emerald-400">{{ overall }}%</span>
+                    {% elif overall >= 70 %}
+                    <span class="text-sm font-bold text-amber-400">{{ overall }}%</span>
+                    {% else %}
+                    <span class="text-sm font-bold text-red-400">{{ overall }}%</span>
+                    {% endif %}
+                </div>
+                <div class="w-full bg-navy-700 rounded-full h-2">
+                    {% if overall >= 85 %}
+                    <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ overall }}%"></div>
+                    {% elif overall >= 70 %}
+                    <div class="bg-amber-500 h-2 rounded-full" style="width: {{ overall }}%"></div>
+                    {% else %}
+                    <div class="bg-red-500 h-2 rounded-full" style="width: {{ overall }}%"></div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action buttons -->
+            <div class="mt-4 flex gap-2">
+                {% if document.status in ('processed', 'review') %}
+                <button onclick="approveDocument({{ document.id }})"
+                        class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gold-500 text-navy-900
+                               rounded-lg font-medium text-sm hover:bg-gold-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                    </svg>
+                    Approve &amp; Send to FormAutoFill
+                </button>
+                {% endif %}
+                {% if document.status == 'pending' %}
+                <button onclick="processDocument({{ document.id }})"
+                        class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-500 text-white
+                               rounded-lg font-medium text-sm hover:bg-sky-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/>
+                    </svg>
+                    Process OCR
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function approveDocument(docId) {
+    fetch(`/visa-doc-ocr/approve/${docId}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            htmx.ajax('GET', `/visa-doc-ocr/document-viewer/partial?doc_id=${docId}`, '#document-viewer');
+            document.body.dispatchEvent(new CustomEvent('upload-done'));
+        })
+        .catch(err => console.error('Approve failed:', err));
+}
+
+function processDocument(docId) {
+    fetch(`/visa-doc-ocr/process/${docId}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            htmx.ajax('GET', `/visa-doc-ocr/document-viewer/partial?doc_id=${docId}`, '#document-viewer');
+            document.body.dispatchEvent(new CustomEvent('upload-done'));
+        })
+        .catch(err => console.error('Process failed:', err));
+}
+</script>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>排隊狀態 Queue Status — MonoClaw</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4/cdn.min.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14/dist/cdn.min.js"></script>
+    <style>
+        body { -webkit-font-smoothing: antialiased; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        .pulse-ring { animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+    </style>
+</head>
+<body class="h-full bg-[#0f1225] text-gray-100 flex flex-col" x-data="{ lang: 'zh' }">
+    <!-- Header -->
+    <header class="bg-[#1a1f36] border-b border-[#2d3352] px-5 py-4 shrink-0">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-[#d4a843]">{{ restaurant_name | default('MonoClaw') }}</h1>
+                <p class="text-xs text-gray-400" x-show="lang==='zh'">排隊狀態</p>
+                <p class="text-xs text-gray-400" x-show="lang==='en'">Queue Status</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="lang='zh'" :class="lang==='zh' ? 'text-[#d4a843] font-semibold' : 'text-gray-500'" class="text-sm transition-colors">中文</button>
+                <span class="text-gray-600">|</span>
+                <button @click="lang='en'" :class="lang==='en' ? 'text-[#d4a843] font-semibold' : 'text-gray-500'" class="text-sm transition-colors">EN</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Live Status (SSE-powered) -->
+    <main class="flex-1 flex items-center justify-center px-5"
+          hx-ext="sse"
+          sse-connect="/queue-bot/sse/{{ queue_id }}">
+        <div class="max-w-md w-full text-center">
+            <!-- Queue Position -->
+            <div id="queue-position-container" sse-swap="position">
+                <div class="relative inline-flex items-center justify-center mb-6">
+                    <div class="absolute w-36 h-36 rounded-full border-2 border-[#d4a843]/20 pulse-ring"></div>
+                    <div class="w-32 h-32 rounded-full bg-[#d4a843]/10 border-2 border-[#d4a843]/40 flex items-center justify-center">
+                        <div>
+                            <p class="text-4xl font-bold text-[#d4a843]" id="position-number">{{ position | default('—') }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5" x-show="lang==='zh'">排隊位置</p>
+                            <p class="text-xs text-gray-400 mt-0.5" x-show="lang==='en'">Position</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Info Cards -->
+            <div id="queue-status-info" sse-swap="status" class="space-y-4 mb-8">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5">
+                        <p class="text-xs text-gray-400 mb-1" x-show="lang==='zh'">預計等候時間</p>
+                        <p class="text-xs text-gray-400 mb-1" x-show="lang==='en'">Estimated Wait</p>
+                        <p class="text-2xl font-bold text-white" id="est-wait">{{ est_wait | default('—') }}</p>
+                    </div>
+                    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5">
+                        <p class="text-xs text-gray-400 mb-1" x-show="lang==='zh'">人數</p>
+                        <p class="text-xs text-gray-400 mb-1" x-show="lang==='en'">Party Size</p>
+                        <p class="text-2xl font-bold text-white">{{ party_size | default('—') }}</p>
+                    </div>
+                </div>
+
+                {% if seating_preference and seating_preference != 'any' %}
+                <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-4">
+                    <p class="text-xs text-gray-400" x-show="lang==='zh'">座位偏好</p>
+                    <p class="text-xs text-gray-400" x-show="lang==='en'">Seating Preference</p>
+                    <p class="text-sm text-white mt-0.5">{{ seating_preference }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Queue Number Display -->
+            <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-6 mb-6">
+                <p class="text-xs text-gray-400 mb-2" x-show="lang==='zh'">您的排隊號碼</p>
+                <p class="text-xs text-gray-400 mb-2" x-show="lang==='en'">Your Queue Number</p>
+                <p class="text-3xl font-mono font-bold text-[#e0be6a] tracking-widest">{{ queue_number | default('—') }}</p>
+            </div>
+
+            <!-- Ready Notification (hidden by default, shown via SSE) -->
+            <div id="ready-notification" sse-swap="ready" class="hidden">
+                <div class="bg-emerald-500/10 border-2 border-emerald-500/40 rounded-2xl p-8 mb-6 animate-bounce">
+                    <div class="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-emerald-400 mb-2" x-show="lang==='zh'">您的桌子已準備好！</h3>
+                    <h3 class="text-xl font-bold text-emerald-400 mb-2" x-show="lang==='en'">Your table is ready!</h3>
+                    <p class="text-sm text-gray-300" x-show="lang==='zh'">請前往接待處入座</p>
+                    <p class="text-sm text-gray-300" x-show="lang==='en'">Please proceed to the host stand</p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="space-y-3">
+                <p class="text-xs text-gray-500" x-show="lang==='zh'">此頁面會自動更新</p>
+                <p class="text-xs text-gray-500" x-show="lang==='en'">This page updates automatically</p>
+
+                <button hx-post="/queue-bot/leave/{{ queue_id }}"
+                        hx-confirm="確定要離開排隊嗎？ / Leave the queue?"
+                        class="text-sm text-red-400/70 hover:text-red-400 transition-colors underline underline-offset-2">
+                    <span x-show="lang==='zh'">離開排隊</span>
+                    <span x-show="lang==='en'">Leave Queue</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#1a1f36] border-t border-[#2d3352] px-5 py-3 text-center shrink-0">
+        <p class="text-xs text-gray-500">Powered by <span class="text-[#d4a843]">MonoClaw</span></p>
+    </footer>
+</body>
+</html>

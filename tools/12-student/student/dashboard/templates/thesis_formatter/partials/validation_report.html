@@ -1,0 +1,40 @@
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gold-400">Validation Report</h3>
+        <div class="flex gap-3 text-xs">
+            <span class="text-emerald-400">{{ report.passed }} passed</span>
+            <span class="text-red-400">{{ report.errors }} errors</span>
+            <span class="text-amber-400">{{ report.warnings }} warnings</span>
+        </div>
+    </div>
+
+    <div class="w-full bg-navy-900 rounded-full h-2">
+        {% set pct = (report.passed / report.total * 100) if report.total > 0 else 0 %}
+        <div class="h-2 rounded-full {% if pct == 100 %}bg-emerald-500{% elif pct > 70 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+             style="width: {{ pct|int }}%"></div>
+    </div>
+
+    <div class="space-y-2 max-h-[400px] overflow-auto">
+        {% for check in report.details %}
+        <div class="flex items-start gap-2 px-3 py-2 rounded-lg {% if check.passed %}bg-navy-900{% else %}bg-navy-900 border border-{% if check.severity == 'error' %}red{% else %}amber{% endif %}-500/20{% endif %}">
+            {% if check.passed %}
+            <span class="text-emerald-400 mt-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </span>
+            {% elif check.severity == 'error' %}
+            <span class="text-red-400 mt-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </span>
+            {% else %}
+            <span class="text-amber-400 mt-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+            </span>
+            {% endif %}
+            <div class="flex-1">
+                <p class="text-sm {% if check.passed %}text-gray-300{% elif check.severity == 'error' %}text-red-300{% else %}text-amber-300{% endif %}">{{ check.message }}</p>
+                <p class="text-xs text-gray-500">{{ check.location }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>

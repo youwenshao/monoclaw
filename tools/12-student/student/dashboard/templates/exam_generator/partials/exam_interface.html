@@ -1,0 +1,183 @@
+<div x-data="examInterface()" class="flex gap-6">
+
+    <!-- Question navigation sidebar -->
+    <div class="w-48 shrink-0 space-y-3">
+        <div class="bg-navy-800 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs text-gray-400">Time Left</span>
+                <span class="text-sm font-mono font-bold" :class="timeLeft < 300 ? 'text-red-400' : 'text-gold-400'" x-text="formatTime(timeLeft)"></span>
+            </div>
+            <div class="w-full bg-navy-700 rounded-full h-1.5">
+                <div class="bg-gold-500 h-1.5 rounded-full transition-all" :style="'width:' + (timeLeft / ({{ exam.time_limit_minutes or 60 }} * 60) * 100) + '%'"></div>
+            </div>
+        </div>
+
+        <div class="bg-navy-800 rounded-lg p-3">
+            <p class="text-xs text-gray-400 mb-2">Questions</p>
+            <div class="grid grid-cols-5 gap-1">
+                {% for q in questions %}
+                <button @click="goToQuestion({{ loop.index0 }})"
+                        :class="currentQ === {{ loop.index0 }}
+                            ? 'ring-2 ring-gold-500 bg-gold-500/20 text-gold-400'
+                            : answeredSet.has({{ q.id }})
+                                ? 'bg-emerald-900/40 text-emerald-400'
+                                : 'bg-navy-700 text-gray-400 hover:bg-navy-600'"
+                        class="w-7 h-7 rounded text-xs font-medium flex items-center justify-center transition-colors">
+                    {{ loop.index }}
+                </button>
+                {% endfor %}
+            </div>
+            <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-emerald-500"></span> Answered</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-navy-700"></span> Unanswered</span>
+            </div>
+        </div>
+
+        <button @click="submitExam()"
+                class="w-full py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-500 transition-colors">
+            Submit Exam
+        </button>
+    </div>
+
+    <!-- Question display -->
+    <div class="flex-1 space-y-4">
+        {% for q in questions %}
+        <div x-show="currentQ === {{ loop.index0 }}" class="bg-navy-800 rounded-lg p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs px-2 py-0.5 rounded bg-navy-700 text-gray-400">Q{{ loop.index }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded
+                        {% if q.difficulty == 'easy' %}bg-emerald-900/40 text-emerald-400
+                        {% elif q.difficulty == 'hard' %}bg-red-900/40 text-red-400
+                        {% else %}bg-amber-900/40 text-amber-400{% endif %}">{{ q.difficulty }}</span>
+                    <span class="text-xs text-gray-500">{{ q.points }} pts</span>
+                </div>
+                <button @click="toggleFlag({{ q.id }})"
+                        :class="flaggedSet.has({{ q.id }}) ? 'text-amber-400' : 'text-gray-600 hover:text-gray-400'"
+                        class="transition-colors">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 3v18h2v-8h4l2 2h8V3H3zm12 10h-4l-2-2H5V5h10v8z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <p class="text-white leading-relaxed">{{ q.question_text }}</p>
+
+            {% if q.question_type == 'mcq' or q.question_type == 'true_false' %}
+            <div class="space-y-2">
+                {% if q.question_type == 'true_false' %}
+                {% set option_list = ['True', 'False'] %}
+                {% else %}
+                {% set option_list = q.options if q.options is iterable and q.options is not string else [] %}
+                {% endif %}
+                {% for opt in option_list %}
+                <label class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors"
+                       :class="answers[{{ q.id }}] === '{{ opt }}' ? 'bg-gold-500/10 border border-gold-500/30' : 'bg-navy-900 hover:bg-navy-700 border border-transparent'"
+                       @click="saveAnswer({{ q.id }}, '{{ opt }}')">
+                    <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                          :class="answers[{{ q.id }}] === '{{ opt }}' ? 'border-gold-500' : 'border-navy-600'">
+                        <span x-show="answers[{{ q.id }}] === '{{ opt }}'" class="w-2.5 h-2.5 rounded-full bg-gold-500"></span>
+                    </span>
+                    <span class="text-sm text-gray-200">{{ opt }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% elif q.question_type == 'multi_select' %}
+            <div class="space-y-2">
+                {% for opt in q.options if q.options is iterable and q.options is not string %}
+                <label class="flex items-center gap-3 p-3 rounded-lg cursor-pointer bg-navy-900 hover:bg-navy-700 transition-colors">
+                    <input type="checkbox" value="{{ opt }}"
+                           @change="toggleMultiSelect({{ q.id }}, '{{ opt }}')"
+                           class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500 focus:ring-gold-500">
+                    <span class="text-sm text-gray-200">{{ opt }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% else %}
+            <textarea @input="debounceSave({{ q.id }}, $event.target.value)"
+                      :value="answers[{{ q.id }}] || ''"
+                      rows="{{ 8 if q.question_type == 'long_answer' else 4 }}"
+                      placeholder="Type your answer here..."
+                      class="w-full bg-navy-900 border border-navy-600 rounded-lg px-4 py-3 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500 resize-y"></textarea>
+            {% endif %}
+
+            <!-- Navigation -->
+            <div class="flex justify-between pt-2 border-t border-navy-700">
+                <button x-show="currentQ > 0" @click="currentQ--"
+                        class="px-3 py-1.5 text-xs text-gray-400 bg-navy-700 rounded-lg hover:bg-navy-600 transition-colors">← Previous</button>
+                <span x-show="currentQ === 0"></span>
+                <button x-show="currentQ < {{ questions|length }} - 1" @click="currentQ++"
+                        class="px-3 py-1.5 text-xs text-gold-400 bg-navy-700 rounded-lg hover:bg-navy-600 transition-colors">Next →</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function examInterface() {
+    return {
+        currentQ: 0,
+        answers: {},
+        answeredSet: new Set({{ answered_ids | list | tojson }}),
+        flaggedSet: new Set(),
+        timeLeft: {{ (exam.time_limit_minutes or 60) }} * 60,
+        saveTimer: null,
+        attemptId: {{ attempt_id }},
+
+        init() {
+            this._interval = setInterval(() => {
+                this.timeLeft = Math.max(0, this.timeLeft - 1);
+                if (this.timeLeft === 0) {
+                    clearInterval(this._interval);
+                    this.submitExam();
+                }
+            }, 1000);
+        },
+
+        destroy() { clearInterval(this._interval); },
+
+        formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+        },
+
+        goToQuestion(idx) { this.currentQ = idx; },
+
+        async saveAnswer(qId, value) {
+            this.answers[qId] = value;
+            this.answeredSet.add(qId);
+            await fetch(`/exam-generator/attempts/${this.attemptId}/answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question_id: qId, student_answer: value, flagged_for_review: this.flaggedSet.has(qId) }),
+            });
+        },
+
+        toggleMultiSelect(qId, value) {
+            const current = this.answers[qId] ? JSON.parse(this.answers[qId]) : [];
+            const idx = current.indexOf(value);
+            if (idx >= 0) current.splice(idx, 1); else current.push(value);
+            this.saveAnswer(qId, JSON.stringify(current));
+        },
+
+        debounceSave(qId, value) {
+            clearTimeout(this.saveTimer);
+            this.answers[qId] = value;
+            this.saveTimer = setTimeout(() => this.saveAnswer(qId, value), 800);
+        },
+
+        toggleFlag(qId) {
+            if (this.flaggedSet.has(qId)) this.flaggedSet.delete(qId);
+            else this.flaggedSet.add(qId);
+        },
+
+        submitExam() {
+            clearInterval(this._interval);
+            const gen = Alpine.closestDataStack(this.$el).find(d => d.submitExam);
+            if (gen) gen.submitExam();
+        }
+    };
+}
+</script>

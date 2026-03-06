@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-fnb-hospitality"
+version = "1.0.0"
+description = "F&B Hospitality Dashboard — TableMaster AI, QueueBot, NoShowShield, SommelierMemory"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    "python-dateutil>=2.9",
+    # QueueBot — QR codes and wait-time estimation
+    "qrcode>=7.4",
+    "Pillow>=10.0",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "sse-starlette>=2.0",
+    # NoShowShield — prediction model
+    "scikit-learn>=1.4",
+    # SommelierMemory — briefing PDFs and lunar calendar
+    "reportlab>=4.1",
+    "lunardate>=0.2",
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+macos = ["pyobjc-framework-Vision>=10.0"]
+all = ["openclaw-fnb-hospitality[mlx,messaging,macos]"]
+
+[tool.setuptools.packages.find]
+include = ["fnb_hospitality*"]

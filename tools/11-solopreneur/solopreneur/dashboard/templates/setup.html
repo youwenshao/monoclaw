@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Setup{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto" x-data="{ step: 1 }">
+    <h2 class="text-xl font-bold text-[#d4a843] mb-6">First-Run Setup</h2>
+
+    <!-- Progress bar -->
+    <div class="flex items-center gap-2 mb-8">
+        <template x-for="s in 7" :key="s">
+            <div class="flex-1 h-1.5 rounded-full transition-colors"
+                 :class="step >= s ? 'bg-[#d4a843]' : 'bg-[#2d3352]'"></div>
+        </template>
+    </div>
+
+    <form method="post" action="/setup/">
+        <!-- Step 1: Business Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Business Profile</h3>
+            <p class="text-sm text-gray-400">Basic information about your business.</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Business Name</label>
+                    <input name="business_name" value="{{ config.extra.get('business_name', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">BR Number</label>
+                    <input name="br_number" value="{{ config.extra.get('br_number', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Business Type</label>
+                    <select name="business_type" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="restaurant">Restaurant / F&B</option>
+                        <option value="retail">Retail Shop</option>
+                        <option value="service">Service Provider</option>
+                        <option value="freelance">Freelancer</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Phone</label>
+                    <input name="phone" value="{{ config.extra.get('phone', '') }}" placeholder="+852"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs text-gray-400 mb-1">Operating Hours</label>
+                    <input name="operating_hours" value="{{ config.extra.get('operating_hours', '09:00-18:00') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Messaging Setup -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">Messaging Setup</h3>
+            <p class="text-sm text-gray-400">Configure WhatsApp and Telegram for notifications.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Twilio Account SID</label>
+                    <input name="twilio_sid" value="{{ config.messaging.twilio_account_sid }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Twilio Auth Token</label>
+                    <input name="twilio_token" type="password" value="{{ config.messaging.twilio_auth_token }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">WhatsApp From Number</label>
+                    <input name="whatsapp_from" value="{{ config.messaging.twilio_whatsapp_from }}" placeholder="whatsapp:+852..."
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Telegram Bot Token</label>
+                    <input name="telegram_token" value="{{ config.messaging.telegram_bot_token }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Default Language</label>
+                    <select name="default_language" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="zh" {% if config.messaging.default_language == 'zh' %}selected{% endif %}>繁體中文</option>
+                        <option value="en" {% if config.messaging.default_language == 'en' %}selected{% endif %}>English</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: POS Integration -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">POS Integration</h3>
+            <p class="text-sm text-gray-400">Connect your POS system to import sales data.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">POS Provider</label>
+                    <select name="pos_provider" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="">Not connected</option>
+                        <option value="ichef">iCHEF</option>
+                        <option value="lightspeed">Lightspeed</option>
+                        <option value="square">Square</option>
+                        <option value="csv">CSV Import</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">POS API Key</label>
+                    <input name="pos_api_key" value="{{ config.extra.get('pos_api_key', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: MPF Trustee -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">MPF Trustee</h3>
+            <p class="text-sm text-gray-400">Configure your MPF scheme details.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">MPF Trustee</label>
+                    <select name="mpf_trustee" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="">Select trustee...</option>
+                        <option value="hsbc">HSBC Provident Fund Trustee</option>
+                        <option value="aia">AIA Company (Trustee)</option>
+                        <option value="manulife">Manulife (Int'l)</option>
+                        <option value="sunlife">Sun Life Hong Kong</option>
+                        <option value="bct">BCT Group</option>
+                        <option value="boci">BOCI-Prudential</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">MPF Scheme Name</label>
+                    <input name="mpf_scheme_name" value="{{ config.extra.get('mpf_scheme_name', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Social Accounts -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">Social Accounts</h3>
+            <p class="text-sm text-gray-400">Connect your social media accounts for SocialSync.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Instagram Access Token</label>
+                    <input name="instagram_access_token" value="{{ config.extra.get('instagram_access_token', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Facebook Page ID</label>
+                    <input name="facebook_page_id" value="{{ config.extra.get('facebook_page_id', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Facebook Access Token</label>
+                    <input name="facebook_access_token" type="password" value="{{ config.extra.get('facebook_access_token', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Bank & Payment Terms -->
+        <div x-show="step === 6" class="space-y-4">
+            <h3 class="text-lg font-semibold">Bank &amp; Payment Terms</h3>
+            <p class="text-sm text-gray-400">Configure banking and default payment terms for SupplierLedger.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Primary Business Bank</label>
+                    <select name="primary_bank" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="">Select bank...</option>
+                        <option value="hsbc">HSBC</option>
+                        <option value="hang_seng">Hang Seng Bank</option>
+                        <option value="standard_chartered">Standard Chartered</option>
+                        <option value="boc_hk">Bank of China (Hong Kong)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 7: Sample Data & Test -->
+        <div x-show="step === 7" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data &amp; Connection Test</h3>
+            <p class="text-sm text-gray-400">Seed demo data and verify all connections.</p>
+            <div class="space-y-4">
+                <label class="flex items-center gap-3 p-4 bg-[#0f1225] border border-[#2d3352] rounded-lg cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="accent-[#d4a843]">
+                    <div>
+                        <div class="text-sm font-medium">Load sample data</div>
+                        <div class="text-xs text-gray-400">Seed demo sales, employees, invoices, and posts for testing</div>
+                    </div>
+                </label>
+                <div id="connection-results" class="space-y-2"
+                     hx-get="/api/connection-test" hx-trigger="load"
+                     hx-swap="innerHTML">
+                    <p class="text-xs text-gray-500 text-center py-4">Testing connections...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex items-center justify-between mt-8 pt-6 border-t border-[#2d3352]">
+            <button type="button" x-show="step > 1" @click="step--"
+                    class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                Back
+            </button>
+            <div x-show="step <= 1"></div>
+            <button type="button" x-show="step < 7" @click="step++"
+                    class="px-6 py-2 bg-[#d4a843] text-[#1a1f36] text-sm font-semibold rounded-lg hover:bg-[#e0b954] transition-colors">
+                Next
+            </button>
+            <button type="submit" x-show="step === 7"
+                    class="px-6 py-2 bg-[#d4a843] text-[#1a1f36] text-sm font-semibold rounded-lg hover:bg-[#e0b954] transition-colors">
+                Complete Setup
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

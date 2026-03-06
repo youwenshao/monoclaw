@@ -1,0 +1,65 @@
+{% if clause %}
+<div class="space-y-5">
+    <!-- Side-by-side comparison -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-px bg-navy-700 rounded-lg overflow-hidden">
+        <!-- Actual clause (left) -->
+        <div class="bg-navy-800 p-4">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="w-2 h-2 rounded-full {% if clause.anomaly_score >= 0.7 %}bg-red-500{% elif clause.anomaly_score >= 0.4 %}bg-amber-500{% else %}bg-emerald-500{% endif %}"></span>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actual Clause</h4>
+                <span class="ml-auto text-xs text-gray-500">Clause {{ clause.clause_number }}</span>
+            </div>
+            <pre class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap font-mono bg-navy-900 rounded p-3 max-h-72 overflow-auto">{{ clause.text_content }}</pre>
+        </div>
+
+        <!-- Reference standard (right) -->
+        <div class="bg-navy-800 p-4">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Reference Standard</h4>
+                {% if reference and reference.source %}
+                <span class="ml-auto text-xs text-gray-500">{{ reference.source }}</span>
+                {% endif %}
+            </div>
+            {% if reference and reference.standard_text %}
+            <pre class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap font-mono bg-navy-900 rounded p-3 max-h-72 overflow-auto">{{ reference.standard_text }}</pre>
+            {% else %}
+            <div class="flex items-center justify-center h-32 bg-navy-900 rounded">
+                <p class="text-xs text-gray-500">No reference standard available for this clause type.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Flag reason -->
+    {% if clause.flag_reason %}
+    <div class="bg-navy-800/50 rounded-lg p-4 border border-navy-700">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Flag Reason</h4>
+        <p class="text-sm text-gray-300 leading-relaxed">{{ clause.flag_reason }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Anomaly score bar -->
+    <div class="bg-navy-800/50 rounded-lg p-4 border border-navy-700">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Anomaly Score</h4>
+            <span class="text-sm font-bold font-mono
+                         {% if clause.anomaly_score >= 0.7 %}text-red-400{% elif clause.anomaly_score >= 0.4 %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                {{ "%.2f"|format(clause.anomaly_score) }}
+            </span>
+        </div>
+        <div class="w-full bg-navy-700 rounded-full h-3 overflow-hidden">
+            <div class="h-3 rounded-full transition-all
+                        {% if clause.anomaly_score >= 0.7 %}bg-red-500{% elif clause.anomaly_score >= 0.4 %}bg-amber-500{% else %}bg-emerald-500{% endif %}"
+                 style="width: {{ (clause.anomaly_score * 100)|int }}%"></div>
+        </div>
+        <div class="flex justify-between mt-1.5">
+            <span class="text-xs text-emerald-400">Standard</span>
+            <span class="text-xs text-amber-400">Unusual</span>
+            <span class="text-xs text-red-400">Flagged</span>
+        </div>
+    </div>
+</div>
+{% else %}
+<p class="text-sm text-gray-500 text-center py-8">Clause data not available.</p>
+{% endif %}

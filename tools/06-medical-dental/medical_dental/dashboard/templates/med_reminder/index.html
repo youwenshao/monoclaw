@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}MedReminder{% endblock %}
+
+{% block status_cards %}
+<div class="grid grid-cols-4 gap-4 w-full">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '活躍病人' : 'Active Patients'">Active Patients</p>
+        <p class="text-2xl font-bold text-gray-100 mt-1">{{ stats.active_patients | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '追蹤藥物' : 'Medications Tracked'">Medications Tracked</p>
+        <p class="text-2xl font-bold text-blue-400 mt-1">{{ stats.medications_tracked | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '今日提醒' : 'Today\'s Reminders'">Today's Reminders</p>
+        <p class="text-2xl font-bold text-amber-400 mt-1">{{ stats.todays_reminders | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '依從率' : 'Compliance Rate'">Compliance Rate</p>
+        <p class="text-2xl font-bold mt-1 {% if stats.compliance_rate|default(0) >= 80 %}compliance-high{% elif stats.compliance_rate|default(0) >= 60 %}compliance-medium{% else %}compliance-low{% endif %}">
+            {{ stats.compliance_rate | default(0) }}%
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Patient Medication Table -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-[#2d3352] flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '病人藥物' : 'Patient Medications'">Patient Medications</h3>
+            <input type="text" name="search" placeholder="Search patient… 搜尋病人"
+                   hx-get="/med-reminder/api/medications" hx-trigger="keyup changed delay:300ms" hx-target="#medication-table-body" hx-swap="innerHTML"
+                   class="bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#d4a843] w-64">
+        </div>
+        <table class="w-full text-sm">
+            <thead class="bg-[#242b4a] text-gray-400">
+                <tr>
+                    <th class="text-left px-4 py-3 font-medium">Patient 病人</th>
+                    <th class="text-left px-4 py-3 font-medium">Medications 藥物</th>
+                    <th class="text-center px-4 py-3 font-medium">Compliance 依從率</th>
+                    <th class="text-left px-4 py-3 font-medium">Next Reminder 下次提醒</th>
+                    <th class="text-right px-4 py-3 font-medium">Actions 操作</th>
+                </tr>
+            </thead>
+            <tbody id="medication-table-body" hx-get="/med-reminder/api/medications" hx-trigger="load" hx-swap="innerHTML">
+                <tr><td colspan="5" class="text-center py-6 text-gray-500">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid grid-cols-2 gap-6">
+        <!-- Reminder Status Board -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+            <h3 class="text-sm font-semibold text-[#d4a843] mb-4" x-text="lang==='zh' ? '今日提醒狀態' : 'Reminder Status Board'">Reminder Status Board</h3>
+            <div id="reminder-board" hx-get="/med-reminder/api/reminders/today" hx-trigger="load, every 30s" hx-swap="innerHTML"
+                 class="space-y-4">
+                <p class="text-sm text-gray-500 text-center py-4">Loading…</p>
+            </div>
+        </div>
+
+        <!-- Compliance Chart -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+            <h3 class="text-sm font-semibold text-[#d4a843] mb-4" x-text="lang==='zh' ? '依從趨勢' : 'Compliance Trend'">Compliance Trend</h3>
+            <div id="compliance-chart-area" hx-get="/med-reminder/api/compliance/chart" hx-trigger="load" hx-swap="innerHTML">
+                <canvas id="compliance-chart" class="w-full" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-6">
+        <!-- Refill Management Queue -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '配藥管理' : 'Refill Queue'">Refill Queue</h3>
+                <div class="flex gap-2" x-data="{ filter: 'pending' }">
+                    {% for fid, label in [('pending','Pending'),('approved','Approved'),('ready','Ready'),('all','All')] %}
+                    <button @click="filter='{{ fid }}'"
+                            hx-get="/med-reminder/api/refills?status={{ fid }}" hx-target="#refill-queue" hx-swap="innerHTML"
+                            :class="filter==='{{ fid }}' ? 'bg-[#2d3352] text-[#d4a843]' : 'text-gray-400'"
+                            class="text-xs px-2.5 py-1 rounded-md font-medium transition-colors">{{ label }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div id="refill-queue" hx-get="/med-reminder/api/refills?status=pending" hx-trigger="load" hx-swap="innerHTML"
+                 class="space-y-3 max-h-[400px] overflow-auto">
+                <p class="text-sm text-gray-500 text-center py-4">Loading…</p>
+            </div>
+        </div>
+
+        <!-- Drug Interaction Alerts -->
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '藥物交互作用警報' : 'Drug Interaction Alerts'">Drug Interaction Alerts</h3>
+                <span class="live-indicator">LIVE</span>
+            </div>
+            <div id="interaction-alerts" hx-get="/med-reminder/api/interactions" hx-trigger="load, every 30s" hx-swap="innerHTML"
+                 class="space-y-3 max-h-[400px] overflow-auto">
+                <p class="text-sm text-gray-500 text-center py-4">Loading…</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'compliance-chart-area') {
+        var el = document.getElementById('compliance-chart');
+        if (el && el.dataset.labels) {
+            buildComplianceChart('compliance-chart',
+                JSON.parse(el.dataset.labels),
+                JSON.parse(el.dataset.values)
+            );
+        }
+    }
+});
+</script>
+{% endblock %}

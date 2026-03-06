@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}StockReconcile{% endblock %}
+
+{% block status_cards %}
+<div class="flex-1 bg-navy-800 rounded-lg p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider" x-text="lang==='zh' ? '總貨運' : 'Total Shipments'">Total Shipments</p>
+    <p class="text-2xl font-bold text-white mt-1">{{ shipments_count }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-lg p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider" x-text="lang==='zh' ? '已對帳' : 'Reconciled'">Reconciled</p>
+    <p class="text-2xl font-bold text-emerald-400 mt-1">{{ reconciled_count }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-lg p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider" x-text="lang==='zh' ? '差異項目' : 'Active Discrepancies'">Active Discrepancies</p>
+    <p class="text-2xl font-bold text-red-400 mt-1">{{ active_discrepancies }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-lg p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider" x-text="lang==='zh' ? '待收貨' : 'Pending Receipts'">Pending Receipts</p>
+    <p class="text-2xl font-bold text-amber-400 mt-1">{{ pending_receipts }}</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'manifest' }">
+    <!-- Tab navigation -->
+    <div class="flex gap-1 mb-6 border-b border-navy-700 pb-px">
+        <button @click="tab='manifest'"
+                :class="tab==='manifest' ? 'text-gold-400 border-b-2 border-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors">
+            <span x-text="lang==='zh' ? '載貨清單上傳' : 'Manifest Upload'"></span>
+        </button>
+        <button @click="tab='receipt'"
+                :class="tab==='receipt' ? 'text-gold-400 border-b-2 border-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors">
+            <span x-text="lang==='zh' ? '收貨對帳' : 'Receipt Matching'"></span>
+        </button>
+        <button @click="tab='discrepancy'"
+                :class="tab==='discrepancy' ? 'text-gold-400 border-b-2 border-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors">
+            <span x-text="lang==='zh' ? '差異報告' : 'Discrepancy Report'"></span>
+        </button>
+        <button @click="tab='history'"
+                :class="tab==='history' ? 'text-gold-400 border-b-2 border-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors">
+            <span x-text="lang==='zh' ? '歷史對帳' : 'Historical Reconciliation'"></span>
+        </button>
+        <button @click="tab='inventory'"
+                :class="tab==='inventory' ? 'text-gold-400 border-b-2 border-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors">
+            <span x-text="lang==='zh' ? '庫存摘要' : 'Inventory Summary'"></span>
+        </button>
+    </div>
+
+    <!-- Tab panels -->
+    <div x-show="tab==='manifest'"
+         hx-get="/stock-reconcile/partials/manifest-upload"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-16">
+            <svg class="animate-spin h-6 w-6 text-gold-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div x-show="tab==='receipt'" x-cloak
+         hx-get="/stock-reconcile/partials/receipt-matching"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-16">
+            <svg class="animate-spin h-6 w-6 text-gold-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div x-show="tab==='discrepancy'" x-cloak
+         hx-get="/stock-reconcile/partials/discrepancy-report"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-16">
+            <svg class="animate-spin h-6 w-6 text-gold-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div x-show="tab==='history'" x-cloak>
+        {% include "stock_reconcile/partials/historical_reconciliation.html" %}
+    </div>
+
+    <div x-show="tab==='inventory'" x-cloak>
+        {% include "stock_reconcile/partials/inventory_summary.html" %}
+    </div>
+</div>
+{% endblock %}

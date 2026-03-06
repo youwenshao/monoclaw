@@ -1,0 +1,32 @@
+{% for d in dispatched %}
+<tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+    <td class="px-4 py-3 text-gray-300">{{ d.date }}</td>
+    <td class="px-4 py-3 text-gray-200 font-medium">{{ d.contractor_name }}</td>
+    <td class="px-4 py-3 text-gray-300">{{ d.site_name }}</td>
+    <td class="px-4 py-3 text-gray-300">{{ d.scope }}</td>
+    <td class="px-4 py-3 text-gray-400 text-xs">{{ d.dispatched_at or '—' }}</td>
+    <td class="px-4 py-3">
+        {% if d.delivery_status == 'delivered' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-green-900/60 text-green-300">Delivered</span>
+        {% elif d.delivery_status == 'read' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-blue-900/60 text-blue-300">Read</span>
+        {% elif d.delivery_status == 'sent' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-purple-900/60 text-purple-300">Sent</span>
+        {% elif d.delivery_status == 'failed' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-red-900/60 text-red-300">Failed</span>
+        {% elif d.delivery_status == 'pending' %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-yellow-900/60 text-yellow-300">Pending</span>
+        {% else %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium bg-navy-700 text-gray-300">{{ d.delivery_status or 'Unknown' }}</span>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if not dispatched %}
+<tr>
+    <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+        No dispatches yet. Use "Dispatch Next Day" to send WhatsApp notifications to contractors.
+    </td>
+</tr>
+{% endif %}

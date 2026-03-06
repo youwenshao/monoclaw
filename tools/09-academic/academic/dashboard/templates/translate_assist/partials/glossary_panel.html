@@ -1,0 +1,132 @@
+<div x-data="glossaryPanel()" class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-[#d4a843]">Academic Glossary</h3>
+        <span class="text-xs text-gray-500">{{ terms|length }} term{{ 's' if terms|length != 1 else '' }}</span>
+    </div>
+
+    <!-- Search + filter bar -->
+    <div class="flex items-center gap-3">
+        <div class="flex-1 relative">
+            <input type="text" x-model="searchQuery" placeholder="Search glossary…"
+                   @input.debounce.300ms="filterTerms()"
+                   class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg pl-9 pr-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            </svg>
+        </div>
+        <select x-model="domainFilter"
+                @change="filterTerms()"
+                class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+            <option value="">All Domains</option>
+            {% for d in domains %}
+            <option value="{{ d }}">{{ d|replace('_', ' ')|title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Add term form -->
+    <div class="bg-[#1a1f36] rounded-lg p-4 space-y-3">
+        <h4 class="text-xs text-gray-400 font-medium">Add New Term</h4>
+        <div class="grid grid-cols-4 gap-2">
+            <input x-model="newTerm.term_en" type="text" placeholder="English"
+                   class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+            <input x-model="newTerm.term_tc" type="text" placeholder="繁體中文"
+                   class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+            <input x-model="newTerm.term_sc" type="text" placeholder="简体中文"
+                   class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+            <select x-model="newTerm.domain"
+                    class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                <option value="">Domain</option>
+                <option value="stem">STEM</option>
+                <option value="social_science">Social Science</option>
+                <option value="humanities">Humanities</option>
+                <option value="medicine">Medicine</option>
+                <option value="law">Law</option>
+                <option value="business">Business</option>
+                <option value="general">General</option>
+            </select>
+        </div>
+        <button @click="addTerm()"
+                :disabled="!newTerm.term_en && !newTerm.term_tc"
+                class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#d4a843] text-[#0f1225] hover:bg-[#c49a38] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            Add Term
+        </button>
+    </div>
+
+    <!-- Glossary table -->
+    <div class="bg-[#1a1f36] rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-[#0f1225] text-gray-400 text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-3 text-left">English</th>
+                    <th class="px-4 py-3 text-left">繁體中文</th>
+                    <th class="px-4 py-3 text-left">简体中文</th>
+                    <th class="px-4 py-3 text-left">Domain</th>
+                    <th class="px-4 py-3 text-right w-20">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2d3352]">
+                {% for t in terms %}
+                <tr class="hover:bg-[#242b4a] transition-colors group">
+                    <td class="px-4 py-2.5 text-white font-medium">{{ t.term_en or '—' }}</td>
+                    <td class="px-4 py-2.5 text-gray-200">{{ t.term_tc or '—' }}</td>
+                    <td class="px-4 py-2.5 text-gray-300">{{ t.term_sc or '—' }}</td>
+                    <td class="px-4 py-2.5">
+                        {% if t.domain %}
+                        <span class="px-2 py-0.5 bg-[#2d3352] rounded text-xs text-gray-300">{{ t.domain|replace('_', ' ')|title }}</span>
+                        {% else %}
+                        <span class="text-gray-600 text-xs">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2.5 text-right">
+                        <button hx-delete="/translate-assist/glossary/{{ t.id }}"
+                                hx-target="#glossary-panel-slot"
+                                hx-swap="innerHTML"
+                                hx-get="/translate-assist/glossary-panel/partial"
+                                hx-confirm="Delete this term?"
+                                class="text-red-400 hover:text-red-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not terms %}
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">No glossary terms yet</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function glossaryPanel() {
+    return {
+        searchQuery: '',
+        domainFilter: '',
+        newTerm: { term_en: '', term_tc: '', term_sc: '', domain: '' },
+
+        filterTerms() {
+            let url = '/translate-assist/glossary-panel/partial';
+            if (this.domainFilter) url += '?domain=' + this.domainFilter;
+            htmx.ajax('GET', url, { target: '#glossary-panel-slot', swap: 'innerHTML' });
+        },
+
+        async addTerm() {
+            if (!this.newTerm.term_en && !this.newTerm.term_tc) return;
+            try {
+                await fetch('/translate-assist/glossary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.newTerm),
+                });
+                this.newTerm = { term_en: '', term_tc: '', term_sc: '', domain: '' };
+                htmx.ajax('GET', '/translate-assist/glossary-panel/partial', { target: '#glossary-panel-slot', swap: 'innerHTML' });
+            } catch (e) { /* ignore */ }
+        },
+    };
+}
+</script>

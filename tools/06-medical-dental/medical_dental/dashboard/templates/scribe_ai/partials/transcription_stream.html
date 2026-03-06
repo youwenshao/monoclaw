@@ -1,0 +1,28 @@
+<div class="space-y-2">
+    {% if is_recording %}
+    <div class="flex items-center gap-2 mb-2">
+        <span class="recording-indicator">REC</span>
+        <span class="text-xs text-gray-400">{{ duration | default('00:00') }}</span>
+    </div>
+    {% endif %}
+
+    <div class="text-sm text-gray-300 leading-relaxed space-y-1">
+        {% for segment in segments | default([]) %}
+        <p class="{% if segment.is_final %}text-gray-200{% else %}text-gray-500 italic{% endif %}">
+            {% if segment.speaker %}
+            <span class="text-[#d4a843] font-medium text-xs mr-1">[{{ segment.speaker }}]</span>
+            {% endif %}
+            {{ segment.text }}
+            {% if segment.timestamp %}
+            <span class="text-gray-600 text-xs ml-1">{{ segment.timestamp }}</span>
+            {% endif %}
+        </p>
+        {% endfor %}
+    </div>
+
+    {% if not segments %}
+    <p class="text-gray-600 italic text-sm" x-text="lang==='zh' ? '等待轉錄…' : 'Waiting for transcription…'">
+        Waiting for transcription…
+    </p>
+    {% endif %}
+</div>

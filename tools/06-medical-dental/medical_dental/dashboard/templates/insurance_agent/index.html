@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}InsuranceAgent{% endblock %}
+
+{% block status_cards %}
+<div class="grid grid-cols-4 gap-4 w-full">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '總病人數' : 'Total Patients'">Total Patients</p>
+        <p class="text-2xl font-bold text-gray-100 mt-1">{{ stats.total_patients | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '有效保單' : 'Active Policies'">Active Policies</p>
+        <p class="text-2xl font-bold text-green-400 mt-1">{{ stats.active_policies | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '待處理索賠' : 'Pending Claims'">Pending Claims</p>
+        <p class="text-2xl font-bold text-amber-400 mt-1">{{ stats.pending_claims | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '保障問題' : 'Coverage Issues'">Coverage Issues</p>
+        <p class="text-2xl font-bold text-red-400 mt-1">{{ stats.coverage_issues | default(0) }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ activeTab: 'verification' }">
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-1 mb-6 border-b border-[#2d3352] pb-px">
+        {% for tab_id, label_en, label_zh in [
+            ('verification', 'Verification', '驗證'),
+            ('claims', 'Claims', '索賠'),
+            ('preauth', 'Pre-Auth', '預先授權'),
+            ('batch', 'Batch Verify', '批量驗證'),
+        ] %}
+        <button @click="activeTab = '{{ tab_id }}'"
+                :class="activeTab === '{{ tab_id }}' ? 'text-[#d4a843] border-b-2 border-[#d4a843]' : 'text-gray-400 hover:text-gray-200'"
+                class="px-4 py-2.5 text-sm font-medium transition-colors -mb-px"
+                x-text="lang==='zh' ? '{{ label_zh }}' : '{{ label_en }}'">{{ label_en }}</button>
+        {% endfor %}
+    </div>
+
+    <!-- ===== VERIFICATION TAB ===== -->
+    <div x-show="activeTab === 'verification'" x-cloak>
+        <div class="grid grid-cols-3 gap-6">
+            <!-- Patient Lookup -->
+            <div class="col-span-2 space-y-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '病人查詢' : 'Patient Lookup'">Patient Lookup</h3>
+                <form hx-get="/insurance-agent/api/verify" hx-target="#verification-result" hx-swap="innerHTML"
+                      class="flex gap-3">
+                    <input type="text" name="q" placeholder="Name or phone 姓名或電話"
+                           class="flex-1 bg-[#242b4a] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+                    <button type="submit"
+                            class="bg-[#d4a843] text-[#0f1225] px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                        <span x-text="lang==='zh' ? '查詢' : 'Search'">Search</span>
+                    </button>
+                </form>
+
+                <div id="verification-result" class="min-h-[120px]">
+                    <p class="text-sm text-gray-500 py-8 text-center" x-text="lang==='zh' ? '輸入病人姓名或電話以查詢保單' : 'Enter patient name or phone to look up policy'">
+                        Enter patient name or phone to look up policy
+                    </p>
+                </div>
+            </div>
+
+            <!-- Co-pay Estimator -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '自付額估算' : 'Co-pay Estimator'">Co-pay Estimator</h3>
+                <form hx-post="/insurance-agent/api/copay-estimate" hx-target="#copay-result" hx-swap="innerHTML"
+                      class="space-y-3">
+                    <input type="hidden" name="patient_id" id="copay-patient-id">
+                    <select name="procedure" class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                        <option value="">Select procedure 選擇項目</option>
+                        {% for proc in procedures | default([]) %}
+                        <option value="{{ proc.code }}">{{ proc.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" name="amount" step="0.01" placeholder="Billed amount 費用金額"
+                           class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+                    <button type="submit"
+                            class="w-full bg-[#2d3352] text-gray-100 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#3d4466] transition-colors">
+                        <span x-text="lang==='zh' ? '計算自付額' : 'Calculate Co-pay'">Calculate Co-pay</span>
+                    </button>
+                </form>
+                <div id="copay-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CLAIMS TAB ===== -->
+    <div x-show="activeTab === 'claims'" x-cloak>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '索賠管理' : 'Claims Management'">Claims Management</h3>
+                <button hx-get="/insurance-agent/api/claims/new" hx-target="#claim-form-area" hx-swap="innerHTML"
+                        class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                    <span x-text="lang==='zh' ? '+ 新索賠' : '+ New Claim'">+ New Claim</span>
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex gap-2" x-data="{ filter: 'all' }">
+                {% for fid, label in [('all','All'),('pending','Pending'),('submitted','Submitted'),('approved','Approved'),('rejected','Rejected'),('paid','Paid')] %}
+                <button @click="filter='{{ fid }}'"
+                        hx-get="/insurance-agent/api/claims?status={{ fid }}" hx-target="#claims-table-body" hx-swap="innerHTML"
+                        :class="filter==='{{ fid }}' ? 'bg-[#2d3352] text-[#d4a843]' : 'text-gray-400 hover:text-gray-200'"
+                        class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors">{{ label }}</button>
+                {% endfor %}
+            </div>
+
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-[#242b4a] text-gray-400">
+                        <tr>
+                            <th class="text-left px-4 py-3 font-medium">Patient</th>
+                            <th class="text-left px-4 py-3 font-medium">Status</th>
+                            <th class="text-right px-4 py-3 font-medium">Amount</th>
+                            <th class="text-left px-4 py-3 font-medium">Date</th>
+                            <th class="text-left px-4 py-3 font-medium">Insurer Ref</th>
+                            <th class="text-right px-4 py-3 font-medium">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="claims-table-body" hx-get="/insurance-agent/api/claims" hx-trigger="load" hx-swap="innerHTML">
+                        <tr><td colspan="6" class="text-center py-6 text-gray-500">Loading claims…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="claim-form-area"></div>
+        </div>
+    </div>
+
+    <!-- ===== PRE-AUTH TAB ===== -->
+    <div x-show="activeTab === 'preauth'" x-cloak>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '預先授權' : 'Pre-Authorizations'">Pre-Authorizations</h3>
+                <button hx-get="/insurance-agent/api/preauth/new" hx-target="#preauth-form-area" hx-swap="innerHTML"
+                        class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                    <span x-text="lang==='zh' ? '+ 新申請' : '+ New Request'">+ New Request</span>
+                </button>
+            </div>
+
+            <!-- Pipeline view -->
+            <div class="grid grid-cols-4 gap-4">
+                {% for status, label_en, label_zh, css in [('draft','Draft','草稿','preauth-draft'),('submitted','Submitted','已提交','preauth-submitted'),('approved','Approved','已批准','preauth-approved'),('denied','Denied','已拒絕','preauth-denied')] %}
+                <div>
+                    <h4 class="text-xs font-semibold text-gray-400 uppercase mb-3" x-text="lang==='zh' ? '{{ label_zh }}' : '{{ label_en }}'">{{ label_en }}</h4>
+                    <div id="preauth-{{ status }}" class="space-y-2"
+                         hx-get="/insurance-agent/api/preauth?status={{ status }}" hx-trigger="load" hx-swap="innerHTML">
+                        <p class="text-xs text-gray-600 py-4 text-center">Loading…</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div id="preauth-form-area"></div>
+        </div>
+    </div>
+
+    <!-- ===== BATCH VERIFY TAB ===== -->
+    <div x-show="activeTab === 'batch'" x-cloak>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '批量驗證' : 'Batch Verification'">Batch Verification</h3>
+                <button hx-post="/insurance-agent/api/batch-verify" hx-target="#batch-results" hx-swap="innerHTML"
+                        hx-confirm="Run batch verification for all patients with upcoming appointments?"
+                        class="bg-[#d4a843] text-[#0f1225] px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                    <span x-text="lang==='zh' ? '執行批量驗證' : 'Run Batch Verification'">Run Batch Verification</span>
+                </button>
+            </div>
+
+            <div id="batch-results" class="bg-[#1a1f36] border border-[#2d3352] rounded-lg overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-[#242b4a] text-gray-400">
+                        <tr>
+                            <th class="text-left px-4 py-3 font-medium">Patient</th>
+                            <th class="text-left px-4 py-3 font-medium">Insurer</th>
+                            <th class="text-left px-4 py-3 font-medium">Policy Status</th>
+                            <th class="text-left px-4 py-3 font-medium">Issues</th>
+                            <th class="text-left px-4 py-3 font-medium">Last Verified</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="5" class="text-center py-8 text-gray-500" x-text="lang==='zh' ? '點擊按鈕開始批量驗證' : 'Click button to start batch verification'">Click button to start batch verification</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

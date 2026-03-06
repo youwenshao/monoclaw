@@ -1,0 +1,114 @@
+<div x-data="{ filterStatus: 'all', searchQuery: '' }">
+    <!-- Summary cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        <div class="bg-navy-800 rounded-lg border border-navy-700 p-3 text-center">
+            <p class="text-xs text-gray-400">Total</p>
+            <p class="text-lg font-bold text-white">{{ summary.total_discrepancies }}</p>
+        </div>
+        <div class="bg-navy-800 rounded-lg border border-navy-700 p-3 text-center">
+            <p class="text-xs text-gray-400">Shortages</p>
+            <p class="text-lg font-bold text-red-400">{{ summary.by_category.shortage }}</p>
+        </div>
+        <div class="bg-navy-800 rounded-lg border border-navy-700 p-3 text-center">
+            <p class="text-xs text-gray-400">Overages</p>
+            <p class="text-lg font-bold text-amber-400">{{ summary.by_category.overage }}</p>
+        </div>
+        <div class="bg-navy-800 rounded-lg border border-navy-700 p-3 text-center">
+            <p class="text-xs text-gray-400">Damaged</p>
+            <p class="text-lg font-bold text-red-400">{{ summary.items_with_damage }}</p>
+        </div>
+        <div class="bg-navy-800 rounded-lg border border-navy-700 p-3 text-center">
+            <p class="text-xs text-gray-400">Shortage Qty</p>
+            <p class="text-lg font-bold text-red-300">{{ "%.0f"|format(summary.total_shortage_qty) }}</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex items-center gap-4 mb-4">
+        <div class="flex gap-1 bg-navy-800 rounded-lg p-0.5 border border-navy-700">
+            <button @click="filterStatus='all'"
+                    :class="filterStatus==='all' ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-white'"
+                    class="px-3 py-1.5 text-xs font-medium rounded transition-colors">All</button>
+            <button @click="filterStatus='shortage'"
+                    :class="filterStatus==='shortage' ? 'bg-red-900/50 text-red-400' : 'text-gray-400 hover:text-white'"
+                    class="px-3 py-1.5 text-xs font-medium rounded transition-colors">Shortage</button>
+            <button @click="filterStatus='overage'"
+                    :class="filterStatus==='overage' ? 'bg-amber-900/50 text-amber-400' : 'text-gray-400 hover:text-white'"
+                    class="px-3 py-1.5 text-xs font-medium rounded transition-colors">Overage</button>
+            <button @click="filterStatus='damaged'"
+                    :class="filterStatus==='damaged' ? 'bg-red-900/50 text-red-400' : 'text-gray-400 hover:text-white'"
+                    class="px-3 py-1.5 text-xs font-medium rounded transition-colors">Damaged</button>
+        </div>
+        <input x-model="searchQuery" type="text" placeholder="Search items..."
+               class="bg-navy-900 border border-navy-600 rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:border-gold-400 focus:outline-none w-64">
+    </div>
+
+    <!-- Discrepancies table -->
+    <div class="overflow-auto rounded-lg border border-navy-700">
+        <table class="w-full text-sm">
+            <thead class="bg-navy-800 sticky top-0">
+                <tr>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Shipment</th>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Item</th>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">SKU</th>
+                    <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Expected</th>
+                    <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Received</th>
+                    <th class="text-right px-3 py-2 text-gray-400 font-medium text-xs">Variance</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Status</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-700">
+                {% for d in discrepancies %}
+                <tr class="hover:bg-navy-800/50"
+                    x-show="(filterStatus === 'all' || filterStatus === '{{ d.status }}') && (searchQuery === '' || '{{ (d.manifest_description or d.receipt_description or '')|lower }}'.includes(searchQuery.toLowerCase()) || '{{ (d.manifest_sku or d.receipt_sku or '')|lower }}'.includes(searchQuery.toLowerCase()))">
+                    <td class="px-3 py-2">
+                        <div class="text-white text-xs">{{ d.shipment_reference or '' }}</div>
+                        <div class="text-gray-500 text-xs">{{ d.bl_number or '' }}</div>
+                    </td>
+                    <td class="px-3 py-2 text-white">{{ d.manifest_description or d.receipt_description or '—' }}</td>
+                    <td class="px-3 py-2 text-gray-300 font-mono text-xs">{{ d.manifest_sku or d.receipt_sku or '—' }}</td>
+                    <td class="px-3 py-2 text-right text-gray-300">{{ d.quantity_manifest or '—' }}</td>
+                    <td class="px-3 py-2 text-right text-gray-300">{{ d.quantity_received or '—' }}</td>
+                    <td class="px-3 py-2 text-right font-mono
+                        {% if d.variance and d.variance < 0 %}text-red-400{% elif d.variance and d.variance > 0 %}text-amber-400{% else %}text-gray-400{% endif %}">
+                        {{ d.variance or 0 }}
+                    </td>
+                    <td class="px-3 py-2 text-center">
+                        <span class="text-xs px-2 py-0.5 rounded-full
+                            {% if d.status == 'shortage' %}bg-red-900/50 text-red-400
+                            {% elif d.status == 'overage' %}bg-amber-900/50 text-amber-400
+                            {% elif d.status == 'damaged' %}bg-red-900/50 text-red-400
+                            {% elif d.status == 'unmatched_manifest' %}bg-gray-700 text-gray-400
+                            {% elif d.status == 'unmatched_receipt' %}bg-blue-900/50 text-blue-400
+                            {% else %}bg-gray-700 text-gray-400{% endif %}">
+                            {{ d.status }}
+                        </span>
+                    </td>
+                    <td class="px-3 py-2 text-center">
+                        <button class="text-xs text-gold-400 hover:text-gold-300"
+                                @click="
+                                    fetch('/stock-reconcile/api/generate-claim', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/json'},
+                                        body: JSON.stringify({shipment_id: {{ d.shipment_id }}})
+                                    }).then(r => r.json()).then(data => {
+                                        alert('Claim generated: ' + (data.total_discrepancies || 0) + ' items');
+                                    });
+                                ">
+                            Generate Claim
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not discrepancies %}
+                <tr>
+                    <td colspan="8" class="px-3 py-8 text-center text-gray-500">
+                        No discrepancies found — all reconciled items match
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

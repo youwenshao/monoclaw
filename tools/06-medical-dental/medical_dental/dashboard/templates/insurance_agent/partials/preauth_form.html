@@ -1,0 +1,80 @@
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5 mt-4">
+    <div class="flex items-center justify-between mb-4">
+        <h4 class="text-sm font-semibold text-[#d4a843]">New Pre-Authorization 新預先授權</h4>
+        <button onclick="this.closest('div.bg-\\[\\#1a1f36\\]').remove()"
+                class="text-gray-500 hover:text-gray-300 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    <form hx-post="/insurance-agent/api/preauth" hx-target="#preauth-draft" hx-swap="beforeend"
+          class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Patient 病人</label>
+            <select name="patient_id" required
+                    class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                <option value="">Select patient…</option>
+                {% for p in patients | default([]) %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Insurer 保險公司</label>
+            <select name="insurer" required
+                    class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                <option value="">Select insurer…</option>
+                <option value="bupa">Bupa</option>
+                <option value="axa">AXA</option>
+                <option value="cigna">Cigna</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Procedure 治療項目</label>
+            <input type="text" name="procedure" required placeholder="e.g. Root canal #14"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Procedure Code 項目代碼</label>
+            <input type="text" name="procedure_code" placeholder="D3330"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Estimated Cost 預計費用</label>
+            <input type="number" name="estimated_cost" step="0.01" required placeholder="0.00"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Urgency 緊急程度</label>
+            <select name="urgency"
+                    class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                <option value="routine">Routine 常規</option>
+                <option value="urgent">Urgent 緊急</option>
+                <option value="emergency">Emergency 急症</option>
+            </select>
+        </div>
+
+        <div class="col-span-2">
+            <label class="block text-xs text-gray-400 mb-1">Clinical Notes 臨床備註</label>
+            <textarea name="notes" rows="3" placeholder="Clinical justification…"
+                      class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]"></textarea>
+        </div>
+
+        <div class="col-span-2 flex gap-3 justify-end">
+            <button type="button" onclick="this.closest('form').reset()"
+                    class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">Cancel 取消</button>
+            <button type="submit"
+                    class="bg-[#d4a843] text-[#0f1225] px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                Submit Pre-Auth 提交預先授權
+            </button>
+        </div>
+    </form>
+</div>

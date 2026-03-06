@@ -1,0 +1,156 @@
+faqs:
+  # ── Processing Times ─────────────────────────────────────────────────────
+  - question: "How long does a GEP application take?"
+    question_zh: "一般就業政策申請需要多長時間？"
+    answer: "General Employment Policy (GEP) applications typically take 4-6 weeks from the date of submission to the Immigration Department."
+    answer_zh: "一般就業政策（GEP）申請通常在提交入境處後4至6星期內完成審批。"
+    keywords: ["GEP", "general", "employment", "policy", "processing", "time", "how long", "weeks"]
+
+  - question: "How long does a TTPS / Top Talent Pass application take?"
+    question_zh: "高才通申請需要多長時間？"
+    answer: "Top Talent Pass Scheme (TTPS) applications are typically processed within 4 weeks."
+    answer_zh: "高端人才通行證計劃（高才通）申請通常在4星期內完成審批。"
+    keywords: ["TTPS", "top", "talent", "pass", "processing", "time", "how long"]
+
+  - question: "How long does a QMAS application take?"
+    question_zh: "優才計劃申請需要多長時間？"
+    answer: "Quality Migrant Admission Scheme (QMAS) applications typically take 9-12 months due to the quota and scoring system."
+    answer_zh: "優秀人才入境計劃（優才計劃）申請通常需要9至12個月，因涉及配額及計分制度。"
+    keywords: ["QMAS", "quality", "migrant", "processing", "time", "how long", "months"]
+
+  - question: "How long does an IANG application take?"
+    question_zh: "IANG申請需要多長時間？"
+    answer: "Immigration Arrangements for Non-local Graduates (IANG) applications usually take 2-4 weeks."
+    answer_zh: "非本地畢業生留港/回港就業安排（IANG）申請通常需要2至4星期。"
+    keywords: ["IANG", "non-local", "graduate", "processing", "time", "how long"]
+
+  - question: "How long does an ASMTP application take?"
+    question_zh: "輸入內地人才計劃申請需要多長時間？"
+    answer: "Admission Scheme for Mainland Talents and Professionals (ASMTP) applications typically take 4-6 weeks."
+    answer_zh: "輸入內地人才計劃（ASMTP）申請通常需要4至6星期。"
+    keywords: ["ASMTP", "mainland", "talent", "professional", "processing", "time"]
+
+  # ── Required Documents ───────────────────────────────────────────────────
+  - question: "What documents do I need for a GEP application?"
+    question_zh: "一般就業政策申請需要什麼文件？"
+    answer: "For GEP you need: completed ID990A form, passport copy, recent photo, proof of academic qualifications, employment contract/offer letter, employer's business registration, company financial statements, and a detailed job description."
+    answer_zh: "一般就業政策需要：填妥的ID990A表格、護照副本、近照、學歷證明、僱傭合約/聘書、僱主商業登記證、公司財務報表及詳細職位說明。"
+    keywords: ["documents", "required", "GEP", "what", "need", "ID990A", "passport"]
+
+  - question: "What documents are needed for TTPS?"
+    question_zh: "高才通需要什麼文件？"
+    answer: "For TTPS you need: completed application form, passport copy, recent photo, proof of annual income (if Category A), degree certificate from eligible university (if Category B/C), and proof of employment history."
+    answer_zh: "高才通需要：填妥的申請表格、護照副本、近照、年收入證明（A類）、合資格大學學位證書（B/C類）及工作經驗證明。"
+    keywords: ["documents", "required", "TTPS", "top", "talent", "what", "need"]
+
+  - question: "What documents do I need for a dependant visa?"
+    question_zh: "受養人簽證需要什麼文件？"
+    answer: "For a dependant visa you need: completed ID990A form, passport copies of both sponsor and dependant, proof of relationship (marriage/birth certificate), sponsor's employment proof, proof of financial ability to support dependants, and recent photos."
+    answer_zh: "受養人簽證需要：填妥的ID990A表格、保證人及受養人護照副本、關係證明（結婚/出生證明）、保證人僱傭證明、經濟能力證明及近照。"
+    keywords: ["dependant", "dependent", "visa", "documents", "spouse", "family", "child"]
+
+  # ── Fees ─────────────────────────────────────────────────────────────────
+  - question: "How much does a visa application cost?"
+    question_zh: "簽證申請費用是多少？"
+    answer: "The Immigration Department charges HK$230 for a visa/entry permit. Extensions cost HK$230. The HKID card application is free for first-time registration."
+    answer_zh: "入境處收取簽證/入境許可費用為港幣230元。延期簽證費用為港幣230元。首次申請香港身份證免費。"
+    keywords: ["fee", "cost", "price", "how much", "charge", "HKD", "$230"]
+
+  # ── Eligibility ──────────────────────────────────────────────────────────
+  - question: "Who is eligible for TTPS?"
+    question_zh: "誰有資格申請高才通？"
+    answer: "TTPS has three categories: A) Annual income of HK$2.5M+ in the year prior; B) Degree from one of the world's Top 100 universities with 3+ years work experience; C) Degree from Top 100 university with less than 3 years experience (subject to annual quota)."
+    answer_zh: "高才通分三類：A類）過去一年年薪達250萬港元或以上；B類）持全球百強大學學位並有3年以上工作經驗；C類）持百強大學學位但工作經驗不足3年（受年度配額限制）。"
+    keywords: ["eligible", "eligibility", "qualify", "TTPS", "top", "talent", "who", "criteria"]
+
+  - question: "Who is eligible for QMAS?"
+    question_zh: "誰有資格申請優才計劃？"
+    answer: "QMAS applicants must be aged 18-50, have a good education background (generally a degree), be proficient in Chinese or English, have sufficient financial capacity, and have no criminal record. Points are assessed under either the General or Achievement-based points test."
+    answer_zh: "優才計劃申請人須年滿18至50歲、具良好學歷（一般為學位）、精通中文或英文、具備充足經濟能力及無犯罪紀錄。按「綜合計分制」或「成就計分制」評分。"
+    keywords: ["eligible", "eligibility", "qualify", "QMAS", "quality", "migrant", "who", "criteria", "points"]
+
+  - question: "Am I eligible for IANG?"
+    question_zh: "我是否有資格申請IANG？"
+    answer: "IANG is for non-local graduates who obtained a degree or higher qualification from a full-time locally accredited programme in Hong Kong. You must apply within 6 months of graduation (or anytime for returning graduates)."
+    answer_zh: "IANG適用於在香港完成經本地評審的全日制學位或以上課程的非本地畢業生。須在畢業後6個月內申請（回港就業安排則不受此限制）。"
+    keywords: ["IANG", "eligible", "non-local", "graduate", "qualify", "student", "university"]
+
+  # ── Photo Requirements ───────────────────────────────────────────────────
+  - question: "What are the photo requirements for a visa application?"
+    question_zh: "簽證申請的照片要求是什麼？"
+    answer: "Photos must be recent (within 6 months), 40mm x 50mm, front-facing, on a plain light background, without headwear (except for religious reasons), and clearly showing your full face."
+    answer_zh: "照片須為近期（6個月內）、尺寸40mm x 50mm、正面、淺色素色背景、不戴帽子（宗教原因除外），並清楚顯示全臉。"
+    keywords: ["photo", "photograph", "picture", "size", "requirement", "passport"]
+
+  # ── Appeal Process ───────────────────────────────────────────────────────
+  - question: "What can I do if my visa application is refused?"
+    question_zh: "如果簽證申請被拒，我可以怎麼做？"
+    answer: "If refused, you can: 1) Request written reasons for refusal, 2) Submit a fresh application addressing the concerns raised, 3) Seek legal advice about a review or appeal. There is no formal statutory appeal mechanism for visa refusals in Hong Kong."
+    answer_zh: "如申請被拒，您可以：1）要求書面拒絕理由，2）針對被拒原因重新提交申請，3）就覆核或上訴尋求法律意見。香港簽證拒絕沒有正式的法定上訴機制。"
+    keywords: ["refused", "rejected", "denial", "appeal", "review", "refusal", "what", "do"]
+
+  # ── Dependant Applications ───────────────────────────────────────────────
+  - question: "Can I bring my family to Hong Kong?"
+    question_zh: "我可以帶家人來香港嗎？"
+    answer: "Yes, visa holders under GEP, TTPS, QMAS, ASMTP, and IANG can sponsor their spouse and unmarried dependent children under 18 for a dependant visa. Your financial ability to support them will be assessed."
+    answer_zh: "可以。一般就業政策、高才通、優才計劃、輸入內地人才計劃及IANG的簽證持有人可為配偶及未滿18歲未婚受養子女申請受養人簽證。入境處會評估您的經濟能力。"
+    keywords: ["family", "spouse", "wife", "husband", "children", "dependant", "bring", "accompany"]
+
+  # ── Extension Procedures ─────────────────────────────────────────────────
+  - question: "How do I extend my visa?"
+    question_zh: "如何延期簽證？"
+    answer: "Apply for an extension 4 weeks before expiry at the Immigration Department. You'll need: current visa, passport, proof of continued employment (or new employer details for change of sponsor), and updated financial documents."
+    answer_zh: "請在簽證到期前4星期向入境處申請延期。需要：現有簽證、護照、持續就業證明（如轉換僱主則需新僱主資料）及最新財務文件。"
+    keywords: ["extend", "extension", "renew", "renewal", "expire", "expiry", "how"]
+
+  - question: "When should I apply for a visa extension?"
+    question_zh: "什麼時候申請簽證延期？"
+    answer: "You should apply for extension no earlier than 4 weeks before your current visa expires. Applications made too early may be rejected. Don't leave it until the last day either."
+    answer_zh: "您應在現有簽證到期前4星期內申請延期。太早申請可能被拒。也不要等到最後一天才申請。"
+    keywords: ["when", "extend", "deadline", "before", "expire", "timing", "early"]
+
+  # ── Change of Employer ───────────────────────────────────────────────────
+  - question: "Can I change my employer while on a work visa?"
+    question_zh: "持工作簽證期間可以轉換僱主嗎？"
+    answer: "You must apply for a change of sponsorship with the Immigration Department BEFORE starting work with a new employer. Submit the new employment details and supporting documents. Working for a new employer without approval is a breach of your conditions of stay."
+    answer_zh: "您必須在開始為新僱主工作前，向入境處申請轉換保證人。需提交新僱傭資料及支持文件。未經批准為新僱主工作屬違反逗留條件。"
+    keywords: ["change", "employer", "switch", "job", "new", "company", "sponsorship", "transfer"]
+
+  # ── HKID and Permanent Residency ─────────────────────────────────────────
+  - question: "When can I apply for permanent residency?"
+    question_zh: "什麼時候可以申請永久居留權？"
+    answer: "You can apply for the right of abode (permanent residency) after 7 years of continuous ordinary residence in Hong Kong. Time spent on valid employment or investment visas counts towards the 7 years."
+    answer_zh: "在香港連續通常居住滿7年後，可申請居留權（永久居留權）。持有效工作或投資簽證在港居住的時間計入7年內。"
+    keywords: ["permanent", "residency", "right", "abode", "7 years", "PR", "when"]
+
+  - question: "How do I apply for an HKID card?"
+    question_zh: "如何申請香港身份證？"
+    answer: "Within 30 days of arrival, book an appointment at the Registration of Persons Office online or by phone. Bring your passport, entry permit/visa label, and proof of address. A temporary HKID will be issued immediately; the smart HKID card arrives within 10 working days."
+    answer_zh: "抵港後30天內，透過網上或電話預約人事登記辦事處。攜帶護照、入境許可/簽證標籤及住址證明。臨時身份證即場發出；智能身份證約10個工作天內寄出。"
+    keywords: ["HKID", "identity", "card", "register", "apply", "how", "30 days"]
+
+  # ── General Process ──────────────────────────────────────────────────────
+  - question: "What happens after I submit my application?"
+    question_zh: "提交申請後會怎樣？"
+    answer: "After submission: 1) You receive an acknowledgement letter (2-4 weeks), 2) ImmD may request additional documents, 3) Application is processed (timeline varies by scheme), 4) If approved, you receive an approval-in-principle letter, 5) Visa label is issued for collection or posting."
+    answer_zh: "提交後：1）收到確認函（2至4星期），2）入境處可能要求補充文件，3）申請審批中（時間因計劃而異），4）如獲批准，收到原則性批准信，5）簽證標籤可領取或郵寄。"
+    keywords: ["after", "submit", "what", "happens", "process", "next", "steps", "application"]
+
+  - question: "Can I check my application status online?"
+    question_zh: "可以在網上查詢申請狀態嗎？"
+    answer: "The Immigration Department provides an online status enquiry at https://www.immd.gov.hk/eng/services/visas/. You can also check status through our client portal, or contact your assigned consultant."
+    answer_zh: "入境處在 https://www.immd.gov.hk/eng/services/visas/ 提供網上狀態查詢。您也可以透過我們的客戶平台查詢，或聯繫您的指定顧問。"
+    keywords: ["check", "status", "online", "track", "enquiry", "query", "where"]
+
+  # ── Office and Contact ───────────────────────────────────────────────────
+  - question: "What are your office hours?"
+    question_zh: "你們的辦公時間是？"
+    answer: "Our office is open Monday to Friday 9:00am-6:00pm and Saturday 9:00am-1:00pm (Hong Kong Time). We are closed on Sundays and public holidays."
+    answer_zh: "辦公時間為星期一至五上午9時至下午6時，星期六上午9時至下午1時（香港時間）。星期日及公眾假期休息。"
+    keywords: ["office", "hours", "open", "business", "contact", "when", "available"]
+
+  - question: "How can I contact my consultant?"
+    question_zh: "如何聯繫我的顧問？"
+    answer: "You can reach your consultant via this chat, by phone during business hours, or by email. If urgent, type 'speak to someone' and we'll prioritise your message."
+    answer_zh: "您可以透過此對話、在辦公時間致電或發送電郵聯繫顧問。如情況緊急，請輸入「顧問」，我們會優先處理您的訊息。"
+    keywords: ["contact", "consultant", "reach", "talk", "phone", "email", "how"]

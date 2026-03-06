@@ -1,0 +1,80 @@
+{% for refill in refills | default([]) %}
+<div class="bg-[#242b4a] border border-[#2d3352] rounded-lg p-4 space-y-3">
+    <div class="flex items-start justify-between">
+        <div>
+            <div class="flex items-center gap-2">
+                <p class="text-sm text-gray-100 font-medium">{{ refill.patient_name }}</p>
+                <span class="refill-{{ refill.status }} text-xs font-semibold px-2 py-0.5 rounded-full">
+                    {{ refill.status | capitalize }}
+                </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">Requested 申請: {{ refill.requested_at }}</p>
+        </div>
+        {% if refill.photo_url %}
+        <img src="{{ refill.photo_url }}" alt="Prescription photo"
+             class="w-12 h-12 rounded object-cover border border-[#2d3352] cursor-pointer hover:opacity-80"
+             onclick="window.open(this.src, '_blank')">
+        {% endif %}
+    </div>
+
+    <div class="text-xs space-y-1">
+        <div class="flex justify-between">
+            <span class="text-gray-500">Medication 藥物</span>
+            <span class="text-gray-200 font-medium">{{ refill.medication_name }}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-500">Dosage 劑量</span>
+            <span class="text-gray-300">{{ refill.dosage }}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-500">Quantity 數量</span>
+            <span class="text-gray-300">{{ refill.quantity }}</span>
+        </div>
+        {% if refill.remaining_refills is defined %}
+        <div class="flex justify-between">
+            <span class="text-gray-500">Remaining Refills 剩餘配藥次數</span>
+            <span class="{% if refill.remaining_refills <= 1 %}text-red-400{% else %}text-gray-300{% endif %}">
+                {{ refill.remaining_refills }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if refill.ocr_text %}
+    <div class="bg-[#0f1225] rounded px-3 py-2 text-xs text-gray-400 border border-[#2d3352]">
+        <p class="text-gray-600 mb-1 font-semibold">OCR Result 識別結果:</p>
+        <p class="text-gray-300 whitespace-pre-line">{{ refill.ocr_text }}</p>
+    </div>
+    {% endif %}
+
+    {% if refill.status == 'pending' %}
+    <div class="flex gap-2 pt-1">
+        <button hx-post="/med-reminder/api/refills/{{ refill.id }}/approve"
+                hx-target="#refill-queue" hx-swap="innerHTML"
+                class="flex-1 text-xs bg-green-600/20 text-green-400 px-3 py-2 rounded hover:bg-green-600/30 transition-colors font-medium">
+            Approve 批准
+        </button>
+        <button hx-post="/med-reminder/api/refills/{{ refill.id }}/reject"
+                hx-target="#refill-queue" hx-swap="innerHTML"
+                hx-confirm="Reject this refill request?"
+                class="flex-1 text-xs bg-red-600/20 text-red-400 px-3 py-2 rounded hover:bg-red-600/30 transition-colors font-medium">
+            Reject 拒絕
+        </button>
+    </div>
+    {% elif refill.status == 'approved' %}
+    <button hx-post="/med-reminder/api/refills/{{ refill.id }}/mark-ready"
+            hx-target="#refill-queue" hx-swap="innerHTML"
+            class="w-full text-xs bg-[#d4a843]/20 text-[#d4a843] px-3 py-2 rounded hover:bg-[#d4a843]/30 transition-colors font-medium">
+        Mark Ready 標記就緒
+    </button>
+    {% elif refill.status == 'ready' %}
+    <button hx-post="/med-reminder/api/refills/{{ refill.id }}/collected"
+            hx-target="#refill-queue" hx-swap="innerHTML"
+            class="w-full text-xs bg-[#2d3352] text-gray-300 px-3 py-2 rounded hover:bg-[#3d4466] transition-colors">
+        Mark Collected 已取藥
+    </button>
+    {% endif %}
+</div>
+{% else %}
+<p class="text-sm text-gray-500 text-center py-6">No refill requests. 暫無配藥申請。</p>
+{% endfor %}

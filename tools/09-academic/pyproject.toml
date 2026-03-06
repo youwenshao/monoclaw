@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-academic"
+version = "1.0.0"
+description = "Academic Dashboard — PaperSieve, CiteBot, TranslateAssist, GrantTracker"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    "python-dateutil>=2.9",
+    # PaperSieve — RAG pipeline
+    "chromadb>=0.5",
+    "PyMuPDF>=1.24",
+    "pdfplumber>=0.11",
+    "sentence-transformers>=3.0",
+    "networkx>=3.3",
+    # CiteBot — citation formatting
+    "citeproc-py>=0.6",
+    # TranslateAssist — translation
+    "opencc-python-reimplemented>=0.1",
+    "jieba>=0.42",
+    "python-docx>=1.1",
+    # GrantTracker — scraping and documents
+    "beautifulsoup4>=4.12",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+playwright = ["playwright>=1.44"]
+all = ["openclaw-academic[mlx,messaging,playwright]"]
+
+[tool.setuptools.packages.find]
+include = ["academic*"]

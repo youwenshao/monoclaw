@@ -1,0 +1,120 @@
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gold-400">Work Orders</h3>
+    </div>
+
+    <!-- Existing work orders list -->
+    {% if orders %}
+    <div class="card overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-navy-700 text-left text-gray-400">
+                    <th class="px-4 py-3 font-medium">WO #</th>
+                    <th class="px-4 py-3 font-medium">Defect</th>
+                    <th class="px-4 py-3 font-medium">Contractor</th>
+                    <th class="px-4 py-3 font-medium">Scope</th>
+                    <th class="px-4 py-3 font-medium">Est. Cost</th>
+                    <th class="px-4 py-3 font-medium">Target Date</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wo in orders %}
+                <tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+                    <td class="px-4 py-3">
+                        <span class="font-mono text-gold-400">WO-{{ '%04d'|format(wo.id) }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-300">
+                        <span class="font-mono text-xs">DEF-{{ '%04d'|format(wo.defect_id) }}</span>
+                        {% if wo.defect_description %}
+                        <span class="text-gray-500 ml-1">{{ wo.defect_description|truncate(30) }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-200">{{ wo.contractor_name|default('Unassigned') }}</td>
+                    <td class="px-4 py-3 text-gray-300 max-w-[200px] truncate">{{ wo.scope|default('—') }}</td>
+                    <td class="px-4 py-3 text-gray-300">${{ '%.2f'|format(wo.estimated_cost|default(0)) }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-400">{{ wo.target_date|default('—') }}</td>
+                    <td class="px-4 py-3">
+                        {% set wst = wo.status|default('pending') %}
+                        <span class="text-xs px-2 py-1 rounded-full font-medium
+                            {% if wst == 'pending' %}bg-amber-900/60 text-amber-300
+                            {% elif wst == 'assigned' %}bg-blue-900/60 text-blue-300
+                            {% elif wst == 'in_progress' %}bg-cyan-900/60 text-cyan-300
+                            {% elif wst == 'completed' %}bg-emerald-900/60 text-emerald-300
+                            {% elif wst == 'cancelled' %}bg-gray-700 text-gray-400
+                            {% else %}bg-navy-700 text-gray-300{% endif %}">
+                            {{ wst.replace('_', ' ').title() }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card p-8 text-center">
+        <p class="text-gray-500 text-sm">No work orders yet. Create one below.</p>
+    </div>
+    {% endif %}
+
+    <!-- Create work order form -->
+    <div class="card p-5">
+        <h4 class="text-sm font-semibold text-gray-300 mb-4">Create Work Order</h4>
+        <form hx-post="/defects-manager/work-orders"
+              hx-target="#work-orders-container"
+              hx-swap="innerHTML"
+              class="space-y-4">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Defect *</label>
+                    <select name="defect_id" required
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select defect…</option>
+                        {% for d in open_defects_list %}
+                        <option value="{{ d.id }}" {% if preselect_defect_id and d.id == preselect_defect_id %}selected{% endif %}>
+                            DEF-{{ '%04d'|format(d.id) }} — {{ d.description|truncate(40) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Contractor *</label>
+                    <select name="contractor_id" required
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select contractor…</option>
+                        {% for c in contractors %}
+                        <option value="{{ c.id }}">{{ c.company_name }} ({{ c.specialisation|default('general')|title() }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Scope of Work *</label>
+                <textarea name="scope" required rows="3" placeholder="Describe the work to be done…"
+                          class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Estimated Cost (HKD)</label>
+                    <input type="number" name="estimated_cost" step="0.01" min="0" placeholder="0.00"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Target Completion Date</label>
+                    <input type="date" name="target_date"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="submit"
+                        class="px-6 py-2 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+                    Create Work Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

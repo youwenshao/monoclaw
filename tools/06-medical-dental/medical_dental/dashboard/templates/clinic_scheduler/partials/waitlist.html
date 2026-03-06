@@ -1,0 +1,41 @@
+{% for entry in waitlist | default([]) %}
+<div class="flex items-center justify-between bg-[#242b4a] rounded-lg px-4 py-3 group">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-[#2d3352] text-xs text-gray-400 font-mono">
+            {{ entry.priority | default(loop.index) }}
+        </div>
+        <div>
+            <p class="text-sm text-gray-100 font-medium">{{ entry.patient_name }}</p>
+            <p class="text-xs text-gray-500">{{ entry.service_type }} · {{ entry.preferred_doctor | default('Any doctor') }}</p>
+            <p class="text-xs text-gray-600">Added 加入: {{ entry.added_at }}</p>
+        </div>
+    </div>
+    <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button hx-post="/clinic-scheduler/api/waitlist/{{ entry.id }}/notify"
+                hx-target="#waitlist-panel" hx-swap="innerHTML"
+                class="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded hover:bg-blue-600/30 transition-colors"
+                title="Notify patient 通知病人">
+            Notify
+        </button>
+        <button hx-post="/clinic-scheduler/api/waitlist/{{ entry.id }}/book"
+                hx-target="#booking-area" hx-swap="innerHTML"
+                class="text-xs bg-green-600/20 text-green-400 px-2.5 py-1 rounded hover:bg-green-600/30 transition-colors"
+                title="Convert to booking 轉為預約">
+            Book
+        </button>
+        <button hx-delete="/clinic-scheduler/api/waitlist/{{ entry.id }}"
+                hx-target="#waitlist-panel" hx-swap="innerHTML"
+                hx-confirm="Remove from waitlist?"
+                class="text-xs bg-red-600/20 text-red-400 px-2.5 py-1 rounded hover:bg-red-600/30 transition-colors"
+                title="Remove 移除">
+            Remove
+        </button>
+    </div>
+</div>
+{% else %}
+<p class="text-sm text-gray-500 text-center py-4">Waitlist empty. 候補名單為空。</p>
+{% endfor %}
+
+{% if waitlist %}
+<p class="text-xs text-gray-600 pt-2 text-center">{{ waitlist | length }} patient(s) waiting 位病人等候中</p>
+{% endif %}

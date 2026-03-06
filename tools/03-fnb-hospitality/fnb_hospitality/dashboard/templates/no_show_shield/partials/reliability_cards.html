@@ -1,0 +1,73 @@
+<!-- htmx partial: guest reliability cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for guest in guests %}
+    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-4 hover:border-[#3d4466] transition-colors">
+        <div class="flex items-start gap-3">
+            <!-- Score Badge -->
+            {% if guest.score == 'A' %}
+            <div class="score-A w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <span class="text-lg font-bold text-emerald-400">A</span>
+            </div>
+            {% elif guest.score == 'B' %}
+            <div class="score-B w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center shrink-0">
+                <span class="text-lg font-bold text-blue-400">B</span>
+            </div>
+            {% elif guest.score == 'C' %}
+            <div class="score-C w-10 h-10 rounded-lg bg-[#d4a843]/10 border border-[#d4a843]/30 flex items-center justify-center shrink-0">
+                <span class="text-lg font-bold text-[#d4a843]">C</span>
+            </div>
+            {% elif guest.score == 'D' %}
+            <div class="score-D w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                <span class="text-lg font-bold text-red-400">D</span>
+            </div>
+            {% endif %}
+
+            <!-- Guest Info -->
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-white truncate">{{ guest.name }}</p>
+                <p class="text-xs text-gray-500">{{ guest.phone }}</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-[#2d3352]">
+            <div>
+                <p class="text-[10px] text-gray-500 uppercase">Bookings</p>
+                <p class="text-sm font-semibold text-white">{{ guest.total_bookings }}</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500 uppercase">No-Shows</p>
+                <p class="text-sm font-semibold {% if guest.no_shows > 0 %}text-red-400{% else %}text-white{% endif %}">{{ guest.no_shows }}</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500 uppercase">Show Rate</p>
+                <p class="text-sm font-semibold {% if guest.show_rate >= 90 %}text-emerald-400{% elif guest.show_rate >= 70 %}text-[#d4a843]{% else %}text-red-400{% endif %}">{{ guest.show_rate }}%</p>
+            </div>
+        </div>
+
+        <!-- Reliability Bar -->
+        <div class="mt-3">
+            <div class="w-full bg-[#242b4a] rounded-full h-1.5">
+                <div class="h-1.5 rounded-full transition-all {% if guest.score == 'A' %}bg-emerald-500{% elif guest.score == 'B' %}bg-blue-500{% elif guest.score == 'C' %}bg-[#d4a843]{% else %}bg-red-500{% endif %}"
+                     style="width: {{ guest.show_rate }}%"></div>
+            </div>
+        </div>
+
+        <!-- Last Visit -->
+        <div class="flex items-center justify-between mt-3 text-xs text-gray-500">
+            <span>Last visit: {{ guest.last_visit | default('—') }}</span>
+            {% if guest.score == 'D' and guest.no_shows >= 3 %}
+            <button class="text-red-400 hover:text-red-300 transition-colors"
+                    hx-post="/no-show-shield/blacklist/{{ guest.id }}"
+                    hx-confirm="Blacklist {{ guest.name }}?">
+                Blacklist
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full text-center py-12 text-gray-500">
+        <p class="text-sm">No guest records found</p>
+    </div>
+    {% endfor %}
+</div>

@@ -1,0 +1,216 @@
+<div x-data="{
+    items: [{hs_code:'', description:'', quantity:0, unit:'pieces', value:0, country_of_origin:''}],
+    submitting: false,
+    result: null,
+    addItem() { this.items.push({hs_code:'', description:'', quantity:0, unit:'pieces', value:0, country_of_origin:''}) },
+    removeItem(idx) { if(this.items.length > 1) this.items.splice(idx, 1) },
+    async submit() {
+        this.submitting = true;
+        this.result = null;
+        const form = this.$refs.tdecForm;
+        const fd = new FormData(form);
+        const payload = {
+            declaration_type: fd.get('declaration_type'),
+            shipper: fd.get('shipper'),
+            consignee: fd.get('consignee'),
+            country_of_origin: fd.get('country_of_origin'),
+            country_of_destination: fd.get('country_of_destination'),
+            transport_mode: fd.get('transport_mode'),
+            vessel_flight: fd.get('vessel_flight'),
+            currency: fd.get('currency'),
+            items: this.items
+        };
+        try {
+            const resp = await fetch('/trade-doc-ai/api/tdec', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+            this.result = await resp.json();
+        } catch(e) { this.result = {error: e.message}; }
+        this.submitting = false;
+    }
+}">
+    <h2 class="text-lg font-semibold text-gray-100 mb-1">TDEC Builder</h2>
+    <p class="text-sm text-gray-400 mb-6">Create a Trade Declaration (TDEC) for import, export, or re-export.</p>
+
+    <form x-ref="tdecForm" @submit.prevent="submit()" class="space-y-6">
+        <!-- Top row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Declaration Type</label>
+                <select name="declaration_type"
+                        class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="import">Import</option>
+                    <option value="export">Export</option>
+                    <option value="re_export">Re-export</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Transport Mode</label>
+                <select name="transport_mode"
+                        class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="sea">Sea</option>
+                    <option value="air">Air</option>
+                    <option value="land">Land</option>
+                    <option value="rail">Rail</option>
+                    <option value="post">Post</option>
+                    <option value="multimodal">Multimodal</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Currency</label>
+                <select name="currency"
+                        class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="HKD">HKD</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="CNY">CNY</option>
+                    <option value="GBP">GBP</option>
+                    <option value="JPY">JPY</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Parties -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Shipper</label>
+                <input type="text" name="shipper" placeholder="Shipping company name"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Consignee</label>
+                <input type="text" name="consignee" placeholder="Receiving company name"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Country of Origin</label>
+                <input type="text" name="country_of_origin" placeholder="e.g. China"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Country of Destination</label>
+                <input type="text" name="country_of_destination" placeholder="e.g. Germany"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Vessel / Flight</label>
+                <input type="text" name="vessel_flight" placeholder="e.g. COSCO Galaxy V.2604"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+        </div>
+
+        <!-- Items table -->
+        <div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="text-xs font-medium text-gray-400">Declaration Items</label>
+                <button type="button" @click="addItem()"
+                        class="text-xs text-gold-400 hover:text-gold-300 font-medium transition-colors">
+                    + Add Item
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-xs text-gray-500 uppercase">
+                            <th class="text-left py-2 px-2">HS Code</th>
+                            <th class="text-left py-2 px-2">Description</th>
+                            <th class="text-left py-2 px-2 w-20">Qty</th>
+                            <th class="text-left py-2 px-2 w-24">Unit</th>
+                            <th class="text-left py-2 px-2 w-28">Value</th>
+                            <th class="text-left py-2 px-2">Origin</th>
+                            <th class="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(item, idx) in items" :key="idx">
+                            <tr class="border-t border-navy-700">
+                                <td class="py-2 px-2">
+                                    <input type="text" x-model="item.hs_code" placeholder="61091000"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 font-mono focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="text" x-model="item.description" placeholder="Product description"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="number" x-model.number="item.quantity" min="0"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <select x-model="item.unit"
+                                            class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                        <option value="pieces">pieces</option>
+                                        <option value="kg">kg</option>
+                                        <option value="litres">litres</option>
+                                        <option value="metres">metres</option>
+                                        <option value="sets">sets</option>
+                                        <option value="rolls">rolls</option>
+                                        <option value="cartons">cartons</option>
+                                    </select>
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="number" x-model.number="item.value" min="0" step="0.01"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="text" x-model="item.country_of_origin" placeholder="Country"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <button type="button" @click="removeItem(idx)" x-show="items.length > 1"
+                                            class="text-red-400 hover:text-red-300 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex items-center gap-4">
+            <button type="submit" :disabled="submitting"
+                    class="px-6 py-2.5 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+                <span x-show="!submitting">Create Declaration</span>
+                <span x-show="submitting" class="flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Creating...
+                </span>
+            </button>
+        </div>
+    </form>
+
+    <!-- Result -->
+    <template x-if="result && !result.error">
+        <div class="mt-6 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-sm font-semibold text-emerald-400">Declaration Created</span>
+            </div>
+            <p class="text-sm text-gray-300">
+                Reference: <span class="font-mono text-gold-400" x-text="result.reference_number"></span>
+            </p>
+            <p class="text-sm text-gray-400">
+                Filing deadline: <span x-text="result.filing_deadline"></span>
+            </p>
+        </div>
+    </template>
+    <template x-if="result && result.error">
+        <div class="mt-6 bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <p class="text-sm text-red-400" x-text="result.error"></p>
+        </div>
+    </template>
+</div>

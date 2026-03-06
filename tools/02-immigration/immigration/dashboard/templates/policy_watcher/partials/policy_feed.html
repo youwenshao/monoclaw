@@ -1,0 +1,119 @@
+{% if changes %}
+<div class="relative pl-6 border-l-2 border-navy-700 space-y-6">
+    {% for c in changes %}
+    <div class="relative">
+        <!-- Timeline dot -->
+        <span class="absolute -left-[calc(1.5rem+5px)] top-2 w-2.5 h-2.5 rounded-full
+            {% if c.urgency == 'urgent' %}bg-red-500{% elif c.urgency == 'important' %}bg-amber-500{% else %}bg-gray-500{% endif %}">
+        </span>
+
+        <div class="bg-navy-800 rounded-lg p-4 border border-navy-700 hover:border-navy-600 transition-colors">
+            <div class="flex items-start justify-between gap-3 mb-2">
+                <div class="flex items-center gap-2">
+                    <!-- Severity badge -->
+                    {% if c.urgency == 'urgent' %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
+                        URGENT
+                    </span>
+                    {% elif c.urgency == 'important' %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Important
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                        Routine
+                    </span>
+                    {% endif %}
+
+                    <!-- Change type -->
+                    {% if c.change_type %}
+                    <span class="text-xs text-gray-500">{{ c.change_type }}</span>
+                    {% endif %}
+                </div>
+                <span class="text-xs text-gray-500 whitespace-nowrap">{{ c.detected_at[:10] if c.detected_at else '' }}</span>
+            </div>
+
+            <h3 class="text-sm font-medium text-gray-200 mb-1">
+                {{ c.title or 'Policy Change #' ~ c.id }}
+            </h3>
+
+            {% if c.published_date %}
+            <p class="text-xs text-gray-500 mb-2">Published: {{ c.published_date }}</p>
+            {% endif %}
+
+            {% if c.change_summary %}
+            <p class="text-sm text-gray-400 mb-3 leading-relaxed">{{ c.change_summary }}</p>
+            {% endif %}
+
+            <!-- Affected schemes -->
+            {% if c.affected_schemes %}
+            <div class="flex flex-wrap gap-1.5 mb-3">
+                {% for scheme in c.affected_schemes.split(',') %}
+                {% set s = scheme.strip() %}
+                {% if s %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-700 text-gray-300">
+                    {{ s }}
+                </span>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button hx-get="/policy-watcher/diff-viewer/partial?change_id={{ c.id }}"
+                        hx-target="#diff-modal-content"
+                        hx-swap="innerHTML"
+                        @click="document.getElementById('diff-modal').classList.remove('hidden')"
+                        class="text-xs text-gold-400 hover:text-gold-300 font-medium transition-colors">
+                    View Diff
+                </button>
+                <a href="/policy-watcher/impact/{{ c.id }}"
+                   hx-get="/policy-watcher/impact/{{ c.id }}"
+                   hx-target="#impact-panel"
+                   class="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                    Assess Impact
+                </a>
+                {% if c.document_url %}
+                <a href="{{ c.document_url }}" target="_blank" rel="noopener"
+                   class="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-auto">
+                    Source ↗
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Diff modal -->
+<div id="diff-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     @keydown.escape.window="document.getElementById('diff-modal').classList.add('hidden')">
+    <div class="bg-navy-900 border border-navy-700 rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-auto m-4">
+        <div class="flex items-center justify-between p-4 border-b border-navy-700">
+            <h2 class="text-sm font-semibold text-gold-400">Document Diff</h2>
+            <button @click="document.getElementById('diff-modal').classList.add('hidden')"
+                    class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div id="diff-modal-content" class="p-4">
+            <p class="text-sm text-gray-500 text-center py-8">Loading diff…</p>
+        </div>
+    </div>
+</div>
+
+<!-- Impact panel -->
+<div id="impact-panel"></div>
+
+{% else %}
+<div class="text-center py-12">
+    <svg class="mx-auto h-10 w-10 text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/>
+    </svg>
+    <p class="text-sm text-gray-500">No policy changes detected yet.</p>
+    <p class="text-xs text-gray-600 mt-1">Changes will appear here after the next scrape cycle.</p>
+</div>
+{% endif %}

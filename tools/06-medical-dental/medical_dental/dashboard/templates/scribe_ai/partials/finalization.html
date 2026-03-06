@@ -1,0 +1,45 @@
+<div class="bg-[#242b4a] border border-[#2d3352] rounded-lg p-4 space-y-3">
+    <h4 class="text-sm font-semibold text-[#d4a843]">Finalize Consultation 確認完成診症</h4>
+
+    {% if warnings %}
+    <div class="space-y-1.5">
+        {% for warn in warnings %}
+        <div class="flex items-start gap-2 text-xs text-amber-300 bg-amber-900/20 rounded px-3 py-2">
+            <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/>
+            </svg>
+            <span>{{ warn }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="text-xs text-gray-400 space-y-1">
+        <p>Consultation: <span class="text-gray-200">{{ consultation.patient_name }}</span> — {{ consultation.date }}</p>
+        <p>SOAP Sections: <span class="text-gray-200">{{ consultation.filled_sections }}/4 completed</span></p>
+        <p>ICD-10 Codes: <span class="text-gray-200">{{ consultation.icd_count | default(0) }}</span></p>
+        <p>Entities: <span class="text-gray-200">{{ consultation.entity_count | default(0) }}</span></p>
+    </div>
+
+    {% if is_amendment %}
+    <div>
+        <label class="block text-xs text-gray-400 mb-1">Amendment Reason 修改原因</label>
+        <textarea name="amendment_reason" rows="2" required
+                  class="w-full bg-[#0f1225] border border-[#2d3352] rounded px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#d4a843]"
+                  placeholder="Reason for amendment…"></textarea>
+    </div>
+    {% endif %}
+
+    <div class="flex gap-2 pt-1">
+        <button hx-post="/scribe-ai/api/consultations/{{ consultation.id }}/finalize"
+                hx-target="#finalization-area" hx-swap="innerHTML"
+                hx-confirm="Finalize this consultation note? This action is logged."
+                class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors">
+            Confirm 確認
+        </button>
+        <button onclick="this.closest('.bg-\\[\\#242b4a\\]').remove()"
+                class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+            Cancel 取消
+        </button>
+    </div>
+</div>

@@ -1,0 +1,234 @@
+{% if defect %}
+<div class="card p-5 space-y-5">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <h3 class="text-lg font-semibold text-gold-400">DEF-{{ '%04d'|format(defect.id) }}</h3>
+            <span class="text-sm text-gray-400">{{ defect.property_name|default('') }}</span>
+            <span class="text-sm text-gray-500">{{ defect.floor|default('') }} / {{ defect.unit|default('') }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+            {% set pri = defect.priority|default('normal') %}
+            <span class="text-xs px-2 py-1 rounded-full font-medium
+                {% if pri == 'emergency' %}bg-red-500/20 text-red-400
+                {% elif pri == 'urgent' %}bg-amber-500/20 text-amber-400
+                {% elif pri == 'normal' %}bg-blue-500/20 text-blue-400
+                {% else %}bg-gray-500/20 text-gray-400{% endif %}">
+                {{ pri.title() }}
+            </span>
+            {% set st = defect.status|default('open') %}
+            <span class="text-xs px-2 py-1 rounded-full font-medium
+                {% if st == 'open' %}bg-red-900/60 text-red-300
+                {% elif st == 'in_progress' %}bg-amber-900/60 text-amber-300
+                {% elif st == 'pending_review' %}bg-blue-900/60 text-blue-300
+                {% elif st == 'resolved' %}bg-emerald-900/60 text-emerald-300
+                {% elif st == 'closed' %}bg-gray-700 text-gray-400
+                {% else %}bg-navy-700 text-gray-300{% endif %}">
+                {{ st.replace('_', ' ').title() }}
+            </span>
+            <button hx-delete="/defects-manager/defect/{{ defect.id }}"
+                    hx-target="#defect-detail-panel"
+                    hx-swap="innerHTML"
+                    hx-confirm="Close this defect detail panel?"
+                    class="p-1.5 rounded-lg hover:bg-navy-700 text-gray-400 hover:text-white transition-colors"
+                    title="Close panel">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Photo display -->
+    {% if defect.photo_paths %}
+    <div>
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Photos</h4>
+        <div class="flex gap-2 overflow-x-auto pb-2">
+            {% for photo in defect.photo_paths %}
+            <img src="{{ photo }}" alt="Defect photo"
+                 class="w-32 h-24 object-cover rounded-lg border border-navy-700 cursor-pointer hover:border-gold-400 transition-colors"
+                 @click="window.open('{{ photo }}', '_blank')">
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Details grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-navy-800/50 rounded-lg p-3">
+            <span class="text-xs text-gray-500 block mb-1">Category</span>
+            {% set cat = defect.category|default('other') %}
+            <span class="text-xs px-2 py-1 rounded-full font-medium
+                {% if cat == 'plumbing' %}bg-blue-900/60 text-blue-300
+                {% elif cat == 'electrical' %}bg-yellow-900/60 text-yellow-300
+                {% elif cat == 'structural' %}bg-red-900/60 text-red-300
+                {% elif cat == 'waterproofing' %}bg-cyan-900/60 text-cyan-300
+                {% elif cat == 'fire_safety' %}bg-orange-900/60 text-orange-300
+                {% elif cat == 'hvac' %}bg-indigo-900/60 text-indigo-300
+                {% elif cat == 'finishing' %}bg-purple-900/60 text-purple-300
+                {% elif cat == 'common_area' %}bg-teal-900/60 text-teal-300
+                {% else %}bg-navy-700 text-gray-300{% endif %}">
+                {{ cat.replace('_', ' ').title() }}
+            </span>
+        </div>
+        <div class="bg-navy-800/50 rounded-lg p-3">
+            <span class="text-xs text-gray-500 block mb-1">Reported</span>
+            <span class="text-sm text-gray-200">{{ defect.reported_at[:10] if defect.reported_at else '—' }}</span>
+        </div>
+        <div class="bg-navy-800/50 rounded-lg p-3">
+            <span class="text-xs text-gray-500 block mb-1">Reported By</span>
+            <span class="text-sm text-gray-200">{{ defect.reported_by|default('—') }}</span>
+        </div>
+        <div class="bg-navy-800/50 rounded-lg p-3">
+            <span class="text-xs text-gray-500 block mb-1">Assigned To</span>
+            <span class="text-sm text-gray-200">{{ defect.assigned_to|default('Unassigned') }}</span>
+        </div>
+    </div>
+
+    <!-- Description -->
+    <div class="bg-navy-800/50 rounded-lg p-4 border border-navy-700">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Description</h4>
+        <p class="text-sm text-gray-300 leading-relaxed">{{ defect.description|default('No description provided.') }}</p>
+    </div>
+
+    <!-- Responsibility assignment -->
+    {% if defect.responsibility %}
+    <div class="bg-navy-800/50 rounded-lg p-4 border border-navy-700">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Responsibility</h4>
+        <span class="text-sm text-gold-400 font-medium">{{ defect.responsibility }}</span>
+        {% if defect.responsibility_note %}
+        <p class="text-xs text-gray-500 mt-1">{{ defect.responsibility_note }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Timeline of updates -->
+    {% if defect_updates %}
+    <div>
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Update History</h4>
+        <div class="space-y-3">
+            {% for update in defect_updates %}
+            <div class="flex gap-3">
+                <div class="flex flex-col items-center">
+                    <div class="w-2 h-2 rounded-full mt-2
+                        {% if update.type == 'status_change' %}bg-gold-400
+                        {% elif update.type == 'comment' %}bg-blue-400
+                        {% elif update.type == 'photo_added' %}bg-purple-400
+                        {% else %}bg-gray-500{% endif %}"></div>
+                    {% if not loop.last %}
+                    <div class="w-px flex-1 bg-navy-700 mt-1"></div>
+                    {% endif %}
+                </div>
+                <div class="pb-3 flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-200">{{ update.author|default('System') }}</span>
+                        <span class="text-xs text-gray-500">{{ update.created_at[:16] if update.created_at else '' }}</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-0.5">{{ update.note|default('') }}</p>
+                    {% if update.new_status %}
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-navy-700 text-gray-300 mt-1 inline-block">
+                        → {{ update.new_status.replace('_', ' ').title() }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Work order section -->
+    <div class="border-t border-navy-700 pt-4">
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Work Orders</h4>
+            <button hx-get="/defects-manager/work-orders/form?defect_id={{ defect.id }}"
+                    hx-target="#defect-wo-section"
+                    hx-swap="innerHTML"
+                    class="px-3 py-1.5 bg-gold-500 hover:bg-gold-400 text-navy-900 text-xs font-semibold rounded-lg transition-colors">
+                Create Work Order
+            </button>
+        </div>
+        <div id="defect-wo-section">
+            {% if defect.work_orders %}
+            <div class="space-y-2">
+                {% for wo in defect.work_orders %}
+                <div class="flex items-center justify-between bg-navy-800/50 rounded-lg px-4 py-2.5">
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-sm text-gold-400">WO-{{ '%04d'|format(wo.id) }}</span>
+                        <span class="text-sm text-gray-300">{{ wo.contractor_name|default('—') }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500">${{ '%.2f'|format(wo.estimated_cost|default(0)) }}</span>
+                        {% set wst = wo.status|default('pending') %}
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                            {% if wst == 'pending' %}bg-amber-900/60 text-amber-300
+                            {% elif wst == 'assigned' %}bg-blue-900/60 text-blue-300
+                            {% elif wst == 'in_progress' %}bg-cyan-900/60 text-cyan-300
+                            {% elif wst == 'completed' %}bg-emerald-900/60 text-emerald-300
+                            {% elif wst == 'cancelled' %}bg-gray-700 text-gray-400
+                            {% else %}bg-navy-700 text-gray-300{% endif %}">
+                            {{ wst.replace('_', ' ').title() }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 text-center py-3">No work orders linked to this defect.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% elif contractors %}
+<!-- Contractor directory table (reused partial context) -->
+<div class="card overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-navy-700 text-left text-gray-400">
+                <th class="px-4 py-3 font-medium">Company</th>
+                <th class="px-4 py-3 font-medium">Contact</th>
+                <th class="px-4 py-3 font-medium">Phone</th>
+                <th class="px-4 py-3 font-medium">Email</th>
+                <th class="px-4 py-3 font-medium">Specialisation</th>
+                <th class="px-4 py-3 font-medium">Rating</th>
+                <th class="px-4 py-3 font-medium">Active WOs</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in contractors %}
+            <tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+                <td class="px-4 py-3 text-gray-200 font-medium">{{ c.company_name }}</td>
+                <td class="px-4 py-3 text-gray-300">{{ c.contact_person|default('—') }}</td>
+                <td class="px-4 py-3 text-gray-300">{{ c.phone|default('—') }}</td>
+                <td class="px-4 py-3 text-gray-400 text-xs">{{ c.email|default('—') }}</td>
+                <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-1 rounded-full font-medium bg-navy-700 text-gray-300">
+                        {{ c.specialisation|default('general')|title() }}
+                    </span>
+                </td>
+                <td class="px-4 py-3">
+                    {% set rating = c.rating|default(0)|float %}
+                    <div class="flex items-center gap-1">
+                        {% for i in range(5) %}
+                        <svg class="w-3.5 h-3.5 {{ 'text-gold-400' if i < rating|int else 'text-navy-600' }}" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        {% endfor %}
+                        <span class="text-xs text-gray-500 ml-1">{{ '%.1f'|format(rating) }}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-300">{{ c.active_work_orders|default(0) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not contractors %}
+<p class="text-sm text-gray-500 text-center py-8">No contractors registered. Add one using the form above.</p>
+{% endif %}
+
+{% else %}
+<p class="text-sm text-gray-500 text-center py-8">Select a defect to view details.</p>
+{% endif %}

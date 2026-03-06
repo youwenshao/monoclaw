@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard{% endblock %}
+
+{% block content %}
+<div x-data="{ step: 1 }" class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-[#d4a843] mb-6">First-Run Configuration</h2>
+
+    <form method="post" action="/setup/" class="space-y-6">
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="s in [1,2,3,4,5,6,7]">
+                <div class="flex items-center gap-2">
+                    <div :class="step >= s ? 'bg-[#d4a843] text-[#1a1f36]' : 'bg-[#2d3352] text-gray-400'"
+                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                         x-text="s"></div>
+                    <div x-show="s < 7" class="w-6 h-px" :class="step > s ? 'bg-[#d4a843]' : 'bg-[#2d3352]'"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Step 1: Restaurant Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Restaurant Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Restaurant Name</label>
+                    <input type="text" name="restaurant_name" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="鼎泰豐">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Address</label>
+                    <input type="text" name="restaurant_address" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="Shop 130, Level 1, Silvercord, TST">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Cuisine Type</label>
+                    <select name="cuisine_type" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        <option value="chinese">Chinese</option>
+                        <option value="dim_sum">Dim Sum</option>
+                        <option value="hotpot">Hotpot</option>
+                        <option value="japanese">Japanese</option>
+                        <option value="western">Western</option>
+                        <option value="fine_dining">Fine Dining</option>
+                        <option value="casual">Casual Dining</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Phone</label>
+                    <input type="text" name="phone" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="+852 XXXX XXXX">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Table Layout -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">Table Layout</h3>
+            <p class="text-sm text-gray-400">You can configure tables in detail after setup via the TableMaster dashboard.</p>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">2-seat tables</label>
+                    <input type="number" name="tables_2" value="4" min="0" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">4-seat tables</label>
+                    <input type="number" name="tables_4" value="6" min="0" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">6-seat tables</label>
+                    <input type="number" name="tables_6" value="2" min="0" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">8-seat tables</label>
+                    <input type="number" name="tables_8" value="1" min="0" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Round tables (10+)</label>
+                    <input type="number" name="tables_round" value="1" min="0" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Total seats</label>
+                    <div class="bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm text-gray-300">Auto-calculated</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Messaging Setup -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">Messaging Setup</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Account SID</label>
+                    <input type="text" name="twilio_sid" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="ACxxxxxxxx">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Auth Token</label>
+                    <input type="password" name="twilio_token" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">WhatsApp From Number</label>
+                    <input type="text" name="whatsapp_from" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm" placeholder="+852XXXXXXXX">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Telegram Bot Token</label>
+                    <input type="password" name="telegram_token" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Language</label>
+                    <select name="default_language" class="w-full bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        <option value="zh">繁體中文</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Platform Connections -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">Platform Connections</h3>
+            <div class="space-y-4">
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium text-[#d4a843]">OpenRice</h4>
+                    <input type="text" name="openrice_api_key" placeholder="API Key (if available)" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium text-[#d4a843]">Instagram</h4>
+                    <input type="text" name="instagram_access_token" placeholder="Graph API Access Token" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Business Rules -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">Business Rules</h3>
+            <div class="space-y-4">
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium text-[#d4a843]">Dining Durations (minutes)</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Lunch</label>
+                            <input type="number" value="75" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Dinner (weekday)</label>
+                            <input type="number" value="90" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Dinner (weekend)</label>
+                            <input type="number" value="120" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Dim Sum</label>
+                            <input type="number" value="120" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 bg-[#242b4a] rounded-lg space-y-3">
+                    <h4 class="text-sm font-medium text-[#d4a843]">No-Show Thresholds</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Blacklist after N no-shows</label>
+                            <input type="number" value="3" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Deposit for party size >=</label>
+                            <input type="number" value="7" class="w-full bg-[#0f1225] border border-[#3d4466] rounded-lg px-3 py-2 text-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Sample Data -->
+        <div x-show="step === 6" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data</h3>
+            <div class="p-4 bg-[#242b4a] rounded-lg">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="w-4 h-4 rounded border-[#3d4466] bg-[#0f1225] text-[#d4a843] focus:ring-[#d4a843]">
+                    <div>
+                        <p class="text-sm font-medium">Seed demo data for testing</p>
+                        <p class="text-xs text-gray-400">Creates sample tables, bookings, queue entries, and guest profiles so you can explore the dashboard before going live.</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 7: Connection Test -->
+        <div x-show="step === 7" class="space-y-4">
+            <h3 class="text-lg font-semibold">Connection Test</h3>
+            <div id="connection-results" class="space-y-3"
+                 hx-get="/api/connection-test" hx-trigger="intersect once" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Testing connections...
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex justify-between pt-4 border-t border-[#2d3352]">
+            <button type="button" @click="step = Math.max(1, step-1)" x-show="step > 1"
+                    class="px-4 py-2 text-sm text-gray-300 bg-[#242b4a] rounded-lg hover:bg-[#2d3352] transition-colors">
+                Back
+            </button>
+            <div class="ml-auto">
+                <button type="button" @click="step++" x-show="step < 7"
+                        class="px-6 py-2 text-sm font-semibold text-[#1a1f36] bg-[#d4a843] rounded-lg hover:bg-[#e0be6a] transition-colors">
+                    Next
+                </button>
+                <button type="submit" x-show="step === 7"
+                        class="px-6 py-2 text-sm font-semibold text-[#1a1f36] bg-[#d4a843] rounded-lg hover:bg-[#e0be6a] transition-colors">
+                    Complete Setup
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

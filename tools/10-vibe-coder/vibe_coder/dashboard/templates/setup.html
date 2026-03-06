@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard{% endblock %}
+
+{% block content %}
+<div x-data="{ step: 1 }" class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-gold-400 mb-6">First-Run Configuration</h2>
+
+    <form method="post" action="/setup/" class="space-y-6">
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="s in [1,2,3,4,5,6,7,8]">
+                <div class="flex items-center gap-2">
+                    <div :class="step >= s ? 'bg-gold-500 text-navy-900' : 'bg-navy-700 text-gray-400'"
+                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                         x-text="s"></div>
+                    <div x-show="s < 8" class="w-6 h-px" :class="step > s ? 'bg-gold-500' : 'bg-navy-700'"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Step 1: Developer Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Developer Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Developer Name</label>
+                    <input type="text" name="developer_name" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="Your name">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Preferred Languages</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 p-2 bg-navy-800 rounded-lg cursor-pointer">
+                            <input type="checkbox" name="preferred_languages" value="python" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                            <span class="text-sm">Python</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-navy-800 rounded-lg cursor-pointer">
+                            <input type="checkbox" name="preferred_languages" value="javascript" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                            <span class="text-sm">JavaScript</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-navy-800 rounded-lg cursor-pointer">
+                            <input type="checkbox" name="preferred_languages" value="typescript" checked class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                            <span class="text-sm">TypeScript</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-navy-800 rounded-lg cursor-pointer">
+                            <input type="checkbox" name="preferred_languages" value="go" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                            <span class="text-sm">Go</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-navy-800 rounded-lg cursor-pointer">
+                            <input type="checkbox" name="preferred_languages" value="rust" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                            <span class="text-sm">Rust</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-navy-800 rounded-lg cursor-pointer">
+                            <input type="checkbox" name="preferred_languages" value="react" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                            <span class="text-sm">React/JSX</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Coding Style</label>
+                    <select name="coding_style" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="pep8">PEP 8 (Python)</option>
+                        <option value="google">Google Style</option>
+                        <option value="airbnb">Airbnb (JavaScript)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Output Language</label>
+                    <select name="default_output_language" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="en">English</option>
+                        <option value="zh">繁體中文</option>
+                        <option value="bilingual">Bilingual (EN + 繁中)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Model Configuration -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">Model Configuration</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Model Mode</label>
+                    <select name="model_mode" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="warm">Warm (keep model loaded in memory)</option>
+                        <option value="cold">Cold (unload after inactivity to free RAM)</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Warm mode gives faster responses (~500ms). Cold mode frees ~5GB RAM when idle.</p>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Context Window</label>
+                    <select name="context_window" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="8192">8K tokens (faster, less context)</option>
+                        <option value="16384">16K tokens (balanced)</option>
+                        <option value="32768" selected>32K tokens (maximum context)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Project Setup -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">Project Setup</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Project Directories</label>
+                    <input type="text" name="default_project_dirs" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="~/Projects (comma-separated)">
+                    <p class="text-xs text-gray-500 mt-1">Directories to scan for code analysis and documentation.</p>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Boilerplate Output Directory</label>
+                    <input type="text" name="boilerplate_output_dir" value="~/OpenClawWorkspace/vibe-coder/generated" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: GitHub Integration -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">GitHub Integration</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">GitHub Token Source</label>
+                    <select name="github_token_source" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="gh_auth">gh auth token (recommended)</option>
+                        <option value="env_var">GITHUB_TOKEN environment variable</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Used for PR descriptions, issue labeling, and release notes.</p>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Base Branch</label>
+                    <input type="text" name="default_base_branch" value="main" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Commit Message Format</label>
+                    <select name="commit_format" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="conventional">Conventional Commits</option>
+                        <option value="freeform">Free-form</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: HK API Keys -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">HK API Configuration</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">FPS Proxy Type</label>
+                    <select name="fps_proxy_type" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="mobile">Mobile Number</option>
+                        <option value="fps_id">FPS ID</option>
+                        <option value="email">Email</option>
+                        <option value="br_number">Business Registration Number</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Octopus Merchant ID</label>
+                    <input type="text" name="octopus_merchant_id" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="Optional">
+                </div>
+                <p class="text-xs text-gray-500">GovHK Open Data API does not require authentication.</p>
+            </div>
+        </div>
+
+        <!-- Step 6: Telegram -->
+        <div x-show="step === 6" class="space-y-4">
+            <h3 class="text-lg font-semibold">Telegram Bot</h3>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Telegram Bot Token</label>
+                <input type="password" name="telegram_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="Optional — for build notifications">
+            </div>
+        </div>
+
+        <!-- Step 7: Sample Data -->
+        <div x-show="step === 7" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data</h3>
+            <div class="p-4 bg-navy-800 rounded-lg">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500 focus:ring-gold-500">
+                    <div>
+                        <p class="text-sm font-medium">Seed demo data for testing</p>
+                        <p class="text-xs text-gray-400">Creates sample conversations, projects, repositories, and code snippets so you can explore the dashboard.</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 8: Connection Test -->
+        <div x-show="step === 8" class="space-y-4">
+            <h3 class="text-lg font-semibold">Connection Test</h3>
+            <div id="connection-results" class="space-y-3"
+                 hx-get="/api/connection-test" hx-trigger="intersect once" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Testing connections...
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex justify-between pt-4 border-t border-navy-700">
+            <button type="button" @click="step = Math.max(1, step-1)" x-show="step > 1"
+                    class="px-4 py-2 text-sm text-gray-300 bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors">
+                Back
+            </button>
+            <div class="ml-auto">
+                <button type="button" @click="step++" x-show="step < 8"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Next
+                </button>
+                <button type="submit" x-show="step === 8"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Complete Setup
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

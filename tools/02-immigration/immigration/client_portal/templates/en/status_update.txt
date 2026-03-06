@@ -1,0 +1,11 @@
+Dear {client_name},
+
+Your immigration case {case_ref} ({scheme}) has been updated.
+
+New status: {status}
+
+{next_steps}
+
+If you have any questions, please reply to this message or contact your consultant during office hours (Mon-Fri 9am-6pm, Sat 9am-1pm HKT).
+
+— Your Immigration Consultant Team

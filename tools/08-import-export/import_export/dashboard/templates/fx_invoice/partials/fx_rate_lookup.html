@@ -1,0 +1,191 @@
+<div x-data="fxRateLookup()" class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Rate lookup form -->
+        <div class="bg-navy-800 rounded-xl border border-navy-700 p-5">
+            <h3 class="text-sm font-semibold text-gold-400 mb-4">Currency Pair</h3>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Base Currency</label>
+                    <select x-model="base"
+                            class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                        <option value="HKD">HKD — Hong Kong Dollar</option>
+                        <option value="USD">USD — US Dollar</option>
+                        <option value="CNH">CNH — Offshore Renminbi</option>
+                        <option value="EUR">EUR — Euro</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Target Currency</label>
+                    <select x-model="target"
+                            class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                        <option value="USD">USD — US Dollar</option>
+                        <option value="CNH">CNH — Offshore Renminbi</option>
+                        <option value="EUR">EUR — Euro</option>
+                        <option value="GBP">GBP — British Pound</option>
+                        <option value="JPY">JPY — Japanese Yen</option>
+                        <option value="SGD">SGD — Singapore Dollar</option>
+                        <option value="HKD">HKD — Hong Kong Dollar</option>
+                    </select>
+                </div>
+
+                <button @click="lookupRate()"
+                        class="w-full px-4 py-2.5 bg-gold-500 text-navy-900 rounded-lg font-medium text-sm hover:bg-gold-400 transition-colors">
+                    Get Rate
+                </button>
+
+                <!-- Current rate display -->
+                <div x-show="currentRate" class="bg-navy-900 rounded-lg p-4 border border-navy-700">
+                    <p class="text-xs text-gray-400 mb-1">Current Rate</p>
+                    <p class="text-2xl font-bold text-white">
+                        1 <span x-text="base"></span> =
+                        <span x-text="currentRate ? currentRate.toFixed(4) : '—'"></span>
+                        <span x-text="target"></span>
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Source: <span x-text="rateSource || 'N/A'"></span>
+                    </p>
+                </div>
+
+                <!-- HKD Peg Band indicator -->
+                <div x-show="showPegBand" class="bg-navy-900 rounded-lg p-4 border border-navy-700">
+                    <p class="text-xs text-gold-400 uppercase tracking-wider mb-2">HKD Peg Band</p>
+                    <div class="relative h-6 bg-navy-700 rounded-full overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 bg-emerald-500/30 rounded-full" style="width: 100%"></div>
+                        <div class="absolute inset-y-0 bg-gold-500/50 rounded-full"
+                             :style="`left: ${pegPosition}%; width: 4px;`"></div>
+                    </div>
+                    <div class="flex justify-between mt-1 text-[10px] text-gray-500">
+                        <span>7.7500 (Strong)</span>
+                        <span x-text="pegRate ? pegRate.toFixed(4) : ''"></span>
+                        <span>7.8500 (Weak)</span>
+                    </div>
+                    <p x-show="pegWarning" class="text-xs text-amber-400 mt-2" x-text="pegWarning"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rate history chart -->
+        <div class="lg:col-span-2 bg-navy-800 rounded-xl border border-navy-700 p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-white">Rate History</h3>
+                <select x-model="historyDays" @change="loadHistory()"
+                        class="bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-2 py-1 text-xs focus:border-gold-400 focus:outline-none">
+                    <option value="7">7 days</option>
+                    <option value="30" selected>30 days</option>
+                    <option value="90">90 days</option>
+                </select>
+            </div>
+
+            <div id="fx-rate-chart" class="h-64 flex items-center justify-center">
+                <p class="text-xs text-gray-500">Select a currency pair and click "Get Rate" to load history</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- All monitored rates -->
+    <div class="bg-navy-800 rounded-xl border border-navy-700 p-5">
+        <h3 class="text-sm font-semibold text-gold-400 mb-4">Monitored Currencies</h3>
+        <div id="monitored-rates" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
+             hx-get="/fx-invoice/api/fx-rates" hx-trigger="load, every 60s" hx-swap="innerHTML"
+             hx-target="#monitored-rates">
+            <p class="text-xs text-gray-500 col-span-full text-center py-4">Loading rates…</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function fxRateLookup() {
+    return {
+        base: 'HKD',
+        target: 'USD',
+        currentRate: null,
+        rateSource: '',
+        historyDays: 30,
+        showPegBand: false,
+        pegRate: null,
+        pegPosition: 50,
+        pegWarning: '',
+
+        async lookupRate() {
+            try {
+                const resp = await fetch(`/fx-invoice/api/fx-rates`);
+                const data = await resp.json();
+                const rateInfo = data.rates?.[this.target];
+                if (rateInfo) {
+                    this.currentRate = rateInfo.rate;
+                    this.rateSource = rateInfo.source;
+                }
+
+                this.showPegBand = (this.base === 'HKD' && this.target === 'USD') ||
+                                   (this.base === 'USD' && this.target === 'HKD');
+                if (this.showPegBand) {
+                    const usdHkd = this.target === 'HKD' ? this.currentRate : (1 / this.currentRate);
+                    this.pegRate = usdHkd;
+                    this.pegPosition = ((usdHkd - 7.75) / (7.85 - 7.75)) * 100;
+                    this.pegPosition = Math.max(0, Math.min(100, this.pegPosition));
+                    this.pegWarning = usdHkd >= 7.83 ? 'Near weak-side convertibility undertaking' :
+                                     usdHkd <= 7.77 ? 'Near strong-side convertibility undertaking' : '';
+                }
+
+                this.loadHistory();
+            } catch (e) {
+                console.warn('Rate lookup failed', e);
+            }
+        },
+
+        async loadHistory() {
+            try {
+                const resp = await fetch(
+                    `/fx-invoice/api/fx-rates/history?base=${this.base}&target=${this.target}&days=${this.historyDays}`
+                );
+                const data = await resp.json();
+                this.renderChart(data);
+            } catch (e) {
+                console.warn('History load failed', e);
+            }
+        },
+
+        renderChart(data) {
+            const container = document.getElementById('fx-rate-chart');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-500">No historical data available for this pair</p>';
+                return;
+            }
+
+            const labels = data.map(d => d.fetched_at ? d.fetched_at.split('T')[0].split(' ')[0] : '');
+            const values = data.map(d => d.rate);
+
+            container.innerHTML = '<canvas id="rateChart"></canvas>';
+            const ctx = document.getElementById('rateChart').getContext('2d');
+
+            if (window._fxChart) window._fxChart.destroy();
+            window._fxChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${this.base}/${this.target}`,
+                        data: values,
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+                    },
+                },
+            });
+        },
+    };
+}
+</script>

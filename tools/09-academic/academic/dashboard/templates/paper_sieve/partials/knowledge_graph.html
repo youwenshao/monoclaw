@@ -1,0 +1,88 @@
+<!-- htmx partial: knowledge graph visualization -->
+<div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+    <div class="p-4 border-b border-[#2d3352] flex items-center justify-between">
+        <div>
+            <h3 class="text-sm font-semibold text-[#e0be6a]">Knowledge Graph</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Papers, authors, and topic connections</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 text-xs">
+                <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#d4a843]"></span> Papers</span>
+                <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> Authors</span>
+                <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Tags</span>
+            </div>
+            <button onclick="reloadGraph()"
+                    class="px-3 py-1.5 text-xs bg-[#242b4a] text-gray-300 rounded-lg hover:bg-[#2d3352] border border-[#3d4466] transition-colors">
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <div id="knowledge-graph-container" style="height: 500px; background: #0f1225;" class="rounded-b-xl"></div>
+</div>
+
+<script>
+(function () {
+    const GROUP_COLORS = {
+        paper:  { background: '#d4a843', border: '#e0be6a', font: { color: '#0f1225' } },
+        author: { background: '#38bdf8', border: '#7dd3fc', font: { color: '#0f1225' } },
+        tag:    { background: '#34d399', border: '#6ee7b7', font: { color: '#0f1225' } },
+    };
+
+    function renderKnowledgeGraph(data) {
+        const container = document.getElementById('knowledge-graph-container');
+        if (!container || typeof vis === 'undefined') return;
+
+        const nodes = new vis.DataSet(
+            data.nodes.map(n => ({
+                id: n.id,
+                label: n.label,
+                group: n.group,
+                color: GROUP_COLORS[n.group] || GROUP_COLORS.paper,
+                shape: n.group === 'paper' ? 'dot' : (n.group === 'author' ? 'diamond' : 'triangle'),
+                size: n.group === 'paper' ? 14 : 10,
+                font: { color: '#e2e8f0', size: 11 },
+            }))
+        );
+
+        const edges = new vis.DataSet(
+            data.edges.map(e => ({
+                from: e.from,
+                to: e.to,
+                color: { color: '#2d3352', highlight: '#d4a843' },
+                arrows: e.relation === 'authored' ? '' : 'to',
+                width: 1,
+            }))
+        );
+
+        const options = {
+            physics: {
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: { gravitationalConstant: -40, centralGravity: 0.005, springLength: 100 },
+                stabilization: { iterations: 150 },
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                zoomView: true,
+                dragView: true,
+            },
+            layout: { improvedLayout: true },
+        };
+
+        new vis.Network(container, { nodes, edges }, options);
+    }
+
+    window.reloadGraph = function () {
+        fetch('/paper-sieve/knowledge-graph')
+            .then(r => r.json())
+            .then(data => renderKnowledgeGraph(data))
+            .catch(err => {
+                const c = document.getElementById('knowledge-graph-container');
+                if (c) c.innerHTML = '<div class="flex items-center justify-center h-full text-sm text-gray-500">Failed to load graph data</div>';
+            });
+    };
+
+    window.reloadGraph();
+})();
+</script>

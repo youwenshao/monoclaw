@@ -1,0 +1,114 @@
+<div class="space-y-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-gold-400">{{ owner }}/{{ repo }}</h3>
+            <span class="text-xs text-gray-500">{{ issues|length }} open issue{{ 's' if issues|length != 1 else '' }}</span>
+        </div>
+        {% if issues %}
+        <button hx-post="/api/git-assistant/label-issue"
+                hx-vals='{"owner": "{{ owner }}", "repo": "{{ repo }}", "apply_all": true}'
+                hx-target="#issues-list-slot"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 text-xs font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+            Apply All Suggestions
+        </button>
+        {% endif %}
+    </div>
+
+    {% if issues %}
+    <div class="bg-navy-800 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-navy-900 text-gray-400 text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-3 text-left w-16">#</th>
+                    <th class="px-4 py-3 text-left">Title</th>
+                    <th class="px-4 py-3 text-left">Current Labels</th>
+                    <th class="px-4 py-3 text-left">AI Suggested</th>
+                    <th class="px-4 py-3 text-left w-20">Conf.</th>
+                    <th class="px-4 py-3 text-right w-28">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-700">
+                {% for issue in issues %}
+                <tr class="hover:bg-navy-700/50 transition-colors" id="issue-row-{{ issue.number }}">
+                    <td class="px-4 py-3 text-gray-400">#{{ issue.number }}</td>
+                    <td class="px-4 py-3">
+                        <a href="{{ issue.html_url }}" target="_blank"
+                           class="text-gray-200 hover:text-gold-400 transition-colors">
+                            {{ issue.title }}
+                        </a>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-wrap gap-1">
+                            {% for lbl in issue.current_labels %}
+                            <span class="px-2 py-0.5 text-xs rounded-full bg-navy-600 text-gray-300"
+                                  {% if lbl.color %}style="background-color: #{{ lbl.color }}22; color: #{{ lbl.color }}"{% endif %}>
+                                {{ lbl.name if lbl.name else lbl }}
+                            </span>
+                            {% endfor %}
+                            {% if not issue.current_labels %}
+                            <span class="text-xs text-gray-600 italic">none</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-wrap gap-1">
+                            {% for lbl in issue.suggested_labels %}
+                            <span class="px-2 py-0.5 text-xs rounded-full font-medium
+                                {% if lbl.category == 'bug' %}bg-red-500/20 text-red-400
+                                {% elif lbl.category == 'feature' %}bg-emerald-500/20 text-emerald-400
+                                {% elif lbl.category == 'enhancement' %}bg-blue-500/20 text-blue-400
+                                {% elif lbl.category == 'priority' %}bg-amber-500/20 text-amber-400
+                                {% elif lbl.category == 'documentation' %}bg-purple-500/20 text-purple-400
+                                {% else %}bg-gray-500/20 text-gray-400
+                                {% endif %}">
+                                {{ lbl.name }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if issue.confidence is defined %}
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-12 h-1.5 bg-navy-700 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full
+                                    {% if issue.confidence >= 0.8 %}bg-emerald-500
+                                    {% elif issue.confidence >= 0.5 %}bg-amber-500
+                                    {% else %}bg-red-500
+                                    {% endif %}"
+                                     style="width: {{ (issue.confidence * 100)|int }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500">{{ (issue.confidence * 100)|int }}%</span>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        {% if issue.applied %}
+                        <span class="px-3 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-400 rounded-lg">
+                            Applied
+                        </span>
+                        {% else %}
+                        <button hx-post="/api/git-assistant/label-issue"
+                                hx-vals='{"owner": "{{ owner }}", "repo": "{{ repo }}", "issue_number": {{ issue.number }}, "apply": true}'
+                                hx-target="#issue-row-{{ issue.number }}"
+                                hx-swap="outerHTML"
+                                class="px-3 py-1.5 text-xs font-semibold bg-gold-500 text-navy-900 rounded-lg hover:bg-gold-400 transition-colors disabled:opacity-40">
+                            Apply
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-navy-800 rounded-xl p-8 text-center">
+        <svg class="w-10 h-10 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        <p class="text-sm text-gray-500">No open issues found for {{ owner }}/{{ repo }}.</p>
+    </div>
+    {% endif %}
+</div>

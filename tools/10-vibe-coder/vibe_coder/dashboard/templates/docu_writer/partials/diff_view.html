@@ -1,0 +1,134 @@
+<!-- Diff View Partial — side-by-side comparison of old vs new documentation -->
+{% if diff %}
+<div class="space-y-4">
+    <!-- Diff Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <h3 class="text-sm font-semibold text-gray-200">Documentation Diff</h3>
+            {% if diff.element_name %}
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-navy-700 text-gray-300 font-mono">{{ diff.element_name }}</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+            {% if diff.additions is defined %}
+            <span class="flex items-center gap-1 text-emerald-400">
+                <span class="font-mono">+{{ diff.additions }}</span> added
+            </span>
+            {% endif %}
+            {% if diff.deletions is defined %}
+            <span class="flex items-center gap-1 text-red-400">
+                <span class="font-mono">-{{ diff.deletions }}</span> removed
+            </span>
+            {% endif %}
+            {% if diff.similarity is defined %}
+            <span class="text-gray-500">{{ diff.similarity }}% similar</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Side-by-side panels -->
+    {% if diff.old_content is defined and diff.new_content is defined %}
+    <div class="grid grid-cols-2 gap-px bg-navy-700 rounded-xl overflow-hidden">
+        <!-- Old Version (left) -->
+        <div class="bg-navy-800">
+            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-navy-700 bg-navy-850">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Previous</h4>
+                {% if diff.old_timestamp %}
+                <span class="text-xs text-gray-600 ml-auto">{{ diff.old_timestamp }}</span>
+                {% endif %}
+            </div>
+            <div class="p-4 max-h-[32rem] overflow-auto">
+                {% if diff.old_lines %}
+                <!-- Line-by-line diff -->
+                <div class="font-mono text-xs leading-relaxed space-y-0">
+                    {% for line in diff.old_lines %}
+                    <div class="flex {{ 'bg-red-500/10 diff-removed' if line.removed else '' }}">
+                        <span class="w-8 text-right pr-2 text-gray-600 select-none shrink-0 border-r border-navy-700 mr-2">{{ line.number }}</span>
+                        <span class="{{ 'text-red-400' if line.removed else 'text-gray-400' }} whitespace-pre-wrap break-all">{{ line.text }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif diff.old_content %}
+                <pre class="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap font-mono">{{ diff.old_content }}</pre>
+                {% else %}
+                <p class="text-xs text-gray-600 italic text-center py-4">No previous version</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- New Version (right) -->
+        <div class="bg-navy-800">
+            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-navy-700 bg-navy-850">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Generated</h4>
+                {% if diff.new_timestamp %}
+                <span class="text-xs text-gray-600 ml-auto">{{ diff.new_timestamp }}</span>
+                {% endif %}
+            </div>
+            <div class="p-4 max-h-[32rem] overflow-auto">
+                {% if diff.new_lines %}
+                <div class="font-mono text-xs leading-relaxed space-y-0">
+                    {% for line in diff.new_lines %}
+                    <div class="flex {{ 'bg-emerald-500/10 diff-added' if line.added else '' }}">
+                        <span class="w-8 text-right pr-2 text-gray-600 select-none shrink-0 border-r border-navy-700 mr-2">{{ line.number }}</span>
+                        <span class="{{ 'text-emerald-400' if line.added else 'text-gray-300' }} whitespace-pre-wrap break-all">{{ line.text }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif diff.new_content %}
+                <pre class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono">{{ diff.new_content }}</pre>
+                {% else %}
+                <p class="text-xs text-gray-600 italic text-center py-4">No new content generated</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Single panel when only one version exists -->
+    <div class="bg-navy-800 rounded-xl overflow-hidden">
+        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-navy-700">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">New Documentation</h4>
+        </div>
+        <div class="p-4 max-h-[32rem] overflow-auto">
+            <pre class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono">{{ diff.new_content or diff.content or 'No content available.' }}</pre>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Change Summary -->
+    {% if diff.summary %}
+    <div class="bg-navy-800/50 rounded-lg p-4 border border-navy-700">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Change Summary</h4>
+        <p class="text-sm text-gray-300 leading-relaxed">{{ diff.summary }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3">
+        {% if diff.new_content %}
+        <button hx-post="/api/docu-writer/accept-diff"
+                hx-vals='{"diff_id": "{{ diff.id }}"}'
+                hx-swap="outerHTML"
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors">
+            Accept Changes
+        </button>
+        <button hx-post="/api/docu-writer/reject-diff"
+                hx-vals='{"diff_id": "{{ diff.id }}"}'
+                hx-swap="outerHTML"
+                class="px-4 py-2 bg-navy-700 hover:bg-navy-600 text-gray-300 text-sm font-medium rounded-lg transition-colors border border-navy-600">
+            Reject
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="text-center py-12">
+    <svg class="mx-auto w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+    </svg>
+    <p class="text-sm text-gray-500">No diff data available.</p>
+    <p class="text-xs text-gray-600 mt-1">Generate documentation to compare with existing docs.</p>
+</div>
+{% endif %}

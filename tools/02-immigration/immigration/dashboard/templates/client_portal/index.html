@@ -1,0 +1,583 @@
+{% extends "base.html" %}
+{% block title %}ClientPortal{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Active Cases</div>
+    <div class="card-value">{{ active_count|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Awaiting Documents</div>
+    <div class="card-value text-amber-400">{{ awaiting_docs|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">This Week's Appts</div>
+    <div class="card-value text-green-400">{{ week_appointments|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Unread Messages</div>
+    <div class="card-value text-red-400">{{ unread_msgs|default(0) }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="clientPortalApp()" x-init="init()" class="space-y-6">
+
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-2 border-b border-navy-700 pb-2">
+        <button @click="activeSubTab = 'cases'"
+                :class="activeSubTab === 'cases' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Cases
+        </button>
+        <button @click="activeSubTab = 'messages'"
+                :class="activeSubTab === 'messages' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Messages
+        </button>
+        <button @click="activeSubTab = 'appointments'"
+                :class="activeSubTab === 'appointments' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Appointments
+        </button>
+        <button @click="activeSubTab = 'broadcast'"
+                :class="activeSubTab === 'broadcast' ? 'bg-navy-700 text-gold-400' : 'text-gray-300 hover:bg-navy-800'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Broadcast
+        </button>
+    </div>
+
+    <!-- ═══════ Cases Tab ═══════ -->
+    <div x-show="activeSubTab === 'cases'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Immigration Cases</h3>
+            <div class="flex items-center gap-3">
+                <label class="text-sm text-gray-400">Status:</label>
+                <select name="status_filter"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm"
+                        hx-get="/client-portal/case-table/partial"
+                        hx-target="#case-table-body"
+                        hx-trigger="change"
+                        hx-include="this"
+                        hx-swap="innerHTML">
+                    <option value="all">All Statuses</option>
+                    <option value="documents_gathering">Gathering Documents</option>
+                    <option value="application_submitted">Application Submitted</option>
+                    <option value="acknowledgement_received">Acknowledgement Received</option>
+                    <option value="additional_documents_requested">Additional Docs Requested</option>
+                    <option value="under_processing">Under Processing</option>
+                    <option value="approval_in_principle">Approval in Principle</option>
+                    <option value="visa_label_issued">Visa Label Issued</option>
+                    <option value="entry_made">Entry Made</option>
+                    <option value="hkid_applied">HKID Applied</option>
+                </select>
+                <button @click="newCaseModal = true" class="btn btn-primary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    New Case
+                </button>
+            </div>
+        </div>
+
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-navy-700 text-left text-gray-400">
+                        <th class="px-4 py-3 font-medium">Reference</th>
+                        <th class="px-4 py-3 font-medium">Client</th>
+                        <th class="px-4 py-3 font-medium">Scheme</th>
+                        <th class="px-4 py-3 font-medium">Status</th>
+                        <th class="px-4 py-3 font-medium">Last Updated</th>
+                        <th class="px-4 py-3 font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="case-table-body"
+                       hx-get="/client-portal/case-table/partial"
+                       hx-trigger="load, caseUpdated from:body"
+                       hx-swap="innerHTML">
+                    <tr>
+                        <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                            <svg class="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Loading cases...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Timeline panel (loads on case click) -->
+        <div id="case-timeline-panel" class="mt-4"></div>
+    </div>
+
+    <!-- ═══════ Messages Tab ═══════ -->
+    <div x-show="activeSubTab === 'messages'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Client Messages</h3>
+            <div class="flex items-center gap-3">
+                <label class="text-sm text-gray-400">Case:</label>
+                <select x-model="selectedCaseId"
+                        @change="loadMessages()"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm min-w-[200px]">
+                    <option value="">Select a case...</option>
+                    {% for case in cases %}
+                    <option value="{{ case.id }}">{{ case.reference_code }} — {{ case.client_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="card p-0 overflow-hidden" style="min-height: 400px;">
+            <div id="message-thread" class="p-4 space-y-3 overflow-auto" style="max-height: 500px;">
+                <p class="text-center text-gray-500 py-12">Select a case to view messages</p>
+            </div>
+            <div class="border-t border-navy-700 p-3 flex gap-2" x-show="selectedCaseId">
+                <input type="text" x-model="messageText" placeholder="Type a reply..."
+                       @keydown.enter="sendMessage()"
+                       class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                <select x-model="messageChannel" class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-2 text-xs">
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="portal">Portal</option>
+                </select>
+                <button @click="sendMessage()" :disabled="!messageText.trim()" class="btn btn-primary text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+                    </svg>
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Appointments Tab ═══════ -->
+    <div x-show="activeSubTab === 'appointments'" x-transition class="tab-section">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Consultations</h3>
+            <div class="flex items-center gap-3">
+                <label class="text-sm text-gray-400">Date:</label>
+                <input type="date" x-model="appointmentDate"
+                       @change="loadSlots()"
+                       class="bg-navy-800 border border-navy-600 rounded-lg px-3 py-1.5 text-sm">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Available slots -->
+            <div class="card p-4">
+                <h4 class="text-sm font-semibold text-gray-300 mb-3">Available Slots</h4>
+                <div id="slots-grid" class="grid grid-cols-3 gap-2">
+                    <template x-for="slot in availableSlots" :key="slot.start">
+                        <button @click="selectedSlot = slot"
+                                :class="selectedSlot?.start === slot.start ? 'bg-gold-500 text-navy-900' : 'bg-navy-800 text-gray-300 hover:bg-navy-700'"
+                                class="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-center">
+                            <span x-text="slot.start + ' – ' + slot.end"></span>
+                        </button>
+                    </template>
+                    <p x-show="availableSlots.length === 0" class="col-span-3 text-center text-gray-500 py-4">
+                        No slots available for this date
+                    </p>
+                </div>
+            </div>
+
+            <!-- Booking form -->
+            <div class="card p-4">
+                <h4 class="text-sm font-semibold text-gray-300 mb-3">Book Appointment</h4>
+                <form @submit.prevent="bookAppointment()" class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Case</label>
+                        <select x-model="bookingForm.case_id" required
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Select case...</option>
+                            {% for case in cases %}
+                            <option value="{{ case.id }}">{{ case.reference_code }} — {{ case.client_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Selected Slot</label>
+                        <input type="text" readonly
+                               :value="selectedSlot ? appointmentDate + ' ' + selectedSlot.start + '–' + selectedSlot.end : 'Pick a slot'"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Type</label>
+                        <select x-model="bookingForm.type"
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="consultation">Initial Consultation</option>
+                            <option value="follow_up">Follow-up</option>
+                            <option value="document_review">Document Review</option>
+                            <option value="status_briefing">Status Briefing</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Notes</label>
+                        <textarea x-model="bookingForm.notes" rows="2"
+                                  class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full"
+                            :disabled="!selectedSlot || !bookingForm.case_id">
+                        Confirm Booking
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Broadcast Tab ═══════ -->
+    <div x-show="activeSubTab === 'broadcast'" x-transition class="tab-section">
+        <div id="broadcast-container"
+             hx-get="/client-portal/case-table/partial?mode=broadcast"
+             hx-trigger="load"
+             hx-target="#broadcast-client-list"
+             hx-swap="innerHTML">
+
+            <h3 class="text-lg font-semibold text-gold-400 mb-4">Broadcast Message</h3>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Client selection -->
+                <div class="card p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-semibold text-gray-300">Select Recipients</h4>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-400">Filter:</label>
+                            <select x-model="broadcastFilter.scheme"
+                                    class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-1 text-xs">
+                                <option value="">All Schemes</option>
+                                <option value="GEP">GEP</option>
+                                <option value="TTPS">TTPS</option>
+                                <option value="QMAS">QMAS</option>
+                                <option value="IANG">IANG</option>
+                                <option value="ASMTP">ASMTP</option>
+                                <option value="Dependant">Dependant</option>
+                            </select>
+                            <select x-model="broadcastFilter.status"
+                                    class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-1 text-xs">
+                                <option value="">All Statuses</option>
+                                <option value="documents_gathering">Gathering Docs</option>
+                                <option value="application_submitted">Submitted</option>
+                                <option value="under_processing">Processing</option>
+                                <option value="approval_in_principle">AIP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                            <input type="checkbox" @change="toggleAllCases($event.target.checked)"
+                                   class="rounded bg-navy-900 border-navy-600">
+                            Select all
+                        </label>
+                    </div>
+
+                    <div class="space-y-1 max-h-64 overflow-auto">
+                        {% for case in cases %}
+                        <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-navy-800 cursor-pointer text-sm"
+                               x-show="(!broadcastFilter.scheme || '{{ case.scheme }}' === broadcastFilter.scheme) && (!broadcastFilter.status || '{{ case.current_status }}' === broadcastFilter.status)">
+                            <input type="checkbox" value="{{ case.id }}"
+                                   x-model="broadcastCaseIds"
+                                   class="rounded bg-navy-900 border-navy-600">
+                            <span class="text-gray-200">{{ case.reference_code }}</span>
+                            <span class="text-gray-400">{{ case.client_name }}</span>
+                            <span class="ml-auto text-xs px-2 py-0.5 rounded-full
+                                {% if case.scheme == 'GEP' %}bg-blue-900 text-blue-300
+                                {% elif case.scheme == 'TTPS' %}bg-purple-900 text-purple-300
+                                {% elif case.scheme == 'QMAS' %}bg-teal-900 text-teal-300
+                                {% elif case.scheme == 'IANG' %}bg-green-900 text-green-300
+                                {% else %}bg-navy-700 text-gray-300{% endif %}">{{ case.scheme }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div id="broadcast-client-list"></div>
+                </div>
+
+                <!-- Message composer -->
+                <div class="card p-4">
+                    <h4 class="text-sm font-semibold text-gray-300 mb-3">Compose Message</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Channel</label>
+                            <select x-model="broadcastChannel"
+                                    class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="telegram">Telegram</option>
+                                <option value="both">Both</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Message</label>
+                            <textarea x-model="broadcastMessage" rows="6" placeholder="Type your broadcast message..."
+                                      class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <span x-text="broadcastMessage.length"></span>/1600 characters
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <span class="text-xs text-gray-400">
+                                <span x-text="broadcastCaseIds.length"></span> recipient(s) selected
+                            </span>
+                            <button @click="sendBroadcast()"
+                                    :disabled="!broadcastMessage.trim() || broadcastCaseIds.length === 0 || broadcastSending"
+                                    class="btn btn-primary">
+                                <span x-show="!broadcastSending">Send Broadcast</span>
+                                <span x-show="broadcastSending" class="flex items-center gap-1">
+                                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Sending...
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ New Case Modal ═══════ -->
+    <div x-show="newCaseModal" x-transition
+         class="flex items-center justify-center p-4"
+         style="position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="newCaseModal = false">
+        <div @click.outside="newCaseModal = false"
+             class="bg-navy-800 border border-navy-700 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-semibold text-gold-400 mb-4">New Immigration Case</h3>
+            <form @submit.prevent="submitNewCase()" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Client Name *</label>
+                    <input type="text" x-model="caseForm.client_name" required
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Phone</label>
+                        <input type="tel" x-model="caseForm.client_phone" placeholder="+852XXXXXXXX"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Telegram ID</label>
+                        <input type="text" x-model="caseForm.client_telegram_id"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Visa Scheme *</label>
+                        <select x-model="caseForm.scheme" required
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Select scheme...</option>
+                            <option value="GEP">General Employment Policy</option>
+                            <option value="TTPS">Top Talent Pass Scheme</option>
+                            <option value="QMAS">Quality Migrant Admission</option>
+                            <option value="IANG">Non-local Graduates (IANG)</option>
+                            <option value="ASMTP">Mainland Talents (ASMTP)</option>
+                            <option value="Dependant">Dependant Visa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Language</label>
+                        <select x-model="caseForm.language_pref"
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="en">English</option>
+                            <option value="zh">繁體中文</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Consultant</label>
+                    <input type="text" x-model="caseForm.consultant_name"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary" :disabled="caseSubmitting">
+                        <span x-show="!caseSubmitting">Create Case</span>
+                        <span x-show="caseSubmitting" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Creating...
+                        </span>
+                    </button>
+                    <button type="button" @click="newCaseModal = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('clientPortalApp', () => ({
+        activeSubTab: 'cases',
+        newCaseModal: false,
+        caseSubmitting: false,
+
+        selectedCaseId: '',
+        messageText: '',
+        messageChannel: 'whatsapp',
+
+        appointmentDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        availableSlots: [],
+        selectedSlot: null,
+        bookingForm: { case_id: '', type: 'consultation', notes: '' },
+
+        broadcastFilter: { scheme: '', status: '' },
+        broadcastCaseIds: [],
+        broadcastChannel: 'whatsapp',
+        broadcastMessage: '',
+        broadcastSending: false,
+
+        caseForm: {
+            client_name: '',
+            client_phone: '',
+            client_telegram_id: '',
+            scheme: '',
+            consultant_name: '',
+            language_pref: 'en'
+        },
+
+        init() {
+            this.loadSlots();
+        },
+
+        async loadMessages() {
+            if (!this.selectedCaseId) return;
+            const resp = await fetch(`/client-portal/messages/${this.selectedCaseId}?limit=50`);
+            const messages = await resp.json();
+            const container = document.getElementById('message-thread');
+            if (!messages.length) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-12">No messages yet</p>';
+                return;
+            }
+            container.innerHTML = messages.reverse().map(m => {
+                const isClient = m.sender === 'client';
+                const align = isClient ? 'mr-auto' : 'ml-auto';
+                const bg = isClient ? 'bg-navy-800' : 'bg-gold-500/20 border border-gold-500/30';
+                const ts = new Date(m.timestamp).toLocaleString('en-HK', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' });
+                return `<div class="max-w-[75%] ${align} ${bg} rounded-xl px-4 py-2.5">
+                    <p class="text-sm text-gray-200">${this.escapeHtml(m.message_text)}</p>
+                    <p class="text-xs text-gray-500 mt-1">${m.sender} · ${ts} · ${m.channel || ''}</p>
+                </div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        },
+
+        async sendMessage() {
+            if (!this.messageText.trim() || !this.selectedCaseId) return;
+            await fetch('/client-portal/messages/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    case_id: parseInt(this.selectedCaseId),
+                    channel: this.messageChannel,
+                    message_text: this.messageText
+                })
+            });
+            this.messageText = '';
+            this.loadMessages();
+        },
+
+        async loadSlots() {
+            if (!this.appointmentDate) return;
+            const resp = await fetch(`/client-portal/appointments/available?date_str=${this.appointmentDate}`);
+            const data = await resp.json();
+            this.availableSlots = data.slots || [];
+            this.selectedSlot = null;
+        },
+
+        async bookAppointment() {
+            if (!this.selectedSlot || !this.bookingForm.case_id) return;
+            const datetimeStr = this.appointmentDate + 'T' + this.selectedSlot.start + ':00';
+            const resp = await fetch('/client-portal/appointments/book', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    case_id: parseInt(this.bookingForm.case_id),
+                    datetime_str: datetimeStr,
+                    duration_minutes: 60,
+                    type: this.bookingForm.type,
+                    notes: this.bookingForm.notes
+                })
+            });
+            const data = await resp.json();
+            if (data.appointment_id) {
+                this.selectedSlot = null;
+                this.bookingForm = { case_id: '', type: 'consultation', notes: '' };
+                this.loadSlots();
+            }
+        },
+
+        toggleAllCases(checked) {
+            if (checked) {
+                this.broadcastCaseIds = Array.from(
+                    document.querySelectorAll('[x-model="broadcastCaseIds"]')
+                ).filter(el => el.offsetParent !== null).map(el => el.value);
+            } else {
+                this.broadcastCaseIds = [];
+            }
+        },
+
+        async sendBroadcast() {
+            if (!this.broadcastMessage.trim() || this.broadcastCaseIds.length === 0) return;
+            this.broadcastSending = true;
+            try {
+                const resp = await fetch('/client-portal/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_ids: this.broadcastCaseIds.map(Number),
+                        message_text: this.broadcastMessage,
+                        channel: this.broadcastChannel
+                    })
+                });
+                const data = await resp.json();
+                if (data.sent > 0) {
+                    this.broadcastMessage = '';
+                    this.broadcastCaseIds = [];
+                }
+            } catch (e) {
+                console.error('Broadcast failed:', e);
+            }
+            this.broadcastSending = false;
+        },
+
+        async submitNewCase() {
+            if (this.caseSubmitting) return;
+            this.caseSubmitting = true;
+            try {
+                const resp = await fetch('/client-portal/cases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.caseForm)
+                });
+                const data = await resp.json();
+                if (data.case_id) {
+                    this.newCaseModal = false;
+                    this.caseForm = { client_name: '', client_phone: '', client_telegram_id: '', scheme: '', consultant_name: '', language_pref: 'en' };
+                    htmx.trigger(document.body, 'caseUpdated');
+                } else if (data.detail) {
+                    alert('Error: ' + (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : data.detail));
+                }
+            } catch (e) {
+                alert('Failed to create case: ' + e.message);
+            }
+            this.caseSubmitting = false;
+        },
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }));
+});
+</script>
+{% endblock %}

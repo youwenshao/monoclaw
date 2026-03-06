@@ -1,0 +1,109 @@
+<!-- Remittance statement preview partial -->
+<div class="space-y-4">
+    <!-- Header controls -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Contribution Month</label>
+                <input type="month" id="remit-month" value="{{ month }}"
+                       hx-get="/mpf-calc/partials/remittance-preview"
+                       hx-target="closest div.space-y-4"
+                       hx-swap="outerHTML"
+                       hx-trigger="change"
+                       hx-include="this"
+                       name="month"
+                       class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+            </div>
+            {% if trustee %}
+            <div class="self-end">
+                <span class="text-xs text-gray-400">Trustee:</span>
+                <span class="text-sm text-white ml-1">{{ trustee }}</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="flex gap-2">
+            <button hx-post="/mpf-calc/remittance/{{ month }}"
+                    hx-target="closest div.space-y-4"
+                    hx-swap="outerHTML"
+                    class="px-4 py-2 bg-[#d4a843] text-[#0f1225] text-sm font-semibold rounded-lg hover:bg-[#c49a3a] transition-colors">
+                Generate Statement
+            </button>
+            <a href="/mpf-calc/remittance/{{ month }}/download"
+               class="px-4 py-2 bg-[#2d3352] text-gray-300 text-sm rounded-lg hover:bg-[#3d4562] transition-colors inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                </svg>
+                Download PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Remittance statement -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl overflow-hidden">
+        <!-- Statement header -->
+        <div class="px-6 py-4 border-b border-[#2d3352]">
+            <h3 class="text-lg font-semibold text-[#d4a843]">MPF Remittance Statement</h3>
+            <div class="mt-2 grid grid-cols-3 gap-4 text-sm">
+                <div>
+                    <span class="text-gray-400">Period:</span>
+                    <span class="text-white ml-1">{{ month }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Trustee:</span>
+                    <span class="text-white ml-1">{{ trustee or '—' }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Employees:</span>
+                    <span class="text-white ml-1">{{ items|length }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Line items -->
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[#2d3352]">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Employee</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Member #</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Relevant Income</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Employer</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Employee</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Total</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2d3352]">
+                {% for item in items %}
+                <tr class="hover:bg-[#242b4a] transition-colors">
+                    <td class="px-4 py-3">
+                        <span class="text-white">{{ item.name_en }}</span>
+                        {% if item.name_tc %}
+                        <span class="text-xs text-gray-500 ml-1">{{ item.name_tc }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 font-mono text-xs">{{ item.mpf_member_number or '—' }}</td>
+                    <td class="px-4 py-3 text-right text-white font-mono">${{ "%.2f"|format(item.relevant_income or 0) }}</td>
+                    <td class="px-4 py-3 text-right text-green-400 font-mono">${{ "%.2f"|format(item.employer_mandatory or 0) }}</td>
+                    <td class="px-4 py-3 text-right text-blue-400 font-mono">${{ "%.2f"|format(item.employee_mandatory or 0) }}</td>
+                    <td class="px-4 py-3 text-right text-white font-mono font-semibold">${{ "%.2f"|format((item.employer_mandatory or 0) + (item.employee_mandatory or 0)) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-500 text-sm">
+                        No contribution records for {{ month }}. Run the Calculator first.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if items %}
+            <tfoot>
+                <tr class="border-t-2 border-[#d4a843]/30 bg-[#0f1225]/50">
+                    <td colspan="3" class="px-4 py-3 text-right text-xs font-semibold text-[#d4a843] uppercase">Total Remittance</td>
+                    <td class="px-4 py-3 text-right text-green-400 font-mono font-bold">${{ "%.2f"|format(total_employer) }}</td>
+                    <td class="px-4 py-3 text-right text-blue-400 font-mono font-bold">${{ "%.2f"|format(total_employee) }}</td>
+                    <td class="px-4 py-3 text-right text-[#d4a843] font-mono font-bold text-base">${{ "%.2f"|format(total) }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>

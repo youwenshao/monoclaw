@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}IntakeBot{% endblock %}
+
+{% block status_cards %}
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Total Clients</div>
+    <div class="card-value">{{ stats.total_clients|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Pending Review</div>
+    <div class="card-value text-amber-400">{{ stats.pending_review|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Active Matters</div>
+    <div class="card-value">{{ stats.active_matters|default(0) }}</div>
+</div>
+<div class="card shrink-0 min-w-[140px]">
+    <div class="card-header">Today's Appointments</div>
+    <div class="card-value text-green-400">{{ stats.today_appointments|default(0) }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="intakeBotApp()" class="space-y-6">
+
+    <!-- Header with Add Client -->
+    <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gold-400">Client Intake</h3>
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500">{{ today }}</span>
+            <button class="btn btn-primary"
+                    hx-get="/intake-bot/client-form/partial"
+                    hx-target="#modal-area"
+                    hx-swap="innerHTML">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Client
+            </button>
+        </div>
+    </div>
+
+    <!-- Intake Queue Table -->
+    <div class="card overflow-hidden">
+        <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-300">Intake Queue</h4>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-400">Status:</label>
+                <select x-model="statusFilter"
+                        class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-1 text-xs">
+                    <option value="">All</option>
+                    <option value="new">New</option>
+                    <option value="pending_review">Pending Review</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="converted">Converted</option>
+                </select>
+            </div>
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-navy-700 text-left text-gray-400">
+                    <th class="px-4 py-3 font-medium">Client Name</th>
+                    <th class="px-4 py-3 font-medium">Phone</th>
+                    <th class="px-4 py-3 font-medium">Channel</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                    <th class="px-4 py-3 font-medium">Intake Date</th>
+                    <th class="px-4 py-3 font-medium">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="client-list">
+                {% for client in clients %}
+                <tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors"
+                    x-show="!statusFilter || '{{ client.status }}' === statusFilter">
+                    <td class="px-4 py-3">
+                        <div>
+                            <span class="text-gray-200 font-medium">{{ client.name_en }}</span>
+                            {% if client.name_tc %}
+                            <span class="text-gray-400 text-xs ml-1">{{ client.name_tc }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-gray-300 font-mono text-xs">
+                        {{ client.phone or '—' }}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if client.source_channel %}
+                        <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy-700">
+                            <span class="w-1.5 h-1.5 rounded-full channel-{{ client.source_channel }}"
+                                  style="background-color: currentColor;"></span>
+                            {{ client.source_channel|replace('_', ' ')|title }}
+                        </span>
+                        {% else %}
+                        <span class="text-gray-500 text-xs">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="text-xs px-2 py-0.5 rounded-full
+                            {% if client.status == 'new' %}bg-blue-900/50 text-blue-300
+                            {% elif client.status == 'pending_review' %}bg-amber-900/50 text-amber-300
+                            {% elif client.status == 'contacted' %}bg-purple-900/50 text-purple-300
+                            {% elif client.status == 'converted' %}bg-green-900/50 text-green-300
+                            {% else %}bg-navy-700 text-gray-400{% endif %}">
+                            {{ client.status|replace('_', ' ')|title }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">
+                        {{ client.intake_date[:10] if client.intake_date else '—' }}
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <button class="text-xs text-gold-400 hover:text-gold-300 transition-colors"
+                                    hx-get="/intake-bot/clients/{{ client.id }}"
+                                    hx-target="#modal-area"
+                                    hx-swap="innerHTML">
+                                View
+                            </button>
+                            <button class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                    hx-post="/intake-bot/conflict-check/{{ client.id }}"
+                                    hx-target="#conflict-section"
+                                    hx-swap="innerHTML">
+                                Conflict Check
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not clients %}
+                <tr>
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                        No clients in the intake queue.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Conflict Alerts Section -->
+    <div id="conflict-section">
+        {% if conflicts %}
+        <div class="card p-4">
+            <h4 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+                Recent Conflict Alerts
+            </h4>
+            <div class="space-y-2">
+                {% for conflict in conflicts %}
+                <div class="flex items-center gap-4 p-3 rounded-lg bg-navy-800/50">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-200">
+                            {{ conflict.client_name }} <span class="text-gray-500">vs</span> {{ conflict.adverse_party_name }}
+                        </p>
+                    </div>
+                    <div class="shrink-0 text-right flex items-center gap-3">
+                        <div class="w-16 bg-navy-700 rounded-full h-1.5">
+                            <div class="h-1.5 rounded-full
+                                {% if conflict.match_score >= 0.8 %}bg-red-400
+                                {% elif conflict.match_score >= 0.5 %}bg-amber-400
+                                {% else %}bg-green-400{% endif %}"
+                                 style="width: {{ (conflict.match_score * 100)|round|int }}%"></div>
+                        </div>
+                        <span class="text-xs font-mono text-gray-400 w-8">{{ (conflict.match_score * 100)|round|int }}%</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full conflict-{{ conflict.result }}">
+                            {{ conflict.result|replace('_', ' ')|title }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Upcoming Appointments -->
+    {% if appointments %}
+    <div class="card p-4">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+            </svg>
+            Upcoming Appointments
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for appt in appointments %}
+            <div class="p-3 rounded-lg bg-navy-800/50 border border-navy-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-200">{{ appt.client_name }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full
+                        {% if appt.type == 'consultation' %}bg-blue-900/50 text-blue-300
+                        {% elif appt.type == 'follow_up' %}bg-purple-900/50 text-purple-300
+                        {% else %}bg-navy-700 text-gray-400{% endif %}">
+                        {{ appt.type|default('consultation')|replace('_', ' ')|title }}
+                    </span>
+                </div>
+                <p class="text-xs text-gray-400">
+                    {{ appt.datetime[:16].replace('T', ' ') if appt.datetime else appt.date|default('—') }}
+                </p>
+                {% if appt.solicitor %}
+                <p class="text-xs text-gray-500 mt-1">with {{ appt.solicitor }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Active Matters Summary -->
+    {% if matters %}
+    <div class="card p-4">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3">Active Matters</h4>
+        <div class="space-y-2">
+            {% for matter in matters %}
+            <div class="flex items-center gap-3 p-2.5 rounded-lg bg-navy-800/50 hover:bg-navy-800 transition-colors">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-200 truncate">{{ matter.title or matter.reference or 'Untitled Matter' }}</p>
+                    <p class="text-xs text-gray-400">{{ matter.client_name }}</p>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full
+                    {% if matter.status == 'active' %}bg-green-900/50 text-green-300
+                    {% elif matter.status == 'pending' %}bg-amber-900/50 text-amber-300
+                    {% else %}bg-navy-700 text-gray-400{% endif %}">
+                    {{ matter.status|default('active')|replace('_', ' ')|title }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Modal Area -->
+    <div id="modal-area"></div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('intakeBotApp', () => ({
+        statusFilter: '',
+        init() {}
+    }));
+});
+</script>
+{% endblock %}

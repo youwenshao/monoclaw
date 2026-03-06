@@ -1,0 +1,189 @@
+<div x-data="paymentTracker()" class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Payment form -->
+        <div class="bg-navy-800 rounded-xl border border-navy-700 p-5">
+            <h3 class="text-sm font-semibold text-gold-400 mb-4">Record Payment</h3>
+
+            <div class="space-y-3">
+                <!-- Invoice select -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Invoice</label>
+                    <select x-model="form.invoice_id" @change="onInvoiceChange()"
+                            class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                        <option value="">— Select invoice —</option>
+                        {% for inv in invoices %}
+                        <option value="{{ inv.id }}"
+                                data-currency="{{ inv.currency }}"
+                                data-rate="{{ inv.fx_rate_used }}"
+                                data-total="{{ inv.total }}">
+                            {{ inv.invoice_number }} — {{ inv.customer_name }} ({{ inv.currency }} {{ "{:,.2f}".format(inv.total) }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Outstanding amount -->
+                <div x-show="outstanding !== null" class="p-3 bg-navy-900 rounded-lg border border-navy-700">
+                    <p class="text-xs text-gray-400">Outstanding</p>
+                    <p class="text-lg font-bold text-amber-400">
+                        <span x-text="invoiceCurrency"></span>
+                        <span x-text="outstanding !== null ? outstanding.toFixed(2) : '—'"></span>
+                    </p>
+                </div>
+
+                <!-- Payment amount -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Payment Amount</label>
+                    <input type="number" x-model.number="form.amount" min="0" step="0.01"
+                           class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                </div>
+
+                <!-- Payment date -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Payment Date</label>
+                    <input type="date" x-model="form.payment_date"
+                           class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                </div>
+
+                <!-- Bank reference -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Bank Reference</label>
+                    <input type="text" x-model="form.bank_reference" placeholder="TT reference number"
+                           class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                </div>
+
+                <!-- FX rate at payment -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">FX Rate at Payment (to HKD)</label>
+                    <input type="number" x-model.number="form.fx_rate_at_payment" step="0.0001" min="0"
+                           class="w-full bg-navy-900 border border-navy-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gold-400 focus:outline-none">
+                </div>
+
+                <!-- FX gain/loss preview -->
+                <div x-show="form.amount > 0 && invoiceRate > 0" class="p-3 bg-navy-900 rounded-lg border border-navy-700">
+                    <p class="text-xs text-gray-400 mb-1">Estimated FX Gain/Loss</p>
+                    <p class="text-sm font-semibold"
+                       :class="fxGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                        HKD <span x-text="fxGainLoss.toFixed(2)"></span>
+                    </p>
+                </div>
+
+                <button @click="recordPayment()"
+                        :disabled="!form.invoice_id || form.amount <= 0"
+                        class="w-full px-4 py-2.5 bg-gold-500 text-navy-900 rounded-lg font-medium text-sm hover:bg-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    Record Payment
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment history -->
+        <div class="lg:col-span-2 bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+            <div class="px-5 py-3 border-b border-navy-700 flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-white">Payment History</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-navy-900/50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Date</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Invoice</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-400 uppercase">Amount</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-400 uppercase">FX Rate</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-400 uppercase">HKD Equiv</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-400 uppercase">FX G/L</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Bank Ref</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-history-table"
+                           hx-get="/fx-invoice/api/payments" hx-trigger="load, payment-recorded from:body"
+                           hx-swap="innerHTML" hx-target="#payment-history-table">
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-xs text-gray-500">Loading…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status message -->
+    <div x-show="message" x-transition
+         class="fixed bottom-6 right-6 px-5 py-3 rounded-lg text-sm font-medium shadow-lg"
+         :class="messageType === 'success' ? 'bg-emerald-500/90 text-white' : 'bg-red-500/90 text-white'">
+        <span x-text="message"></span>
+    </div>
+</div>
+
+<script>
+function paymentTracker() {
+    return {
+        form: {
+            invoice_id: '',
+            amount: 0,
+            payment_date: new Date().toISOString().split('T')[0],
+            bank_reference: '',
+            fx_rate_at_payment: 7.80,
+        },
+        outstanding: null,
+        invoiceCurrency: 'USD',
+        invoiceRate: 0,
+        message: '',
+        messageType: 'success',
+
+        get fxGainLoss() {
+            if (!this.invoiceRate || !this.form.fx_rate_at_payment) return 0;
+            return this.form.amount * (this.form.fx_rate_at_payment - this.invoiceRate);
+        },
+
+        async onInvoiceChange() {
+            if (!this.form.invoice_id) { this.outstanding = null; return; }
+            const sel = document.querySelector(`option[value="${this.form.invoice_id}"]`);
+            if (sel) {
+                this.invoiceCurrency = sel.dataset.currency || 'USD';
+                this.invoiceRate = parseFloat(sel.dataset.rate) || 0;
+                this.form.fx_rate_at_payment = this.invoiceRate;
+            }
+
+            try {
+                const resp = await fetch(`/fx-invoice/api/invoices/${this.form.invoice_id}`);
+                const data = await resp.json();
+                const paid = (data.items || []).length; // placeholder
+                // Fetch payments to calculate outstanding
+                const pmtResp = await fetch(`/fx-invoice/api/payments?invoice_id=${this.form.invoice_id}`);
+                const payments = await pmtResp.json();
+                const totalPaid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+                this.outstanding = (data.total || 0) - totalPaid;
+                this.form.amount = Math.max(this.outstanding, 0);
+            } catch (e) {
+                console.warn('Failed to load invoice details', e);
+            }
+        },
+
+        async recordPayment() {
+            try {
+                const resp = await fetch('/fx-invoice/api/payments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.form),
+                });
+                const data = await resp.json();
+                if (data.payment_id) {
+                    this.message = `Payment recorded — FX G/L: HKD ${data.fx_gain_loss.toFixed(2)}`;
+                    this.messageType = 'success';
+                    document.body.dispatchEvent(new CustomEvent('payment-recorded'));
+                    this.outstanding = null;
+                    this.form.amount = 0;
+                    this.form.bank_reference = '';
+                } else {
+                    this.message = 'Payment failed';
+                    this.messageType = 'error';
+                }
+            } catch (e) {
+                this.message = 'Payment failed: ' + e.message;
+                this.messageType = 'error';
+            }
+            setTimeout(() => { this.message = ''; }, 4000);
+        },
+    };
+}
+</script>

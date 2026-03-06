@@ -1,0 +1,117 @@
+tool_name: accounting
+version: "1.0.0"
+port: 8004
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/accounting"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Business profile (set during first-run wizard)
+  firm_name: ""
+  br_number: ""
+  financial_year_end: 3
+  base_currency: "HKD"
+
+  # OCR settings (InvoiceOCR)
+  ocr_engine: "vision"
+  confidence_threshold_auto: 0.85
+  confidence_threshold_review: 0.70
+  max_concurrent_ocr_pages: 4
+  watched_folder: "~/OpenClawWorkspace/accounting/incoming"
+
+  # Accounting software
+  xero_client_id: ""
+  xero_client_secret: ""
+  abss_api_key: ""
+  quickbooks_client_id: ""
+  quickbooks_client_secret: ""
+  default_accounting_software: ""
+
+  # Reconciliation matching rules (ReconcileAgent)
+  date_tolerance_days: 3
+  amount_tolerance: 1.0
+  fuzzy_match_threshold: 80
+  fx_rate_tolerance_pct: 1.0
+
+  # FX settings (FXTracker)
+  active_currencies:
+    - "USD"
+    - "CNH"
+    - "EUR"
+    - "GBP"
+    - "JPY"
+    - "SGD"
+  rate_fetch_time: "12:00"
+  rate_retry_times: ["12:30", "13:00"]
+  fx_method: "fifo"
+  usd_hkd_band_low: 7.75
+  usd_hkd_band_high: 7.85
+  rate_alert_default_pct: 0.5
+
+  # Tax calendar (TaxCalendar Bot)
+  reminder_intervals: [60, 30, 7]
+  escalation_days: 7
+  block_extension_dates:
+    D_code: "2026-11-15"
+    M_code: "2027-01-15"
+    N_code: "2026-05-31"
+  mpf_contribution_day: 10
+  br_renewal_1yr_fee: 2250
+  br_renewal_3yr_fee: 5950
+
+  # Chart of accounts defaults
+  chart_of_accounts:
+    - { code: "5100", name: "Rent & Rates" }
+    - { code: "5200", name: "Staff Costs" }
+    - { code: "5210", name: "MPF Contributions" }
+    - { code: "5300", name: "Professional Fees" }
+    - { code: "5400", name: "Bank Charges" }
+    - { code: "5500", name: "Entertainment" }
+    - { code: "5600", name: "Travel" }
+    - { code: "5700", name: "Utilities" }
+    - { code: "5800", name: "Office Supplies" }
+    - { code: "5900", name: "Depreciation" }
+    - { code: "6000", name: "Insurance" }
+    - { code: "6100", name: "Repairs & Maintenance" }
+
+  # Data retention (days)
+  data_retention_days: 2555
+
+  # HK public holidays 2026
+  public_holidays:
+    - "2026-01-01"
+    - "2026-01-29"
+    - "2026-01-30"
+    - "2026-01-31"
+    - "2026-04-03"
+    - "2026-04-04"
+    - "2026-04-06"
+    - "2026-05-01"
+    - "2026-05-24"
+    - "2026-06-19"
+    - "2026-07-01"
+    - "2026-09-26"
+    - "2026-10-01"
+    - "2026-10-19"
+    - "2026-10-20"
+    - "2026-12-25"
+    - "2026-12-26"

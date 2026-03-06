@@ -1,0 +1,179 @@
+<div x-data="budgetCalculator()">
+    <!-- Application selector -->
+    <div class="flex items-center gap-4 mb-5">
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Application</label>
+            <select x-model="selectedAppId" @change="loadBudget()"
+                    class="bg-[#1a1f36] border border-[#2d3352] text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none min-w-[280px]">
+                <option value="0">— Select application —</option>
+                {% for app in applications %}
+                <option value="{{ app.id }}" {% if app.id == app_id %}selected{% endif %}>
+                    #{{ app.id }} – {{ app.project_title }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- Budget table -->
+        <div class="xl:col-span-2 bg-[#1a1f36] rounded-xl border border-[#2d3352] overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#2d3352] flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-white">Budget Breakdown</h3>
+                <span class="text-sm font-bold text-[#d4a843]"
+                      x-text="'HK$' + grandTotal.toLocaleString()"></span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-[#0f1225]/50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Category</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Description</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-400 uppercase">Year</th>
+                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-400 uppercase">Amount (HK$)</th>
+                            <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase">Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set categories = [
+                            ('ra_salary', 'RA Salary'),
+                            ('postdoc_salary', 'Postdoc Salary'),
+                            ('equipment', 'Equipment'),
+                            ('travel', 'Travel'),
+                            ('consumables', 'Consumables'),
+                            ('services', 'Services'),
+                            ('other', 'Other'),
+                        ] %}
+                        {% for cat_key, cat_label in categories %}
+                        {% set cat_items = summary.items | selectattr('category', 'equalto', cat_key) | list %}
+                        {% if cat_items %}
+                        <tr class="border-t border-[#2d3352]/50">
+                            <td colspan="5" class="px-4 py-2 text-xs font-semibold text-[#d4a843] bg-[#0f1225]/30 uppercase tracking-wider">
+                                {{ cat_label }}
+                                <span class="ml-2 text-gray-500 font-normal">
+                                    HK${{ "{:,.0f}".format(summary.by_category.get(cat_key, 0)) }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% for item in cat_items %}
+                        <tr class="border-t border-[#2d3352]/30 hover:bg-[#242b4a]/30 transition-colors">
+                            <td class="px-4 py-2 text-gray-400 text-xs">{{ cat_label }}</td>
+                            <td class="px-4 py-2 text-gray-200">{{ item.description or '—' }}</td>
+                            <td class="px-4 py-2 text-right text-gray-300">{{ item.year or '—' }}</td>
+                            <td class="px-4 py-2 text-right font-medium text-white">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+                            <td class="px-4 py-2 text-gray-400 text-xs truncate max-w-[200px]" title="{{ item.justification or '' }}">{{ item.justification or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="border-t-2 border-[#2d3352]">
+                        <tr class="bg-[#0f1225]/50">
+                            <td colspan="3" class="px-4 py-3 text-sm font-bold text-[#d4a843] uppercase">Grand Total</td>
+                            <td class="px-4 py-3 text-right text-sm font-bold text-[#d4a843]">HK${{ "{:,.0f}".format(summary.grand_total) }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {% if not summary.items %}
+            <div class="p-8 text-center">
+                <p class="text-sm text-gray-500">No budget items yet.</p>
+                <p class="text-xs text-gray-600 mt-1">Select an application and add items below.</p>
+            </div>
+            {% endif %}
+
+            <!-- Year-by-category summary -->
+            {% if summary.by_year %}
+            <div class="px-4 py-3 border-t border-[#2d3352]">
+                <h4 class="text-xs font-semibold text-gray-400 uppercase mb-2">By Year</h4>
+                <div class="flex flex-wrap gap-3">
+                    {% for year, total in summary.by_year.items() %}
+                    <div class="bg-[#0f1225] rounded-lg px-3 py-2 border border-[#2d3352]">
+                        <span class="text-xs text-gray-500">{{ year or 'Unspecified' }}</span>
+                        <p class="text-sm font-medium text-white">HK${{ "{:,.0f}".format(total) }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Add item form -->
+        <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352] p-5 h-fit">
+            <h3 class="text-sm font-semibold text-[#d4a843] mb-4">Add Budget Item</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Category</label>
+                    <select x-model="newItem.category"
+                            class="w-full bg-[#0f1225] border border-[#2d3352] text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                        <option value="">— Select —</option>
+                        <option value="ra_salary">RA Salary</option>
+                        <option value="postdoc_salary">Postdoc Salary</option>
+                        <option value="equipment">Equipment</option>
+                        <option value="travel">Travel</option>
+                        <option value="consumables">Consumables</option>
+                        <option value="services">Services</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Description</label>
+                    <input type="text" x-model="newItem.description"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Year</label>
+                        <input type="number" x-model="newItem.year" placeholder="2025"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Amount (HK$)</label>
+                        <input type="number" x-model="newItem.amount"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Justification</label>
+                    <textarea x-model="newItem.justification" rows="2"
+                              class="w-full bg-[#0f1225] border border-[#2d3352] text-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#d4a843] focus:outline-none resize-none"></textarea>
+                </div>
+                <button @click="addItem()"
+                        :disabled="!selectedAppId || selectedAppId === '0'"
+                        class="w-full px-4 py-2.5 bg-[#d4a843] text-[#0f1225] rounded-lg font-medium text-sm hover:bg-[#c49a3a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    Add Item
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function budgetCalculator() {
+    return {
+        selectedAppId: '{{ app_id }}',
+        grandTotal: {{ summary.grand_total }},
+        newItem: { category: '', description: '', year: '', amount: '', justification: '' },
+        loadBudget() {
+            if (this.selectedAppId && this.selectedAppId !== '0') {
+                htmx.ajax('GET', '/grant-tracker/partials/budget-calculator?app_id=' + this.selectedAppId, '#budget-calculator-container');
+            }
+        },
+        async addItem() {
+            if (!this.selectedAppId || this.selectedAppId === '0') return;
+            const resp = await fetch('/grant-tracker/budget/' + this.selectedAppId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.newItem),
+            });
+            if (resp.ok) {
+                this.newItem = { category: '', description: '', year: '', amount: '', justification: '' };
+                htmx.ajax('GET', '/grant-tracker/partials/budget-calculator?app_id=' + this.selectedAppId, '#budget-calculator-container');
+            }
+        },
+    };
+}
+</script>

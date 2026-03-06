@@ -1,0 +1,108 @@
+<!-- Compliance dashboard partial -->
+<div class="space-y-6">
+    <!-- Contribution day countdown -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Next Contribution Deadline</h3>
+                <p class="text-3xl font-bold text-[#d4a843] mt-2">{{ compliance.days_until_deadline }} days</p>
+                <p class="text-sm text-gray-400 mt-1">Due: {{ compliance.next_deadline }}</p>
+            </div>
+            <div class="w-24 h-24 rounded-full border-4 flex items-center justify-center
+                        {% if compliance.days_until_deadline <= 3 %}border-red-500{% elif compliance.days_until_deadline <= 7 %}border-yellow-500{% else %}border-green-500{% endif %}">
+                <span class="text-2xl font-bold
+                             {% if compliance.days_until_deadline <= 3 %}text-red-400{% elif compliance.days_until_deadline <= 7 %}text-yellow-400{% else %}text-green-400{% endif %}">
+                    {{ compliance.days_until_deadline }}
+                </span>
+            </div>
+        </div>
+        {% if compliance.days_until_deadline <= 3 %}
+        <div class="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p class="text-sm text-red-400 font-medium">Urgent: Contribution deadline approaching! Late payments incur a 5% surcharge.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Status cards -->
+    <div class="grid grid-cols-3 gap-4">
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-green-400">{{ compliance.on_time_count }}</p>
+                    <p class="text-xs text-gray-400">Paid On Time</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/>
+                        <circle cx="12" cy="12" r="10" stroke-width="2" fill="none"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-yellow-400">{{ compliance.pending_count }}</p>
+                    <p class="text-xs text-gray-400">Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-red-400">{{ compliance.late_count }}</p>
+                    <p class="text-xs text-gray-400">Late Payments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Late contributions with surcharge -->
+    {% if late_contributions %}
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-[#2d3352]">
+            <h3 class="text-sm font-semibold text-red-400">Late Contributions — Surcharge Applied</h3>
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[#2d3352]">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Employee</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Month</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Contribution</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Surcharge (5%)</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Due</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2d3352]">
+                {% for lc in late_contributions %}
+                <tr class="hover:bg-[#242b4a] transition-colors">
+                    <td class="px-4 py-3 text-white">{{ lc.name_en }}</td>
+                    <td class="px-4 py-3 text-gray-400">{{ lc.contribution_month }}</td>
+                    <td class="px-4 py-3 text-right text-white font-mono">${{ "%.2f"|format(lc.total_contribution) }}</td>
+                    <td class="px-4 py-3 text-right text-red-400 font-mono">${{ "%.2f"|format(lc.calculated_surcharge) }}</td>
+                    <td class="px-4 py-3 text-right text-red-400 font-mono font-semibold">${{ "%.2f"|format(lc.total_contribution + lc.calculated_surcharge) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-8 text-center">
+        <svg class="w-12 h-12 text-green-400 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-green-400 font-medium">All contributions are up to date</p>
+        <p class="text-xs text-gray-500 mt-1">No late payments or surcharges</p>
+    </div>
+    {% endif %}
+</div>

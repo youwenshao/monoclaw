@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% block title %}TranslateAssist{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-[#d4a843] shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Projects</p>
+        <p class="text-lg font-bold text-white">{{ projects_count }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Segments Translated</p>
+        <p class="text-lg font-bold text-white">{{ segments_translated }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Glossary Terms</p>
+        <p class="text-lg font-bold text-white">{{ glossary_count }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-purple-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Translation Memory</p>
+        <p class="text-lg font-bold text-white">{{ memory_count }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="translateAssist()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-[#2d3352] pb-px">
+        <template x-for="tab in ['Translate', 'Projects', 'Glossary', 'Memory']" :key="tab">
+            <button @click="subTab = tab.toLowerCase()"
+                    :class="subTab === tab.toLowerCase()
+                        ? 'text-[#d4a843] border-[#d4a843] border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="tab"></button>
+        </template>
+    </div>
+
+    <!-- ═══════════ Translate sub-tab ═══════════ -->
+    <div x-show="subTab === 'translate'" x-cloak>
+        <div class="space-y-4">
+
+            <!-- Language selector bar -->
+            <div class="flex items-center gap-4 bg-[#1a1f36] rounded-lg p-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-400">From:</label>
+                    <select x-model="sourceLang"
+                            class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                        <option value="en">English</option>
+                        <option value="tc">繁體中文</option>
+                        <option value="sc">简体中文</option>
+                    </select>
+                </div>
+
+                <button @click="let t = sourceLang; sourceLang = targetLang; targetLang = t"
+                        class="p-2 rounded-lg bg-[#2d3352] text-gray-300 hover:bg-[#3d4562] hover:text-[#d4a843] transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+                    </svg>
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-400">To:</label>
+                    <select x-model="targetLang"
+                            class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                        <option value="tc">繁體中文</option>
+                        <option value="en">English</option>
+                        <option value="sc">简体中文</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 ml-4">
+                    <label class="text-xs text-gray-400">Domain:</label>
+                    <select x-model="domain"
+                            class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                        <option value="general">General</option>
+                        <option value="stem">STEM</option>
+                        <option value="social_science">Social Science</option>
+                        <option value="humanities">Humanities</option>
+                        <option value="medicine">Medicine</option>
+                        <option value="law">Law</option>
+                        <option value="business">Business</option>
+                    </select>
+                </div>
+
+                <div class="ml-auto flex items-center gap-2">
+                    <button @click="convertText('tc')"
+                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#2d3352] text-gray-200 hover:bg-[#3d4562] transition-colors">
+                        簡→繁
+                    </button>
+                    <button @click="convertText('sc')"
+                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#2d3352] text-gray-200 hover:bg-[#3d4562] transition-colors">
+                        繁→簡
+                    </button>
+                </div>
+            </div>
+
+            <!-- Side-by-side editor -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs text-gray-400 font-medium">Source Text</label>
+                        <span class="text-xs text-gray-600" x-text="sourceText.length + ' chars'"></span>
+                    </div>
+                    <textarea x-model="sourceText" rows="12"
+                              class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-3 text-sm text-gray-100 leading-relaxed focus:ring-[#d4a843] focus:border-[#d4a843] resize-none"
+                              placeholder="Paste or type source text here…"></textarea>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs text-gray-400 font-medium">Translation</label>
+                        <div class="flex items-center gap-2">
+                            <template x-if="confidence > 0">
+                                <span class="flex items-center gap-1 text-xs">
+                                    <span class="w-2 h-2 rounded-full"
+                                          :class="confidence > 0.8 ? 'bg-emerald-400' : confidence > 0.5 ? 'bg-amber-400' : 'bg-red-400'"></span>
+                                    <span class="text-gray-500" x-text="Math.round(confidence * 100) + '%'"></span>
+                                </span>
+                            </template>
+                            <button @click="copyTranslation()"
+                                    class="text-xs text-[#d4a843] hover:text-[#c49a38]">Copy</button>
+                        </div>
+                    </div>
+                    <textarea x-model="translatedText" rows="12" readonly
+                              class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-3 text-sm text-gray-100 leading-relaxed focus:ring-[#d4a843] focus:border-[#d4a843] resize-none"
+                              placeholder="Translation will appear here…"></textarea>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button @click="doTranslate()"
+                        :disabled="!sourceText || translating"
+                        class="px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors
+                               bg-[#d4a843] text-[#0f1225] hover:bg-[#c49a38]
+                               disabled:opacity-40 disabled:cursor-not-allowed">
+                    <span x-show="!translating">Translate</span>
+                    <span x-show="translating" class="flex items-center gap-2">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Translating…
+                    </span>
+                </button>
+
+                <div class="bg-[#1a1f36] rounded-lg p-3 space-y-2">
+                    <h4 class="text-xs text-gray-400 font-medium">Upload Document</h4>
+                    <form hx-post="/translate-assist/translate-document" hx-encoding="multipart/form-data"
+                          hx-target="#upload-result" hx-swap="innerHTML"
+                          class="flex items-center gap-2">
+                        <input type="file" name="file" accept=".pdf,.docx,.txt,.md"
+                               class="text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0
+                                      file:text-xs file:font-medium file:bg-[#2d3352] file:text-gray-200
+                                      hover:file:bg-[#3d4562] file:transition-colors file:cursor-pointer">
+                        <button type="submit"
+                                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#2d3352] text-gray-200 hover:bg-[#3d4562] transition-colors shrink-0">
+                            Translate File
+                        </button>
+                    </form>
+                    <div id="upload-result" class="text-xs text-gray-400"></div>
+                </div>
+            </div>
+
+            <!-- Terms enforced -->
+            <div x-show="termsEnforced.length > 0" class="flex flex-wrap gap-2">
+                <span class="text-xs text-gray-500">Glossary terms applied:</span>
+                <template x-for="term in termsEnforced" :key="term">
+                    <span class="px-2 py-0.5 bg-[#2d3352] rounded text-xs text-[#d4a843]" x-text="term"></span>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ Projects sub-tab ═══════════ -->
+    <div x-show="subTab === 'projects'" x-cloak>
+        <div class="space-y-4">
+            <!-- Create project -->
+            <div class="bg-[#1a1f36] rounded-lg p-4">
+                <div class="flex items-end gap-3">
+                    <div class="flex-1">
+                        <label class="text-xs text-gray-400 mb-1 block">Project Name</label>
+                        <input x-model="newProjectName" type="text"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]"
+                               placeholder="e.g., Thesis Chapter 3 Translation">
+                    </div>
+                    <button @click="createProject()"
+                            :disabled="!newProjectName"
+                            class="px-4 py-2 rounded-lg text-sm font-semibold bg-[#d4a843] text-[#0f1225] hover:bg-[#c49a38] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        Create Project
+                    </button>
+                </div>
+            </div>
+
+            <!-- Project list -->
+            <div class="bg-[#1a1f36] rounded-lg overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-[#0f1225] text-gray-400 text-xs uppercase tracking-wider">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Project</th>
+                            <th class="px-4 py-3 text-left">Languages</th>
+                            <th class="px-4 py-3 text-left">Domain</th>
+                            <th class="px-4 py-3 text-left">Status</th>
+                            <th class="px-4 py-3 text-left">Created</th>
+                            <th class="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#2d3352]">
+                        {% for p in projects %}
+                        <tr class="hover:bg-[#242b4a] transition-colors">
+                            <td class="px-4 py-3 text-white font-medium">{{ p.project_name }}</td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs px-2 py-0.5 bg-[#2d3352] rounded text-gray-300">
+                                    {{ p.source_language|upper }} → {{ p.target_language|upper }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-400 text-xs">{{ p.domain or 'general' }}</td>
+                            <td class="px-4 py-3">
+                                {% if p.status == 'completed' %}
+                                <span class="px-2 py-0.5 bg-emerald-900/50 text-emerald-400 rounded text-xs">Completed</span>
+                                {% elif p.status == 'in_progress' %}
+                                <span class="px-2 py-0.5 bg-blue-900/50 text-blue-400 rounded text-xs">In Progress</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">{{ p.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-gray-400 text-xs">{{ p.created_at[:10] if p.created_at else '—' }}</td>
+                            <td class="px-4 py-3 text-right space-x-2">
+                                <button hx-get="/translate-assist/editor/partial?project_id={{ p.id }}"
+                                        hx-target="#editor-slot"
+                                        hx-swap="innerHTML"
+                                        class="text-[#d4a843] hover:text-[#c49a38] text-xs">Open</button>
+                                <button hx-post="/translate-assist/export/{{ p.id }}"
+                                        hx-target="#export-result"
+                                        hx-swap="innerHTML"
+                                        class="text-emerald-400 hover:text-emerald-300 text-xs">Export</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not projects %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No projects yet</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="editor-slot"></div>
+            <div id="export-result"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════ Glossary sub-tab ═══════════ -->
+    <div x-show="subTab === 'glossary'" x-cloak>
+        <div id="glossary-panel-slot"
+             hx-get="/translate-assist/glossary-panel/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading glossary…</p>
+        </div>
+    </div>
+
+    <!-- ═══════════ Memory sub-tab ═══════════ -->
+    <div x-show="subTab === 'memory'" x-cloak>
+        <div id="memory-panel-slot"
+             hx-get="/translate-assist/translation-memory/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading translation memory…</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function translateAssist() {
+    return {
+        subTab: 'translate',
+        sourceLang: '{{ config.extra.get("default_source_language", "en") }}',
+        targetLang: '{{ config.extra.get("default_target_language", "tc") }}',
+        domain: 'general',
+        sourceText: '',
+        translatedText: '',
+        translating: false,
+        confidence: 0,
+        termsEnforced: [],
+        newProjectName: '',
+
+        async doTranslate() {
+            if (!this.sourceText) return;
+            this.translating = true;
+            this.translatedText = '';
+            this.confidence = 0;
+            this.termsEnforced = [];
+            try {
+                const resp = await fetch('/translate-assist/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: this.sourceText,
+                        source_lang: this.sourceLang,
+                        target_lang: this.targetLang,
+                        domain: this.domain,
+                    }),
+                });
+                const data = await resp.json();
+                this.translatedText = data.translated || '';
+                this.confidence = data.confidence || 0;
+                this.termsEnforced = data.terms_enforced || [];
+            } catch (e) {
+                this.translatedText = 'Error: ' + e.message;
+            } finally {
+                this.translating = false;
+            }
+        },
+
+        async convertText(target) {
+            const text = this.translatedText || this.sourceText;
+            if (!text) return;
+            try {
+                const resp = await fetch('/translate-assist/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, target }),
+                });
+                const data = await resp.json();
+                this.translatedText = data.converted || '';
+            } catch (e) { /* ignore */ }
+        },
+
+        copyTranslation() {
+            if (this.translatedText) {
+                navigator.clipboard.writeText(this.translatedText);
+            }
+        },
+
+        async createProject() {
+            if (!this.newProjectName) return;
+            try {
+                await fetch('/translate-assist/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_name: this.newProjectName,
+                        source_language: this.sourceLang,
+                        target_language: this.targetLang,
+                        domain: this.domain,
+                    }),
+                });
+                this.newProjectName = '';
+                location.reload();
+            } catch (e) { /* ignore */ }
+        },
+    };
+}
+</script>
+{% endblock %}

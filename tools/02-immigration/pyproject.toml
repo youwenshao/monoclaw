@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-immigration"
+version = "1.0.0"
+description = "Immigration Dashboard — VisaDoc OCR, FormAutoFill, ClientPortal Bot, PolicyWatcher"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    # OCR / VisaDoc
+    "Pillow>=10.0",
+    "opencv-python-headless>=4.8",
+    # PDF / FormAutoFill
+    "reportlab>=4.1",
+    "PyPDF2>=3.0",
+    "pdfrw>=0.4",
+    "pdfplumber>=0.11",
+    "pdf2image>=1.16",
+    # Scraping / PolicyWatcher
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    # Calendar / ClientPortal
+    "icalendar>=5.0",
+    "dateparser>=1.2",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+macos = ["pyobjc-framework-Vision>=10.0"]
+all = ["openclaw-immigration[mlx,messaging,macos]"]
+
+[tool.setuptools.packages.find]
+include = ["immigration*"]

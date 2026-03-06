@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-student"
+version = "1.0.0"
+description = "Student Dashboard — StudyBuddy, ExamGenerator, ThesisFormatter, InterviewPrep, JobTracker"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    "python-dateutil>=2.9",
+    # StudyBuddy / ExamGenerator — RAG pipeline
+    "chromadb>=0.5",
+    "sentence-transformers>=3.0",
+    "PyMuPDF>=1.24",
+    "python-pptx>=1.0",
+    "python-docx>=1.1",
+    "genanki>=0.13",
+    # ExamGenerator — export and math
+    "openpyxl>=3.1",
+    # ThesisFormatter — docx and bibliography
+    "citeproc-py>=0.6",
+    "bibtexparser>=1.4",
+    "reportlab>=4.1",
+    # JobTracker — scraping and matching
+    "playwright>=1.44",
+    "rapidfuzz>=3.9",
+    "plotly>=5.22",
+    # InterviewPrep — no additional deps beyond LLM
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+macos = ["pyobjc-framework-Vision>=10.0"]
+all = ["openclaw-student[mlx,messaging,macos]"]
+
+[tool.setuptools.packages.find]
+include = ["student*"]

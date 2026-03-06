@@ -1,0 +1,76 @@
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Compose panel -->
+    <div class="card p-4 space-y-4">
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Supplier</label>
+            <select x-model="composerForm.supplier_id"
+                    class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                <option value="">Select supplier…</option>
+                <template x-for="s in suppliers" :key="s.id">
+                    <option :value="s.id"
+                            x-text="s.company_name_cn + (s.company_name_en ? ' / ' + s.company_name_en : '')"></option>
+                </template>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Message</label>
+            <textarea x-model="composerForm.text" rows="8" placeholder="Type your message to the supplier…"
+                      class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+            <p class="text-xs text-gray-500 mt-1"><span x-text="composerForm.text.length"></span> characters</p>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input type="checkbox" x-model="composerForm.translate"
+                       class="rounded bg-navy-900 border-navy-600 text-gold-500 focus:ring-gold-500">
+                Auto-translate
+            </label>
+            <select x-model="composerForm.langDirection"
+                    class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-1 text-xs">
+                <option value="en-zh">EN → CN</option>
+                <option value="zh-en">CN → EN</option>
+            </select>
+        </div>
+
+        <div class="flex gap-2">
+            <button @click="sendMessage()"
+                    :disabled="!composerForm.supplier_id || !composerForm.text.trim() || composerSending"
+                    class="btn btn-primary flex-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+                </svg>
+                <span x-show="!composerSending">Send</span>
+                <span x-show="composerSending">Sending…</span>
+            </button>
+            <button @click="previewTranslation()"
+                    :disabled="!composerForm.text.trim() || translating"
+                    class="btn btn-secondary">
+                Preview Translation
+            </button>
+        </div>
+    </div>
+
+    <!-- Translation preview panel -->
+    <div class="card p-4">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3">Translation Preview</h4>
+        <div x-show="!translationPreview" class="text-center text-gray-500 py-12">
+            <svg class="w-12 h-12 mx-auto mb-3 text-navy-700" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"/>
+            </svg>
+            <p>Type a message and click "Preview Translation"</p>
+        </div>
+        <div x-show="translationPreview" class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Original</label>
+                <div class="bg-navy-900 rounded-lg px-3 py-2 text-sm text-gray-300 whitespace-pre-wrap min-h-[60px]"
+                     x-text="translationPreview?.original || ''"></div>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Translated</label>
+                <div class="bg-navy-900 rounded-lg px-3 py-2 text-sm text-gold-400 whitespace-pre-wrap min-h-[60px]"
+                     x-text="translationPreview?.translated || ''"></div>
+            </div>
+        </div>
+    </div>
+</div>

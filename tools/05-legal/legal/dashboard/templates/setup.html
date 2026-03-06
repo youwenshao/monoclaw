@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard{% endblock %}
+
+{% block content %}
+<div x-data="{ step: 1 }" class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-gold-400 mb-6">First-Run Configuration</h2>
+
+    <form method="post" action="/setup/" class="space-y-6">
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="s in [1,2,3,4,5,6,7]">
+                <div class="flex items-center gap-2">
+                    <div :class="step >= s ? 'bg-gold-500 text-navy-900' : 'bg-navy-700 text-gray-400'"
+                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                         x-text="s"></div>
+                    <div x-show="s < 7" class="w-6 h-px" :class="step > s ? 'bg-gold-500' : 'bg-navy-700'"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Step 1: Firm Profile -->
+        <div x-show="step === 1" class="space-y-4">
+            <h3 class="text-lg font-semibold">Firm Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Firm Name</label>
+                    <input type="text" name="firm_name" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="Wong & Partners">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">HKLS Registration No.</label>
+                    <input type="text" name="hkls_registration" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="LF-12345">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Office Address</label>
+                    <input type="text" name="office_address" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="Suite 2001, Lippo Centre, 89 Queensway, Admiralty">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Practice Areas</label>
+                    <input type="text" name="practice_areas" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="Litigation, Corporate, Employment">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Business Hours</label>
+                    <input type="text" name="business_hours" value="09:00-18:00" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Messaging Setup -->
+        <div x-show="step === 2" class="space-y-4">
+            <h3 class="text-lg font-semibold">Messaging Setup</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Account SID</label>
+                    <input type="text" name="twilio_sid" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="ACxxxxxxxx">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Twilio Auth Token</label>
+                    <input type="password" name="twilio_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">WhatsApp From Number</label>
+                    <input type="text" name="whatsapp_from" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm" placeholder="+852XXXXXXXX">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Telegram Bot Token</label>
+                    <input type="password" name="telegram_token" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Default Language</label>
+                    <select name="default_language" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="en">English</option>
+                        <option value="zh">繁體中文</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Calendar Integration -->
+        <div x-show="step === 3" class="space-y-4">
+            <h3 class="text-lg font-semibold">Calendar Integration</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Calendar Provider</label>
+                    <select name="calendar_provider" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">None (manual only)</option>
+                        <option value="google">Google Calendar</option>
+                        <option value="microsoft">Microsoft 365</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Used for solicitor availability and deadline sync.</p>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">API Credentials (JSON)</label>
+                    <textarea name="calendar_api_credentials" rows="3" class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm font-mono" placeholder="Paste service account JSON or OAuth token"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Document Templates -->
+        <div x-show="step === 4" class="space-y-4">
+            <h3 class="text-lg font-semibold">Document Templates</h3>
+            <p class="text-sm text-gray-400">Upload standard-form contract templates for clause comparison. You can add more templates later from the LegalDoc Analyzer tab.</p>
+            <div class="space-y-3">
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <p class="text-sm font-medium">Default Clause Library</p>
+                    <p class="text-xs text-gray-400 mt-1">The built-in reference library includes standard clauses for HK tenancy agreements, employment contracts, NDAs, and service agreements.</p>
+                    <span class="inline-block mt-2 px-2 py-1 text-xs bg-green-900/50 text-green-400 rounded">Pre-loaded</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: HK Legislation References -->
+        <div x-show="step === 5" class="space-y-4">
+            <h3 class="text-lg font-semibold">HK Legislation References</h3>
+            <div class="space-y-3">
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked disabled class="w-4 h-4 rounded">
+                        <div>
+                            <p class="text-sm font-medium">Employment Ordinance (Cap 57)</p>
+                            <p class="text-xs text-gray-400">Statutory holidays, severance, long service payment, wage period, annual leave</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked disabled class="w-4 h-4 rounded">
+                        <div>
+                            <p class="text-sm font-medium">Landlord and Tenant Ordinance (Cap 7)</p>
+                            <p class="text-xs text-gray-400">Standard tenancy clauses, government rent, stamp duty</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked disabled class="w-4 h-4 rounded">
+                        <div>
+                            <p class="text-sm font-medium">Stamp Duty Ordinance (Cap 117)</p>
+                            <p class="text-xs text-gray-400">Inadmissibility of unstamped agreements as evidence</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="p-4 bg-navy-800 rounded-lg">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked disabled class="w-4 h-4 rounded">
+                        <div>
+                            <p class="text-sm font-medium">Limitation Ordinance (Cap 347)</p>
+                            <p class="text-xs text-gray-400">Contract (6yr), personal injury (3yr), defamation (1yr), latent damage (3yr)</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Sample Data -->
+        <div x-show="step === 6" class="space-y-4">
+            <h3 class="text-lg font-semibold">Sample Data</h3>
+            <div class="p-4 bg-navy-800 rounded-lg">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="seed_demo" value="1" class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500 focus:ring-gold-500">
+                    <div>
+                        <p class="text-sm font-medium">Seed demo data for testing</p>
+                        <p class="text-xs text-gray-400">Creates sample contracts, court cases, discovery documents, and client records so you can explore the dashboard.</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 7: Connection Test -->
+        <div x-show="step === 7" class="space-y-4">
+            <h3 class="text-lg font-semibold">Connection Test</h3>
+            <div id="connection-results" class="space-y-3"
+                 hx-get="/api/connection-test" hx-trigger="intersect once" hx-swap="innerHTML">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Testing connections...
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="flex justify-between pt-4 border-t border-navy-700">
+            <button type="button" @click="step = Math.max(1, step-1)" x-show="step > 1"
+                    class="px-4 py-2 text-sm text-gray-300 bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors">
+                Back
+            </button>
+            <div class="ml-auto">
+                <button type="button" @click="step++" x-show="step < 7"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Next
+                </button>
+                <button type="submit" x-show="step === 7"
+                        class="px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-500 rounded-lg hover:bg-gold-400 transition-colors">
+                    Complete Setup
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

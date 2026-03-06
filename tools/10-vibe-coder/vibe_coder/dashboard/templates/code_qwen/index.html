@@ -1,0 +1,765 @@
+{% extends "base.html" %}
+{% block title %}CodeQwen{% endblock %}
+
+{% block status_cards %}
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700"
+     hx-get="/api/code-qwen/stats" hx-trigger="load, every 30s" hx-target="#stats-cards" hx-select="#stats-cards" hx-swap="outerHTML">
+    <div id="stats-cards" class="flex items-center gap-4 w-full">
+        <div class="flex-1">
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Requests Today</p>
+            <p class="text-2xl font-bold text-white" id="stat-requests">{{ stats.requests_today|default('—') }}</p>
+        </div>
+        <div class="w-px h-10 bg-navy-700"></div>
+        <div class="flex-1">
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Avg Latency</p>
+            <p class="text-2xl font-bold text-white" id="stat-latency">{{ stats.avg_latency|default('—') }}</p>
+        </div>
+        <div class="w-px h-10 bg-navy-700"></div>
+        <div class="flex-1">
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Cache Hit Rate</p>
+            <p class="text-2xl font-bold text-gold-400" id="stat-cache">{{ stats.cache_hit_rate|default('—') }}</p>
+        </div>
+        <div class="w-px h-10 bg-navy-700"></div>
+        <div class="flex-1">
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Model Status</p>
+            <p class="text-2xl font-bold">
+                <span class="inline-flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full {{ 'bg-emerald-400' if stats.model_status == 'online' else 'bg-red-400' }}"></span>
+                    <span class="{{ 'text-emerald-400' if stats.model_status == 'online' else 'text-red-400' }}">
+                        {{ stats.model_status|default('offline')|capitalize }}
+                    </span>
+                </span>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="codeQwenApp()" x-init="initMonaco()">
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 mb-6 bg-navy-800 rounded-lg p-1 w-fit">
+        <template x-for="t in tabs" :key="t.id">
+            <button @click="tab = t.id"
+                    :class="tab === t.id
+                        ? 'bg-navy-700 text-gold-400 shadow-sm'
+                        : 'text-gray-400 hover:text-white hover:bg-navy-700/50'"
+                    class="px-4 py-2 rounded-md text-sm font-medium transition-all" x-text="t.label">
+            </button>
+        </template>
+    </div>
+
+    <!-- ═══════════════════════════ EDITOR TAB ═══════════════════════════ -->
+    <div x-show="tab === 'editor'" x-transition.opacity.duration.200ms>
+        <div class="grid grid-cols-1 gap-4">
+            <!-- Toolbar -->
+            <div class="flex items-center justify-between bg-navy-800 rounded-xl p-3 border border-navy-700">
+                <div class="flex items-center gap-3">
+                    <label class="text-xs text-gray-400 uppercase tracking-wider">Language</label>
+                    <select x-model="language"
+                            @change="updateEditorLanguage()"
+                            class="bg-navy-900 border border-navy-700 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-gold-500 focus:border-gold-500 outline-none">
+                        <template x-for="lang in languages" :key="lang.value">
+                            <option :value="lang.value" x-text="lang.label"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click="doComplete()"
+                            :disabled="loading"
+                            class="px-4 py-2 bg-gold-500 text-navy-900 rounded-lg text-sm font-semibold hover:bg-gold-400 transition-colors disabled:opacity-50">
+                        <span x-show="!loading || action !== 'complete'">Complete</span>
+                        <span x-show="loading && action === 'complete'" class="flex items-center gap-1.5">
+                            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Working…
+                        </span>
+                    </button>
+                    <button @click="doExplainFromEditor()"
+                            :disabled="loading"
+                            class="px-4 py-2 bg-navy-700 text-gray-200 rounded-lg text-sm font-medium hover:bg-navy-600 transition-colors disabled:opacity-50">
+                        Explain
+                    </button>
+                    <button @click="doRefactorFromEditor()"
+                            :disabled="loading"
+                            class="px-4 py-2 bg-navy-700 text-gray-200 rounded-lg text-sm font-medium hover:bg-navy-600 transition-colors disabled:opacity-50">
+                        Refactor
+                    </button>
+                    <button @click="doDebug()"
+                            :disabled="loading"
+                            class="px-4 py-2 bg-navy-700 text-gray-200 rounded-lg text-sm font-medium hover:bg-navy-600 transition-colors disabled:opacity-50">
+                        Debug
+                    </button>
+                </div>
+            </div>
+
+            <!-- Monaco Editor -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+                <div id="code-editor" style="height: 400px; width: 100%;"></div>
+            </div>
+
+            <!-- Output panel -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-navy-700">
+                    <h3 class="text-sm font-semibold text-gray-300">Output</h3>
+                    <button @click="editorOutput = ''" x-show="editorOutput"
+                            class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Clear</button>
+                </div>
+                <div id="editor-output" class="p-4 min-h-[120px] max-h-[400px] overflow-auto">
+                    <template x-if="!editorOutput">
+                        <p class="text-sm text-gray-500 italic">Run an action to see results here…</p>
+                    </template>
+                    <div x-show="editorOutput" x-html="editorOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════ EXPLAIN TAB ═══════════════════════════ -->
+    <div x-show="tab === 'explain'" x-transition.opacity.duration.200ms>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Input -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700 flex flex-col">
+                <div class="px-4 py-3 border-b border-navy-700 flex items-center gap-3">
+                    <h3 class="text-sm font-semibold text-gray-300">Code Input</h3>
+                    <select x-model="explainLang"
+                            class="ml-auto bg-navy-900 border border-navy-700 rounded-lg px-3 py-1 text-xs text-white focus:ring-2 focus:ring-gold-500 outline-none">
+                        <template x-for="lang in languages" :key="lang.value">
+                            <option :value="lang.value" x-text="lang.label"></option>
+                        </template>
+                    </select>
+                    <select x-model="outputLanguage"
+                            class="bg-navy-900 border border-navy-700 rounded-lg px-3 py-1 text-xs text-white focus:ring-2 focus:ring-gold-500 outline-none">
+                        <option value="en">English</option>
+                        <option value="zh">繁體中文</option>
+                    </select>
+                </div>
+                <textarea x-model="explainCode"
+                          placeholder="Paste code to explain…"
+                          class="flex-1 bg-transparent p-4 text-sm text-gray-100 font-mono resize-none outline-none placeholder-gray-600 min-h-[300px]"></textarea>
+                <div class="px-4 py-3 border-t border-navy-700">
+                    <button @click="doExplain()"
+                            :disabled="loading || !explainCode.trim()"
+                            class="px-5 py-2 bg-gold-500 text-navy-900 rounded-lg text-sm font-semibold hover:bg-gold-400 transition-colors disabled:opacity-50">
+                        <span x-show="!loading || action !== 'explain'">Explain</span>
+                        <span x-show="loading && action === 'explain'" class="flex items-center gap-1.5">
+                            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Analyzing…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700 flex flex-col">
+                <div class="px-4 py-3 border-b border-navy-700">
+                    <h3 class="text-sm font-semibold text-gray-300">Explanation</h3>
+                </div>
+                <div id="explain-output" class="flex-1 p-4 overflow-auto min-h-[300px]">
+                    <template x-if="!explainOutput">
+                        <p class="text-sm text-gray-500 italic">Explanation will appear here…</p>
+                    </template>
+                    <div x-show="explainOutput" x-html="explainOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════ REFACTOR TAB ═══════════════════════════ -->
+    <div x-show="tab === 'refactor'" x-transition.opacity.duration.200ms>
+        <div class="space-y-4">
+            <!-- Input area -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700">
+                <div class="px-4 py-3 border-b border-navy-700 flex items-center gap-3">
+                    <h3 class="text-sm font-semibold text-gray-300">Code to Refactor</h3>
+                    <select x-model="refactorLang"
+                            class="ml-auto bg-navy-900 border border-navy-700 rounded-lg px-3 py-1 text-xs text-white focus:ring-2 focus:ring-gold-500 outline-none">
+                        <template x-for="lang in languages" :key="lang.value">
+                            <option :value="lang.value" x-text="lang.label"></option>
+                        </template>
+                    </select>
+                </div>
+                <textarea x-model="refactorCode"
+                          placeholder="Paste code to get refactoring suggestions…"
+                          class="w-full bg-transparent p-4 text-sm text-gray-100 font-mono resize-none outline-none placeholder-gray-600 min-h-[200px]"></textarea>
+                <div class="px-4 py-3 border-t border-navy-700">
+                    <button @click="doRefactor()"
+                            :disabled="loading || !refactorCode.trim()"
+                            class="px-5 py-2 bg-gold-500 text-navy-900 rounded-lg text-sm font-semibold hover:bg-gold-400 transition-colors disabled:opacity-50">
+                        <span x-show="!loading || action !== 'refactor'">Get Suggestions</span>
+                        <span x-show="loading && action === 'refactor'" class="flex items-center gap-1.5">
+                            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Analyzing…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Suggestions list -->
+            <div id="refactor-output">
+                <template x-if="!refactorOutput">
+                    <div class="bg-navy-800 rounded-xl border border-navy-700 p-8 text-center">
+                        <p class="text-sm text-gray-500 italic">Refactoring suggestions will appear here…</p>
+                    </div>
+                </template>
+                <div x-show="refactorOutput" x-html="refactorOutput"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════ CHAT TAB ═══════════════════════════ -->
+    <div x-show="tab === 'chat'" x-transition.opacity.duration.200ms>
+        <div class="bg-navy-800 rounded-xl border border-navy-700 flex flex-col" style="height: 600px;">
+            <!-- Chat header -->
+            <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-gold-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">CodeQwen Chat</h3>
+                        <p class="text-xs text-gray-400">AI coding assistant</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select x-model="chatLang"
+                            class="bg-navy-900 border border-navy-700 rounded-lg px-2 py-1 text-xs text-white focus:ring-2 focus:ring-gold-500 outline-none">
+                        <template x-for="lang in languages" :key="lang.value">
+                            <option :value="lang.value" x-text="lang.label"></option>
+                        </template>
+                    </select>
+                    <button @click="clearChat()"
+                            class="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="chat-messages" x-ref="chatMessages"
+                 class="flex-1 overflow-auto p-4 space-y-4">
+                <template x-if="messages.length === 0">
+                    <div class="flex flex-col items-center justify-center h-full text-center">
+                        <div class="w-16 h-16 rounded-full bg-navy-700 flex items-center justify-center mb-4">
+                            <svg class="w-8 h-8 text-gold-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+                            </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm">Ask anything about code…</p>
+                        <p class="text-gray-600 text-xs mt-1">Completions, debugging, explanations, and more</p>
+                    </div>
+                </template>
+                <template x-for="(msg, idx) in messages" :key="idx">
+                    <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                        <div :class="msg.role === 'user'
+                                ? 'bg-gold-500/20 text-gold-100 rounded-2xl rounded-br-md'
+                                : 'bg-navy-700 text-gray-200 rounded-2xl rounded-bl-md'"
+                             class="max-w-[80%] px-4 py-3 text-sm">
+                            <div x-html="msg.html || msg.content"></div>
+                            <p class="text-[10px] mt-1.5 opacity-40" x-text="msg.time"></p>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="streaming">
+                    <div class="flex justify-start">
+                        <div class="bg-navy-700 text-gray-200 rounded-2xl rounded-bl-md px-4 py-3 text-sm">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-gold-400 animate-bounce" style="animation-delay: 0ms;"></span>
+                                <span class="w-2 h-2 rounded-full bg-gold-400 animate-bounce" style="animation-delay: 150ms;"></span>
+                                <span class="w-2 h-2 rounded-full bg-gold-400 animate-bounce" style="animation-delay: 300ms;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Input -->
+            <div class="px-4 py-3 border-t border-navy-700">
+                <form @submit.prevent="sendMessage()" class="flex items-center gap-2">
+                    <input x-model="chatInput"
+                           type="text"
+                           placeholder="Ask about code…"
+                           class="flex-1 bg-navy-900 border border-navy-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-gold-500 focus:border-gold-500 outline-none"
+                           :disabled="streaming">
+                    <button type="submit"
+                            :disabled="!chatInput.trim() || streaming"
+                            class="px-5 py-2.5 bg-gold-500 text-navy-900 rounded-lg text-sm font-semibold hover:bg-gold-400 transition-colors disabled:opacity-50">
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════ STATS TAB ═══════════════════════════ -->
+    <div x-show="tab === 'stats'" x-transition.opacity.duration.200ms>
+        <div class="space-y-4">
+            <!-- Charts row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-navy-800 rounded-xl border border-navy-700 p-4">
+                    <h3 class="text-sm font-semibold text-gray-300 mb-3">Usage Over Time</h3>
+                    <canvas id="usage-chart" height="200"></canvas>
+                </div>
+                <div class="bg-navy-800 rounded-xl border border-navy-700 p-4">
+                    <h3 class="text-sm font-semibold text-gray-300 mb-3">Request Types</h3>
+                    <canvas id="types-chart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Latency chart -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700 p-4">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3">Latency (ms)</h3>
+                <canvas id="latency-chart" height="140"></canvas>
+            </div>
+
+            <!-- History table -->
+            <div class="bg-navy-800 rounded-xl border border-navy-700">
+                <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-300">Recent Requests</h3>
+                    <button @click="loadHistory()"
+                            class="text-xs text-gold-400 hover:text-gold-300 transition-colors">Refresh</button>
+                </div>
+                <div id="history-table"
+                     hx-get="/api/code-qwen/history"
+                     hx-trigger="load"
+                     hx-swap="innerHTML">
+                    <div class="p-8 text-center">
+                        <p class="text-sm text-gray-500">Loading history…</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function codeQwenApp() {
+    return {
+        tab: 'editor',
+        tabs: [
+            { id: 'editor',   label: 'Editor' },
+            { id: 'explain',  label: 'Explain' },
+            { id: 'refactor', label: 'Refactor' },
+            { id: 'chat',     label: 'Chat' },
+            { id: 'stats',    label: 'Stats' },
+        ],
+        languages: [
+            { value: 'python',     label: 'Python' },
+            { value: 'javascript', label: 'JavaScript' },
+            { value: 'typescript', label: 'TypeScript' },
+            { value: 'go',         label: 'Go' },
+            { value: 'rust',       label: 'Rust' },
+            { value: 'java',       label: 'Java' },
+            { value: 'cpp',        label: 'C++' },
+            { value: 'html',       label: 'HTML' },
+            { value: 'css',        label: 'CSS' },
+            { value: 'sql',        label: 'SQL' },
+            { value: 'shell',      label: 'Shell' },
+        ],
+
+        language: 'python',
+        loading: false,
+        action: '',
+        editor: null,
+        editorOutput: '',
+
+        explainCode: '',
+        explainLang: 'python',
+        outputLanguage: 'en',
+        explainOutput: '',
+
+        refactorCode: '',
+        refactorLang: 'python',
+        refactorOutput: '',
+
+        chatInput: '',
+        chatLang: 'python',
+        messages: [],
+        streaming: false,
+        sessionId: crypto.randomUUID(),
+
+        usageChart: null,
+        typesChart: null,
+        latencyChart: null,
+
+        initMonaco() {
+            require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], (monaco) => {
+                this.editor = monaco.editor.create(document.getElementById('code-editor'), {
+                    value: '# Start coding here…\n',
+                    language: this.language,
+                    theme: 'vs-dark',
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    padding: { top: 12, bottom: 12 },
+                    automaticLayout: true,
+                    bracketPairColorization: { enabled: true },
+                    renderWhitespace: 'selection',
+                });
+            });
+
+            this.$watch('tab', (val) => {
+                if (val === 'stats') this.$nextTick(() => this.initCharts());
+            });
+        },
+
+        updateEditorLanguage() {
+            if (!this.editor) return;
+            const model = this.editor.getModel();
+            monaco.editor.setModelLanguage(model, this.language);
+        },
+
+        getEditorCode() {
+            return this.editor ? this.editor.getValue() : '';
+        },
+
+        getCursorPosition() {
+            if (!this.editor) return { prefix: '', suffix: '' };
+            const model = this.editor.getModel();
+            const pos = this.editor.getPosition();
+            const offset = model.getOffsetAt(pos);
+            const full = model.getValue();
+            return { prefix: full.substring(0, offset), suffix: full.substring(offset) };
+        },
+
+        async apiCall(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            return res;
+        },
+
+        async doComplete() {
+            const { prefix, suffix } = this.getCursorPosition();
+            if (!prefix && !suffix) return;
+            this.loading = true;
+            this.action = 'complete';
+            try {
+                const res = await this.apiCall('/api/code-qwen/complete', {
+                    prefix, suffix,
+                    language: this.language,
+                    max_tokens: 256,
+                });
+                const html = await res.text();
+                this.editorOutput = html;
+            } catch (e) {
+                this.editorOutput = `<p class="text-red-400 text-sm">${e.message}</p>`;
+            } finally {
+                this.loading = false;
+                this.action = '';
+            }
+        },
+
+        async doExplainFromEditor() {
+            const code = this.getEditorCode();
+            if (!code.trim()) return;
+            this.loading = true;
+            this.action = 'explain';
+            try {
+                const res = await this.apiCall('/api/code-qwen/explain', {
+                    code, language: this.language, output_language: 'en',
+                });
+                const html = await res.text();
+                this.editorOutput = html;
+            } catch (e) {
+                this.editorOutput = `<p class="text-red-400 text-sm">${e.message}</p>`;
+            } finally {
+                this.loading = false;
+                this.action = '';
+            }
+        },
+
+        async doRefactorFromEditor() {
+            const code = this.getEditorCode();
+            if (!code.trim()) return;
+            this.loading = true;
+            this.action = 'refactor';
+            try {
+                const res = await this.apiCall('/api/code-qwen/refactor', {
+                    code, language: this.language,
+                });
+                const html = await res.text();
+                this.editorOutput = html;
+            } catch (e) {
+                this.editorOutput = `<p class="text-red-400 text-sm">${e.message}</p>`;
+            } finally {
+                this.loading = false;
+                this.action = '';
+            }
+        },
+
+        async doDebug() {
+            const code = this.getEditorCode();
+            if (!code.trim()) return;
+            this.loading = true;
+            this.action = 'debug';
+            try {
+                const res = await this.apiCall('/api/code-qwen/debug', {
+                    code, language: this.language,
+                });
+                const html = await res.text();
+                this.editorOutput = html;
+            } catch (e) {
+                this.editorOutput = `<p class="text-red-400 text-sm">${e.message}</p>`;
+            } finally {
+                this.loading = false;
+                this.action = '';
+            }
+        },
+
+        async doExplain() {
+            if (!this.explainCode.trim()) return;
+            this.loading = true;
+            this.action = 'explain';
+            try {
+                const res = await this.apiCall('/api/code-qwen/explain', {
+                    code: this.explainCode,
+                    language: this.explainLang,
+                    output_language: this.outputLanguage,
+                });
+                this.explainOutput = await res.text();
+            } catch (e) {
+                this.explainOutput = `<p class="text-red-400 text-sm">${e.message}</p>`;
+            } finally {
+                this.loading = false;
+                this.action = '';
+            }
+        },
+
+        async doRefactor() {
+            if (!this.refactorCode.trim()) return;
+            this.loading = true;
+            this.action = 'refactor';
+            try {
+                const res = await this.apiCall('/api/code-qwen/refactor', {
+                    code: this.refactorCode,
+                    language: this.refactorLang,
+                });
+                this.refactorOutput = await res.text();
+            } catch (e) {
+                this.refactorOutput = `<p class="text-red-400 text-sm">${e.message}</p>`;
+            } finally {
+                this.loading = false;
+                this.action = '';
+            }
+        },
+
+        async sendMessage() {
+            const text = this.chatInput.trim();
+            if (!text || this.streaming) return;
+
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            this.messages.push({ role: 'user', content: text, time: now });
+            this.chatInput = '';
+            this.streaming = true;
+            this.scrollChat();
+
+            try {
+                const res = await fetch('/api/code-qwen/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        session_id: this.sessionId,
+                        language: this.chatLang,
+                    }),
+                });
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let assistantMsg = { role: 'assistant', content: '', html: '', time: now };
+                this.messages.push(assistantMsg);
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') break;
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.token) {
+                                    assistantMsg.content += parsed.token;
+                                    assistantMsg.html = this.renderMarkdown(assistantMsg.content);
+                                }
+                            } catch {}
+                        }
+                    }
+                    this.scrollChat();
+                }
+            } catch (e) {
+                this.messages.push({
+                    role: 'assistant',
+                    content: `Error: ${e.message}`,
+                    html: `<p class="text-red-400">${e.message}</p>`,
+                    time: now,
+                });
+            } finally {
+                this.streaming = false;
+                this.scrollChat();
+            }
+        },
+
+        clearChat() {
+            this.messages = [];
+            this.sessionId = crypto.randomUUID();
+        },
+
+        scrollChat() {
+            this.$nextTick(() => {
+                const el = this.$refs.chatMessages;
+                if (el) el.scrollTop = el.scrollHeight;
+            });
+        },
+
+        renderMarkdown(text) {
+            return text
+                .replace(/```(\w*)\n([\s\S]*?)```/g,
+                    '<pre class="bg-navy-900 rounded-lg p-3 my-2 overflow-x-auto"><code class="text-sm text-gray-200">$2</code></pre>')
+                .replace(/`([^`]+)`/g, '<code class="bg-navy-900 px-1.5 py-0.5 rounded text-gold-400 text-xs">$1</code>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+                .replace(/\n/g, '<br>');
+        },
+
+        async loadHistory() {
+            const container = document.getElementById('history-table');
+            try {
+                const res = await fetch('/api/code-qwen/history');
+                container.innerHTML = await res.text();
+            } catch {
+                container.innerHTML = '<p class="p-4 text-sm text-red-400">Failed to load history</p>';
+            }
+        },
+
+        initCharts() {
+            this.initUsageChart();
+            this.initTypesChart();
+            this.initLatencyChart();
+            this.fetchChartData();
+        },
+
+        initUsageChart() {
+            const ctx = document.getElementById('usage-chart');
+            if (!ctx) return;
+            if (this.usageChart) this.usageChart.destroy();
+            this.usageChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Requests',
+                        data: [],
+                        borderColor: '#eab308',
+                        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                    }],
+                },
+                options: this.chartOpts('Requests'),
+            });
+        },
+
+        initTypesChart() {
+            const ctx = document.getElementById('types-chart');
+            if (!ctx) return;
+            if (this.typesChart) this.typesChart.destroy();
+            this.typesChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Complete', 'Explain', 'Refactor', 'Debug', 'Chat'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: ['#eab308', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'],
+                        borderColor: '#1e293b',
+                        borderWidth: 2,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#9ca3af', font: { size: 12 } },
+                        },
+                    },
+                },
+            });
+        },
+
+        initLatencyChart() {
+            const ctx = document.getElementById('latency-chart');
+            if (!ctx) return;
+            if (this.latencyChart) this.latencyChart.destroy();
+            this.latencyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Latency (ms)',
+                        data: [],
+                        backgroundColor: 'rgba(234, 179, 8, 0.3)',
+                        borderColor: '#eab308',
+                        borderWidth: 1,
+                    }],
+                },
+                options: this.chartOpts('ms'),
+            });
+        },
+
+        chartOpts(yLabel) {
+            return {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#9ca3af' } },
+                },
+                scales: {
+                    x: { ticks: { color: '#6b7280' }, grid: { color: '#374151' } },
+                    y: {
+                        ticks: { color: '#6b7280' },
+                        grid: { color: '#374151' },
+                        title: { display: true, text: yLabel, color: '#9ca3af' },
+                    },
+                },
+            };
+        },
+
+        async fetchChartData() {
+            try {
+                const res = await fetch('/api/code-qwen/stats');
+                const data = await res.json();
+
+                if (this.usageChart && data.usage_over_time) {
+                    this.usageChart.data.labels = data.usage_over_time.labels;
+                    this.usageChart.data.datasets[0].data = data.usage_over_time.values;
+                    this.usageChart.update();
+                }
+                if (this.typesChart && data.request_types) {
+                    this.typesChart.data.datasets[0].data = data.request_types;
+                    this.typesChart.update();
+                }
+                if (this.latencyChart && data.latency) {
+                    this.latencyChart.data.labels = data.latency.labels;
+                    this.latencyChart.data.datasets[0].data = data.latency.values;
+                    this.latencyChart.update();
+                }
+            } catch {}
+        },
+    };
+}
+</script>
+{% endblock %}

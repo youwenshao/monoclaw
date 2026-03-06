@@ -1,0 +1,111 @@
+tool_name: fnb-hospitality
+version: "1.0.0"
+port: 8003
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: zh
+
+database:
+  workspace_path: "~/OpenClawWorkspace/fnb-hospitality"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Restaurant profile (set during first-run wizard)
+  restaurant_name: ""
+  restaurant_address: ""
+  cuisine_type: ""
+  phone: ""
+
+  # Dining sessions and durations (minutes)
+  dining_sessions:
+    lunch:
+      start: "12:00"
+      end: "14:00"
+      duration_minutes: 75
+    dinner_weekday:
+      start: "19:00"
+      end: "21:30"
+      duration_minutes: 90
+    dinner_weekend:
+      start: "19:00"
+      end: "21:30"
+      duration_minutes: 120
+    dim_sum:
+      start: "10:00"
+      end: "14:30"
+      duration_minutes: 120
+
+  # Table turnover targets per dinner service
+  target_turnovers_per_service: 2
+
+  # QueueBot settings
+  queue_notification_interval_minutes: 5
+  queue_grace_period_minutes: 5
+  queue_return_window_minutes: 5
+
+  # NoShowShield settings
+  confirmation_timing_hours: [0, 24, 2]  # at booking, T-24hr, T-2hr
+  auto_release_before_minutes: 60
+  blacklist_no_show_threshold: 3
+  blacklist_cooldown_months: 6
+  deposit_party_size_threshold: 7
+
+  # SommelierMemory settings
+  vip_thresholds:
+    regular:
+      min_visits: 0
+      min_spend: 0
+    vip:
+      min_visits: 5
+      min_spend: 10000
+    vvip:
+      min_visits: 15
+      min_spend: 50000
+  celebration_lookahead_days: 7
+
+  # Platform credentials
+  openrice_api_key: ""
+  instagram_access_token: ""
+
+  # Festive mandatory confirmation dates (MMDD)
+  festive_dates:
+    - "0214"  # Valentine's Day
+    - "0510"  # Mother's Day (approx)
+    - "1224"  # Christmas Eve
+    - "1225"  # Christmas Day
+    - "1231"  # New Year's Eve
+
+  # HK public holidays 2026
+  public_holidays_2026:
+    - "2026-01-01"  # New Year
+    - "2026-02-17"  # Lunar New Year
+    - "2026-02-18"  # Lunar New Year
+    - "2026-02-19"  # Lunar New Year
+    - "2026-04-03"  # Good Friday
+    - "2026-04-04"  # Day after Good Friday
+    - "2026-04-06"  # Easter Monday
+    - "2026-04-05"  # Ching Ming
+    - "2026-05-01"  # Labour Day
+    - "2026-05-24"  # Buddha's Birthday
+    - "2026-06-19"  # Tuen Ng Festival
+    - "2026-07-01"  # HKSAR Establishment Day
+    - "2026-09-26"  # Day after Mid-Autumn
+    - "2026-10-01"  # National Day
+    - "2026-10-18"  # Chung Yeung Festival
+    - "2026-12-25"  # Christmas Day
+    - "2026-12-26"  # Boxing Day

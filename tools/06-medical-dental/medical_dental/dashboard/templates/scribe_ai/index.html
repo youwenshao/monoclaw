@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}ScribeAI{% endblock %}
+
+{% block status_cards %}
+<div class="grid grid-cols-4 gap-4 w-full">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '今日診症' : 'Consultations Today'">Consultations Today</p>
+        <p class="text-2xl font-bold text-gray-100 mt-1">{{ stats.consultations_today | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '待審核' : 'Pending Review'">Pending Review</p>
+        <p class="text-2xl font-bold text-amber-400 mt-1">{{ stats.pending_review | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '已完成' : 'Finalized'">Finalized</p>
+        <p class="text-2xl font-bold text-green-400 mt-1">{{ stats.finalized | default(0) }}</p>
+    </div>
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide" x-text="lang==='zh' ? '模板數量' : 'Templates'">Templates</p>
+        <p class="text-2xl font-bold text-blue-400 mt-1">{{ stats.templates | default(0) }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{
+        recording: false,
+        consultationId: null,
+        selectedTemplate: '',
+        showEntityPanel: true,
+        showIcdPanel: false
+     }" class="space-y-6">
+
+    <div class="grid grid-cols-4 gap-6">
+        <!-- Main area (3 cols) -->
+        <div class="col-span-3 space-y-6">
+
+            <!-- Recording Interface -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '錄音介面' : 'Recording'">Recording</h3>
+                        <template x-if="recording">
+                            <span class="recording-indicator">REC</span>
+                        </template>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Template selector -->
+                        <select x-model="selectedTemplate"
+                                class="bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-[#d4a843]">
+                            <option value="">Template 模板</option>
+                            {% for tmpl in templates | default([]) %}
+                            <option value="{{ tmpl.id }}">{{ tmpl.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="live-indicator" x-show="recording">LIVE</span>
+                    </div>
+                </div>
+
+                <!-- Record button -->
+                <div class="flex items-center gap-4 mb-4">
+                    <button @click="
+                        if (!recording) {
+                            recording = true;
+                            startRecording(function(chunk) {
+                                var fd = new FormData();
+                                fd.append('audio', chunk);
+                                if (consultationId) fd.append('consultation_id', consultationId);
+                                fetch('/scribe-ai/api/transcribe-chunk', { method: 'POST', body: fd });
+                            });
+                        } else {
+                            recording = false;
+                            stopRecording().then(function(blob) {
+                                if (blob && consultationId) {
+                                    var fd = new FormData();
+                                    fd.append('audio', blob);
+                                    fd.append('consultation_id', consultationId);
+                                    fetch('/scribe-ai/api/finalize-audio', { method: 'POST', body: fd });
+                                }
+                            });
+                        }"
+                        :class="recording ? 'bg-red-600 hover:bg-red-700 animate-pulse' : 'bg-[#d4a843] hover:bg-[#e0be6a]'"
+                        class="w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg">
+                        <svg x-show="!recording" class="w-6 h-6 text-[#0f1225]" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
+                        <svg x-show="recording" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="6" width="12" height="12" rx="2"/>
+                        </svg>
+                    </button>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-300" x-text="recording ? (lang==='zh' ? '正在錄音…點擊停止' : 'Recording… Click to stop') : (lang==='zh' ? '點擊開始錄音' : 'Click to start recording')"></p>
+                        <div class="waveform-container mt-2" x-show="recording">
+                            <div class="h-8 flex items-center gap-0.5">
+                                <template x-for="i in 40" :key="i">
+                                    <div class="w-1 bg-[#d4a843] rounded-full" :style="'height:' + (Math.random()*24+4) + 'px; animation: pulse-rec ' + (0.5+Math.random()) + 's ease-in-out infinite'"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live transcription stream -->
+                <div id="transcription-area"
+                     hx-ext="sse" sse-connect="/scribe-ai/api/stream/transcription" sse-swap="message"
+                     hx-swap="beforeend"
+                     class="bg-[#0f1225] border border-[#2d3352] rounded-lg p-4 min-h-[120px] max-h-[240px] overflow-auto text-sm text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 italic" x-text="lang==='zh' ? '轉錄文字將在此處顯示…' : 'Transcription text will appear here…'">Transcription text will appear here…</p>
+                </div>
+            </div>
+
+            <!-- SOAP Note Editor -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? 'SOAP 病歷' : 'SOAP Note'">SOAP Note</h3>
+                    <div class="flex gap-2">
+                        <button hx-post="/scribe-ai/api/consultations/{{ consultation.id | default('') }}/generate-soap"
+                                hx-target="#soap-editor" hx-swap="innerHTML"
+                                class="text-xs bg-[#2d3352] text-gray-300 px-3 py-1.5 rounded hover:bg-[#3d4466] transition-colors">
+                            <span x-text="lang==='zh' ? 'AI 生成' : 'AI Generate'">AI Generate</span>
+                        </button>
+                        <button @click="showIcdPanel = !showIcdPanel"
+                                :class="showIcdPanel ? 'bg-[#d4a843] text-[#0f1225]' : 'bg-[#2d3352] text-gray-300'"
+                                class="text-xs px-3 py-1.5 rounded transition-colors">
+                            ICD-10
+                        </button>
+                    </div>
+                </div>
+
+                <div id="soap-editor" hx-get="/scribe-ai/api/consultations/{{ consultation.id | default('') }}/soap"
+                     hx-trigger="load" hx-swap="innerHTML">
+                    <div class="space-y-4">
+                        {% for section, label_en, label_zh, css_class in [
+                            ('subjective','Subjective','主觀','soap-subjective'),
+                            ('objective','Objective','客觀','soap-objective'),
+                            ('assessment','Assessment','評估','soap-assessment'),
+                            ('plan','Plan','計劃','soap-plan')
+                        ] %}
+                        <div class="soap-section {{ css_class }}" x-data="{ collapsed: false }">
+                            <h4 @click="collapsed = !collapsed" class="cursor-pointer flex items-center gap-2">
+                                <span x-text="lang==='zh' ? '{{ label_zh }}' : '{{ label_en }}'">{{ label_en }}</span>
+                                <svg :class="collapsed && 'rotate-180'" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </h4>
+                            <textarea x-show="!collapsed" name="{{ section }}" rows="3"
+                                      class="w-full bg-[#0f1225] border border-[#2d3352] rounded px-3 py-2 text-sm text-gray-200 mt-2 focus:outline-none focus:border-[#d4a843] resize-y"
+                                      placeholder="{{ label_en }} notes…">{{ consultation[section] | default('') if consultation else '' }}</textarea>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- ICD-10 panel (inline) -->
+                <div x-show="showIcdPanel" x-cloak class="mt-4 border-t border-[#2d3352] pt-4"
+                     id="icd10-panel" hx-get="/scribe-ai/api/icd10/suggestions" hx-trigger="load" hx-swap="innerHTML">
+                    <p class="text-xs text-gray-500">Loading ICD-10 codes…</p>
+                </div>
+            </div>
+
+            <!-- Consultation List -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-[#d4a843]" x-text="lang==='zh' ? '診症記錄' : 'Consultations'">Consultations</h3>
+                    <div class="flex gap-2" x-data="{ status: 'all' }">
+                        {% for fid, label in [('all','All'),('recording','Recording'),('review','Review'),('finalized','Finalized')] %}
+                        <button @click="status='{{ fid }}'"
+                                hx-get="/scribe-ai/api/consultations?status={{ fid }}" hx-target="#consultation-list" hx-swap="innerHTML"
+                                :class="status==='{{ fid }}' ? 'bg-[#2d3352] text-[#d4a843]' : 'text-gray-400'"
+                                class="text-xs px-3 py-1 rounded-md font-medium transition-colors">{{ label }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div id="consultation-list" hx-get="/scribe-ai/api/consultations" hx-trigger="load" hx-swap="innerHTML"
+                     class="space-y-2">
+                    <p class="text-sm text-gray-500 text-center py-4">Loading…</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right sidebar (1 col): Entities + Finalization -->
+        <div class="space-y-4">
+            <!-- Entity Tags -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-xs font-semibold text-[#d4a843] uppercase" x-text="lang==='zh' ? '識別實體' : 'Detected Entities'">Detected Entities</h4>
+                    <button @click="showEntityPanel = !showEntityPanel" class="text-gray-500 hover:text-gray-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                </div>
+                <div x-show="showEntityPanel" id="entity-tags"
+                     hx-get="/scribe-ai/api/consultations/{{ consultation.id | default('') }}/entities"
+                     hx-trigger="load, every 5s" hx-swap="innerHTML">
+                    <p class="text-xs text-gray-600 py-2">No entities detected yet.</p>
+                </div>
+            </div>
+
+            <!-- Finalization -->
+            <div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-4">
+                <h4 class="text-xs font-semibold text-[#d4a843] uppercase mb-3" x-text="lang==='zh' ? '完成確認' : 'Finalization'">Finalization</h4>
+                <button hx-get="/scribe-ai/api/consultations/{{ consultation.id | default('') }}/finalize-check"
+                        hx-target="#finalization-area" hx-swap="innerHTML"
+                        class="w-full bg-green-600/20 text-green-400 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-600/30 transition-colors">
+                    <span x-text="lang==='zh' ? '確認完成病歷' : 'Finalize Note'">Finalize Note</span>
+                </button>
+                <div id="finalization-area" class="mt-3"></div>
+
+                <div class="mt-3 pt-3 border-t border-[#2d3352]">
+                    <button hx-get="/scribe-ai/api/consultations/{{ consultation.id | default('') }}/amend"
+                            hx-target="#finalization-area" hx-swap="innerHTML"
+                            class="w-full text-xs text-gray-400 hover:text-gray-200 py-1.5 transition-colors">
+                        <span x-text="lang==='zh' ? '申請修改' : 'Request Amendment'">Request Amendment</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

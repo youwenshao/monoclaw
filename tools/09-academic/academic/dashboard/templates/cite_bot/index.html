@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}CiteBot{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-[#d4a843] shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Total References</p>
+        <p class="text-lg font-bold text-white">{{ total }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Verified</p>
+        <p class="text-lg font-bold text-white">{{ verified }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Projects</p>
+        <p class="text-lg font-bold text-white">{{ projects_count }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-[#1a1f36] rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Duplicates</p>
+        <p class="text-lg font-bold text-white">{{ duplicates_count }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="citeBot()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-[#2d3352] pb-px">
+        <template x-for="tab in ['Bibliography', 'Add Citation', 'Export']" :key="tab">
+            <button @click="subTab = tab.toLowerCase().replace(' ', '-')"
+                    :class="subTab === tab.toLowerCase().replace(' ', '-')
+                        ? 'text-[#d4a843] border-[#d4a843] border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="tab"></button>
+        </template>
+    </div>
+
+    <!-- ═══════════ Bibliography sub-tab ═══════════ -->
+    <div x-show="subTab === 'bibliography'" x-cloak>
+        <div class="space-y-4">
+            <!-- Style selector + batch format -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-400">Citation Style:</label>
+                    <select x-model="selectedStyle"
+                            class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                        <option value="apa7">APA 7th</option>
+                        <option value="harvard">Harvard</option>
+                        <option value="ieee">IEEE</option>
+                        <option value="gbt7714">GB/T 7714</option>
+                        <option value="chicago">Chicago</option>
+                        <option value="mla9">MLA 9th</option>
+                    </select>
+                </div>
+                <button @click="batchFormat()"
+                        class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#d4a843] text-[#0f1225] hover:bg-[#c49a38] transition-colors">
+                    Format All
+                </button>
+                <button hx-get="/cite-bot/duplicates"
+                        hx-target="#duplicate-results"
+                        hx-swap="innerHTML"
+                        class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#2d3352] text-gray-200 hover:bg-[#3d4562] transition-colors">
+                    Find Duplicates
+                </button>
+            </div>
+
+            <div id="duplicate-results"></div>
+
+            <!-- Bibliography table -->
+            <div id="bibliography-table-slot"
+                 hx-get="/cite-bot/bibliography-table/partial"
+                 hx-trigger="load"
+                 hx-swap="innerHTML"
+                 class="bg-[#1a1f36] rounded-lg overflow-hidden">
+                <p class="text-sm text-gray-500 py-8 text-center">Loading bibliography…</p>
+            </div>
+
+            <!-- Citation preview -->
+            <div id="citation-preview-slot" class="bg-[#1a1f36] rounded-lg p-4 min-h-[80px]">
+                <p class="text-sm text-gray-500 text-center py-4">Select a citation to preview formatted output</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ Add Citation sub-tab ═══════════ -->
+    <div x-show="subTab === 'add-citation'" x-cloak>
+        <div class="grid grid-cols-2 gap-6">
+
+            <!-- Manual entry -->
+            <div class="bg-[#1a1f36] rounded-lg p-5 space-y-4">
+                <h3 class="text-sm font-semibold text-[#d4a843]">Add Citation Manually</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-400 mb-1 block">Title</label>
+                        <input x-model="newCitation.title" type="text"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]"
+                               placeholder="Article or book title">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-400 mb-1 block">Authors</label>
+                        <input x-model="newCitation.authors" type="text"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]"
+                               placeholder="Last, First; Last, First">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Year</label>
+                        <input x-model="newCitation.year" type="number"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]"
+                               placeholder="2024">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">DOI</label>
+                        <div class="flex gap-1">
+                            <input x-model="newCitation.doi" type="text"
+                                   class="flex-1 bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]"
+                                   placeholder="10.1234/...">
+                            <button @click="validateDOI()"
+                                    class="px-3 py-2 text-xs bg-[#2d3352] text-gray-200 rounded-lg hover:bg-[#3d4562] transition-colors shrink-0">
+                                Verify
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Journal</label>
+                        <input x-model="newCitation.journal" type="text"
+                               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Volume / Issue / Pages</label>
+                        <div class="flex gap-1">
+                            <input x-model="newCitation.volume" type="text" placeholder="Vol"
+                                   class="w-1/3 bg-[#0f1225] border border-[#2d3352] rounded-lg px-2 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                            <input x-model="newCitation.issue" type="text" placeholder="Iss"
+                                   class="w-1/3 bg-[#0f1225] border border-[#2d3352] rounded-lg px-2 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                            <input x-model="newCitation.pages" type="text" placeholder="pp."
+                                   class="w-1/3 bg-[#0f1225] border border-[#2d3352] rounded-lg px-2 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Type</label>
+                        <select x-model="newCitation.entry_type"
+                                class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                            <option value="article">Journal Article</option>
+                            <option value="book">Book</option>
+                            <option value="chapter">Book Chapter</option>
+                            <option value="conference">Conference Paper</option>
+                            <option value="thesis">Thesis</option>
+                            <option value="report">Report</option>
+                            <option value="website">Website</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Language</label>
+                        <select x-model="newCitation.language"
+                                class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+                            <option value="en">English</option>
+                            <option value="zh">Chinese</option>
+                        </select>
+                    </div>
+                </div>
+                <button @click="addCitation()"
+                        :disabled="!newCitation.title && !newCitation.doi"
+                        class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                               bg-[#d4a843] text-[#0f1225] hover:bg-[#c49a38]
+                               disabled:opacity-40 disabled:cursor-not-allowed">
+                    Add Citation
+                </button>
+                <div x-show="addResult" class="text-xs" :class="addResult?.status === 'created' ? 'text-emerald-400' : 'text-red-400'" x-text="addResult?.status === 'created' ? 'Citation added successfully' : 'Error adding citation'"></div>
+            </div>
+
+            <!-- Raw text / DOI lookup + Import -->
+            <div class="space-y-4">
+                <div class="bg-[#1a1f36] rounded-lg p-5 space-y-4">
+                    <h3 class="text-sm font-semibold text-[#d4a843]">Paste Raw Citation</h3>
+                    <textarea x-model="rawText" rows="4"
+                              class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]"
+                              placeholder="Paste a citation in any format and we'll parse it…"></textarea>
+                    <button @click="addRawCitation()"
+                            :disabled="!rawText"
+                            class="w-full py-2 rounded-lg text-sm font-semibold transition-colors
+                                   bg-[#2d3352] text-gray-200 hover:bg-[#3d4562]
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        Parse &amp; Add
+                    </button>
+                </div>
+
+                <div class="bg-[#1a1f36] rounded-lg p-5 space-y-4">
+                    <h3 class="text-sm font-semibold text-[#d4a843]">Import BibTeX / RIS</h3>
+                    <form hx-post="/cite-bot/import" hx-encoding="multipart/form-data"
+                          hx-target="#import-result" hx-swap="innerHTML"
+                          class="space-y-3">
+                        <input type="file" name="file" accept=".bib,.ris,.bibtex"
+                               class="w-full text-sm text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
+                                      file:text-sm file:font-semibold file:bg-[#2d3352] file:text-gray-200
+                                      hover:file:bg-[#3d4562] file:transition-colors file:cursor-pointer">
+                        <button type="submit"
+                                class="w-full py-2 rounded-lg text-sm font-semibold bg-[#2d3352] text-gray-200 hover:bg-[#3d4562] transition-colors">
+                            Import File
+                        </button>
+                    </form>
+                    <div id="import-result" class="text-xs text-gray-400"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════ Export sub-tab ═══════════ -->
+    <div x-show="subTab === 'export'" x-cloak>
+        <div id="export-panel-slot"
+             hx-get="/cite-bot/export-panel/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading export options…</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function citeBot() {
+    return {
+        subTab: 'bibliography',
+        selectedStyle: 'apa7',
+        addResult: null,
+        rawText: '',
+
+        newCitation: {
+            title: '', authors: '', year: null, doi: '',
+            journal: '', volume: '', issue: '', pages: '',
+            entry_type: 'article', language: 'en',
+        },
+
+        async addCitation() {
+            this.addResult = null;
+            try {
+                const resp = await fetch('/cite-bot/citations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.newCitation),
+                });
+                this.addResult = await resp.json();
+                if (this.addResult.status === 'created') {
+                    this.newCitation = { title: '', authors: '', year: null, doi: '', journal: '', volume: '', issue: '', pages: '', entry_type: 'article', language: 'en' };
+                    htmx.ajax('GET', '/cite-bot/bibliography-table/partial', { target: '#bibliography-table-slot', swap: 'innerHTML' });
+                }
+            } catch (e) {
+                this.addResult = { status: 'error', message: e.message };
+            }
+        },
+
+        async addRawCitation() {
+            this.addResult = null;
+            try {
+                const resp = await fetch('/cite-bot/citations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ raw_text: this.rawText }),
+                });
+                this.addResult = await resp.json();
+                if (this.addResult.status === 'created') {
+                    this.rawText = '';
+                    htmx.ajax('GET', '/cite-bot/bibliography-table/partial', { target: '#bibliography-table-slot', swap: 'innerHTML' });
+                }
+            } catch (e) {
+                this.addResult = { status: 'error', message: e.message };
+            }
+        },
+
+        async validateDOI() {
+            if (!this.newCitation.doi) return;
+            try {
+                const resp = await fetch('/cite-bot/validate-doi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ doi: this.newCitation.doi }),
+                });
+                const data = await resp.json();
+                if (data.valid && data.metadata) {
+                    const m = data.metadata;
+                    if (m.title) this.newCitation.title = m.title;
+                    if (m.authors) this.newCitation.authors = m.authors;
+                    if (m.year) this.newCitation.year = m.year;
+                    if (m.journal) this.newCitation.journal = m.journal;
+                    if (m.volume) this.newCitation.volume = m.volume;
+                    if (m.issue) this.newCitation.issue = m.issue;
+                    if (m.pages) this.newCitation.pages = m.pages;
+                }
+            } catch (e) { /* ignore */ }
+        },
+
+        async batchFormat() {
+            const resp = await fetch('/cite-bot/citations');
+            const citations = await resp.json();
+            const ids = citations.map(c => c.id);
+            if (!ids.length) return;
+            await fetch('/cite-bot/format-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ citation_ids: ids, style: this.selectedStyle }),
+            });
+            htmx.ajax('GET', '/cite-bot/bibliography-table/partial', { target: '#bibliography-table-slot', swap: 'innerHTML' });
+        },
+
+        previewCitation(citationId) {
+            htmx.ajax('GET',
+                '/cite-bot/format/' + citationId + '?style=' + this.selectedStyle,
+                { target: '#citation-preview-slot', swap: 'innerHTML' });
+        },
+
+        async deleteCitation(citationId) {
+            if (!confirm('Delete this citation?')) return;
+            await fetch('/cite-bot/citations/' + citationId, { method: 'DELETE' });
+            htmx.ajax('GET', '/cite-bot/bibliography-table/partial', { target: '#bibliography-table-slot', swap: 'innerHTML' });
+        },
+    };
+}
+</script>
+{% endblock %}

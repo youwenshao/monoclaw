@@ -1,0 +1,132 @@
+<div x-data="{
+    dateFrom: '',
+    dateTo: '',
+    shipments: [],
+    loading: false,
+    chartReady: false,
+    loadHistory() {
+        this.loading = true;
+        let url = '/stock-reconcile/api/shipments';
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                this.shipments = data.filter(s => s.status === 'reconciled' || s.status === 'closed');
+                if (this.dateFrom) this.shipments = this.shipments.filter(s => s.created_at >= this.dateFrom);
+                if (this.dateTo) this.shipments = this.shipments.filter(s => s.created_at <= this.dateTo + 'T23:59:59');
+                this.loading = false;
+                this.$nextTick(() => this.renderChart());
+            })
+            .catch(() => { this.loading = false; });
+    },
+    renderChart() {
+        const ctx = document.getElementById('accuracy-chart');
+        if (!ctx) return;
+        const labels = this.shipments.map(s => s.shipment_reference || s.bl_number || 'SHP-' + s.id).slice(-20);
+        const matched = this.shipments.map(s => s.manifest_items > 0 ? Math.max(0, s.manifest_items - s.discrepancy_count) : 0).slice(-20);
+        const discrepancies = this.shipments.map(s => s.discrepancy_count || 0).slice(-20);
+        if (window._accChart) window._accChart.destroy();
+        window._accChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Matched', data: matched, backgroundColor: '#34d399', borderRadius: 4 },
+                    { label: 'Discrepancies', data: discrepancies, backgroundColor: '#f87171', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+                scales: {
+                    x: { stacked: true, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1e293b' } },
+                    y: { stacked: true, ticks: { color: '#6b7280' }, grid: { color: '#1e293b' } }
+                }
+            }
+        });
+    }
+}" x-init="loadHistory()">
+
+    <!-- Date range filter -->
+    <div class="flex items-center gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-400">From:</label>
+            <input x-model="dateFrom" type="date"
+                   class="bg-navy-900 border border-navy-600 rounded px-3 py-1.5 text-sm text-white focus:border-gold-400 focus:outline-none">
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-400">To:</label>
+            <input x-model="dateTo" type="date"
+                   class="bg-navy-900 border border-navy-600 rounded px-3 py-1.5 text-sm text-white focus:border-gold-400 focus:outline-none">
+        </div>
+        <button @click="loadHistory()"
+                class="px-4 py-1.5 bg-navy-700 hover:bg-navy-600 text-white text-sm rounded-lg transition-colors">
+            Filter
+        </button>
+    </div>
+
+    <!-- Accuracy trend chart -->
+    <div class="bg-navy-800 rounded-lg border border-navy-700 p-4 mb-6">
+        <h4 class="text-sm font-semibold text-gold-400 mb-3">Reconciliation Accuracy Trend</h4>
+        <div class="h-64">
+            <canvas id="accuracy-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- Historical table -->
+    <div class="overflow-auto rounded-lg border border-navy-700">
+        <table class="w-full text-sm">
+            <thead class="bg-navy-800 sticky top-0">
+                <tr>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Reference</th>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">B/L Number</th>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Vessel</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Manifest Items</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Receipts</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Discrepancies</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Accuracy</th>
+                    <th class="text-center px-3 py-2 text-gray-400 font-medium text-xs">Status</th>
+                    <th class="text-left px-3 py-2 text-gray-400 font-medium text-xs">Date</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-700">
+                <template x-for="s in shipments" :key="s.id">
+                    <tr class="hover:bg-navy-800/50">
+                        <td class="px-3 py-2 text-white font-mono text-xs" x-text="s.shipment_reference"></td>
+                        <td class="px-3 py-2 text-gray-300 text-xs" x-text="s.bl_number || '—'"></td>
+                        <td class="px-3 py-2 text-gray-300" x-text="s.vessel_name || '—'"></td>
+                        <td class="px-3 py-2 text-center text-white" x-text="s.manifest_items"></td>
+                        <td class="px-3 py-2 text-center text-white" x-text="s.receipt_count"></td>
+                        <td class="px-3 py-2 text-center">
+                            <span :class="s.discrepancy_count > 0 ? 'text-red-400' : 'text-emerald-400'" x-text="s.discrepancy_count"></span>
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="text-xs font-mono"
+                                  :class="s.manifest_items > 0 && s.discrepancy_count === 0 ? 'text-emerald-400' : (s.discrepancy_count / Math.max(s.manifest_items, 1)) < 0.1 ? 'text-amber-400' : 'text-red-400'"
+                                  x-text="s.manifest_items > 0 ? Math.round((1 - s.discrepancy_count / s.manifest_items) * 100) + '%' : 'N/A'">
+                            </span>
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="text-xs px-2 py-0.5 rounded-full"
+                                  :class="s.status === 'reconciled' ? 'bg-emerald-900/50 text-emerald-400' : s.status === 'closed' ? 'bg-gray-700 text-gray-400' : 'bg-amber-900/50 text-amber-400'"
+                                  x-text="s.status">
+                            </span>
+                        </td>
+                        <td class="px-3 py-2 text-gray-400 text-xs" x-text="s.created_at ? s.created_at.substring(0, 10) : '—'"></td>
+                    </tr>
+                </template>
+                <tr x-show="shipments.length === 0 && !loading">
+                    <td colspan="9" class="px-3 py-8 text-center text-gray-500">No reconciled shipments found</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Loading indicator -->
+    <div x-show="loading" class="flex items-center justify-center py-8">
+        <svg class="animate-spin h-5 w-5 text-gold-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+    </div>
+</div>

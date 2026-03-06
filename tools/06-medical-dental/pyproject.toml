@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "openclaw-medical-dental"
+version = "1.0.0"
+description = "Medical-Dental Dashboard — InsuranceAgent, ScribeAI, ClinicScheduler, MedReminderBot"
+requires-python = ">=3.11"
+dependencies = [
+    "openclaw-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "psutil>=5.9",
+    # InsuranceAgent — PDF handling
+    "reportlab>=4.1",
+    "PyPDF2>=3.0",
+    "pdfplumber>=0.11",
+    # ScribeAI — audio + export
+    "soundfile>=0.12",
+    "python-docx>=1.1",
+    # ClinicScheduler — calendar
+    "icalendar>=5.0",
+    "python-dateutil>=2.9",
+    # MedReminder — OCR
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+mlx = ["openclaw-shared[mlx]"]
+messaging = ["openclaw-shared[messaging]"]
+whisper = ["mlx-whisper>=0.1"]
+playwright = ["playwright>=1.40"]
+ocr = ["pytesseract>=0.3"]
+macos = ["pyobjc-framework-Vision>=10.0"]
+all = [
+    "openclaw-medical-dental[mlx,messaging,whisper,playwright,ocr,macos]",
+]
+
+[tool.setuptools.packages.find]
+include = ["medical_dental*"]

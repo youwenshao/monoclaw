@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}ExamGenerator{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-gold-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Exams Created</p>
+        <p class="text-lg font-bold text-white">{{ total_exams }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Attempts</p>
+        <p class="text-lg font-bold text-white">{{ total_attempts }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Avg Score</p>
+        <p class="text-lg font-bold text-white">{{ avg_score }}%</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="examGenerator()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <template x-for="tab in ['Create', 'Take Exam', 'Results', 'Discussion', 'History']" :key="tab">
+            <button @click="subTab = tab.toLowerCase().replace(' ', '-')"
+                    :class="subTab === tab.toLowerCase().replace(' ', '-')
+                        ? 'text-gold-400 border-gold-500 border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="tab"></button>
+        </template>
+    </div>
+
+    <!-- ════════════════ Create sub-tab ════════════════ -->
+    <div x-show="subTab === 'create'" x-cloak>
+        <div id="exam-wizard-slot"
+             hx-get="/exam-generator/exam-wizard/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading exam wizard...</p>
+        </div>
+    </div>
+
+    <!-- ════════════════ Take Exam sub-tab ════════════════ -->
+    <div x-show="subTab === 'take-exam'" x-cloak>
+        <template x-if="!activeAttempt">
+            <div class="bg-navy-800 rounded-lg p-6 space-y-4">
+                <h3 class="text-sm font-semibold text-gold-400">Select an Exam to Take</h3>
+                <div class="space-y-2">
+                    <template x-for="exam in availableExams" :key="exam.id">
+                        <div class="flex items-center justify-between p-3 bg-navy-900 rounded-lg hover:bg-navy-700 transition-colors">
+                            <div>
+                                <p class="text-sm text-white font-medium" x-text="exam.title"></p>
+                                <p class="text-xs text-gray-400">
+                                    <span x-text="exam.question_count"></span> questions •
+                                    <span x-text="exam.time_limit_minutes"></span> min
+                                </p>
+                            </div>
+                            <button @click="startExam(exam.id)"
+                                    class="px-3 py-1.5 bg-gold-500 text-navy-900 text-xs font-semibold rounded-lg hover:bg-gold-400 transition-colors">
+                                Start
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <p x-show="availableExams.length === 0" class="text-sm text-gray-500 text-center py-4">
+                    No exams available. Create one first.
+                </p>
+            </div>
+        </template>
+        <template x-if="activeAttempt">
+            <div id="exam-interface-slot"></div>
+        </template>
+    </div>
+
+    <!-- ════════════════ Results sub-tab ════════════════ -->
+    <div x-show="subTab === 'results'" x-cloak>
+        <template x-if="!selectedAttemptId">
+            <div class="bg-navy-800 rounded-lg p-6">
+                <p class="text-sm text-gray-500 text-center py-4">Select an attempt from History to view results.</p>
+            </div>
+        </template>
+        <template x-if="selectedAttemptId">
+            <div id="grading-view-slot"></div>
+        </template>
+    </div>
+
+    <!-- ════════════════ Discussion sub-tab ════════════════ -->
+    <div x-show="subTab === 'discussion'" x-cloak>
+        <template x-if="!discussionContext.attemptId">
+            <div class="bg-navy-800 rounded-lg p-6">
+                <p class="text-sm text-gray-500 text-center py-4">View results first, then click "Discuss" on any question.</p>
+            </div>
+        </template>
+        <template x-if="discussionContext.attemptId">
+            <div id="discussion-chat-slot"></div>
+        </template>
+    </div>
+
+    <!-- ════════════════ History sub-tab ════════════════ -->
+    <div x-show="subTab === 'history'" x-cloak>
+        <div class="space-y-4">
+            <div id="exam-history-slot"
+                 hx-get="/exam-generator/exam-history/partial"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <p class="text-sm text-gray-500 py-8 text-center">Loading history...</p>
+            </div>
+            <div id="topic-breakdown-slot"
+                 hx-get="/exam-generator/topic-breakdown/partial"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function examGenerator() {
+    return {
+        subTab: 'create',
+        availableExams: [],
+        activeAttempt: null,
+        selectedAttemptId: null,
+        discussionContext: { attemptId: null, questionId: null },
+        generating: false,
+
+        async loadAvailableExams() {
+            try {
+                const resp = await fetch('/exam-generator/history');
+                const data = await resp.json();
+                this.availableExams = [];
+                const seen = new Set();
+                for (const a of data) {
+                    if (!seen.has(a.exam_id)) {
+                        seen.add(a.exam_id);
+                    }
+                }
+            } catch (e) { /* ignore */ }
+        },
+
+        async startExam(examId) {
+            try {
+                const resp = await fetch(`/exam-generator/exams/${examId}/start`, { method: 'POST' });
+                const data = await resp.json();
+                this.activeAttempt = { examId, attemptId: data.attempt_id };
+                this.$nextTick(() => {
+                    htmx.ajax('GET',
+                        `/exam-generator/exam-interface/partial?exam_id=${examId}&attempt_id=${data.attempt_id}`,
+                        { target: '#exam-interface-slot', swap: 'innerHTML' });
+                });
+            } catch (e) { console.error(e); }
+        },
+
+        async submitExam() {
+            if (!this.activeAttempt) return;
+            try {
+                const resp = await fetch(`/exam-generator/attempts/${this.activeAttempt.attemptId}/submit`, { method: 'POST' });
+                const data = await resp.json();
+                this.selectedAttemptId = this.activeAttempt.attemptId;
+                this.activeAttempt = null;
+                this.subTab = 'results';
+                this.$nextTick(() => {
+                    htmx.ajax('GET',
+                        `/exam-generator/grading-view/partial?attempt_id=${this.selectedAttemptId}`,
+                        { target: '#grading-view-slot', swap: 'innerHTML' });
+                });
+            } catch (e) { console.error(e); }
+        },
+
+        viewResults(attemptId) {
+            this.selectedAttemptId = attemptId;
+            this.subTab = 'results';
+            this.$nextTick(() => {
+                htmx.ajax('GET',
+                    `/exam-generator/grading-view/partial?attempt_id=${attemptId}`,
+                    { target: '#grading-view-slot', swap: 'innerHTML' });
+            });
+        },
+
+        openDiscussion(attemptId, questionId) {
+            this.discussionContext = { attemptId, questionId };
+            this.subTab = 'discussion';
+            this.$nextTick(() => {
+                htmx.ajax('GET',
+                    `/exam-generator/discussion-chat/partial?attempt_id=${attemptId}&question_id=${questionId}`,
+                    { target: '#discussion-chat-slot', swap: 'innerHTML' });
+            });
+        },
+
+        async sendDiscussionMessage(message) {
+            if (!this.discussionContext.attemptId || !message.trim()) return;
+            try {
+                await fetch(`/exam-generator/attempts/${this.discussionContext.attemptId}/discuss`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question_id: this.discussionContext.questionId,
+                        message: message,
+                    }),
+                });
+                htmx.ajax('GET',
+                    `/exam-generator/discussion-chat/partial?attempt_id=${this.discussionContext.attemptId}&question_id=${this.discussionContext.questionId}`,
+                    { target: '#discussion-chat-slot', swap: 'innerHTML' });
+            } catch (e) { console.error(e); }
+        },
+
+        init() {
+            this.loadAvailableExams();
+        }
+    };
+}
+</script>
+{% endblock %}

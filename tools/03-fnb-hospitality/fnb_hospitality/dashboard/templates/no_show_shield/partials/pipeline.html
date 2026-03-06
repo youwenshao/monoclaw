@@ -1,0 +1,118 @@
+<!-- htmx partial: confirmation pipeline board -->
+<div class="grid grid-cols-4 gap-4">
+    <!-- Sent Stage -->
+    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+        <div class="p-3 border-b border-[#2d3352] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Sent</h4>
+            </div>
+            <span class="text-xs text-gray-500 bg-[#242b4a] px-2 py-0.5 rounded-full">{{ pipeline.sent | length if pipeline else 0 }}</span>
+        </div>
+        <div class="p-2 space-y-2 max-h-[500px] overflow-auto">
+            {% for item in pipeline.sent %}
+            <div class="bg-[#242b4a] rounded-lg p-3 border border-[#2d3352] hover:border-[#3d4466] transition-colors">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-sm font-medium text-white truncate">{{ item.guest_name }}</p>
+                    <span class="text-[10px] text-gray-500">{{ item.time }}</span>
+                </div>
+                <p class="text-xs text-gray-400">{{ item.party_size }}人 · {{ item.channel }}</p>
+                <p class="text-[10px] text-gray-500 mt-1">Sent {{ item.sent_ago }}</p>
+            </div>
+            {% else %}
+            <p class="text-xs text-gray-600 text-center py-4">No pending sends</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Delivered Stage -->
+    <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+        <div class="p-3 border-b border-[#2d3352] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Delivered</h4>
+            </div>
+            <span class="text-xs text-gray-500 bg-[#242b4a] px-2 py-0.5 rounded-full">{{ pipeline.delivered | length if pipeline else 0 }}</span>
+        </div>
+        <div class="p-2 space-y-2 max-h-[500px] overflow-auto">
+            {% for item in pipeline.delivered %}
+            <div class="bg-[#242b4a] rounded-lg p-3 border border-[#2d3352] hover:border-[#3d4466] transition-colors">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-sm font-medium text-white truncate">{{ item.guest_name }}</p>
+                    <span class="text-[10px] text-gray-500">{{ item.time }}</span>
+                </div>
+                <p class="text-xs text-gray-400">{{ item.party_size }}人 · {{ item.channel }}</p>
+                <div class="flex items-center gap-1 mt-2">
+                    <span class="text-[10px] text-blue-400">✓✓ Delivered</span>
+                    <span class="text-[10px] text-gray-600">· {{ item.delivered_ago }}</span>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-xs text-gray-600 text-center py-4">None delivered</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Confirmed Stage -->
+    <div class="bg-[#1a1f36] rounded-xl border border-emerald-500/20">
+        <div class="p-3 border-b border-[#2d3352] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Confirmed</h4>
+            </div>
+            <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{{ pipeline.confirmed | length if pipeline else 0 }}</span>
+        </div>
+        <div class="p-2 space-y-2 max-h-[500px] overflow-auto">
+            {% for item in pipeline.confirmed %}
+            <div class="bg-[#242b4a] rounded-lg p-3 border border-emerald-500/10 hover:border-emerald-500/30 transition-colors">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-sm font-medium text-white truncate">{{ item.guest_name }}</p>
+                    <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                </div>
+                <p class="text-xs text-gray-400">{{ item.party_size }}人 · {{ item.time }}</p>
+                <p class="text-[10px] text-emerald-400/70 mt-1">Confirmed {{ item.confirmed_ago }}</p>
+            </div>
+            {% else %}
+            <p class="text-xs text-gray-600 text-center py-4">None confirmed yet</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Unconfirmed Stage -->
+    <div class="bg-[#1a1f36] rounded-xl border border-red-500/20">
+        <div class="p-3 border-b border-[#2d3352] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Unconfirmed</h4>
+            </div>
+            <span class="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">{{ pipeline.unconfirmed | length if pipeline else 0 }}</span>
+        </div>
+        <div class="p-2 space-y-2 max-h-[500px] overflow-auto">
+            {% for item in pipeline.unconfirmed %}
+            <div class="bg-[#242b4a] rounded-lg p-3 border border-red-500/10 hover:border-red-500/30 transition-colors">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-sm font-medium text-white truncate">{{ item.guest_name }}</p>
+                    <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                </div>
+                <p class="text-xs text-gray-400">{{ item.party_size }}人 · {{ item.time }}</p>
+                <p class="text-[10px] text-red-400/70 mt-1">No response · {{ item.attempts }} attempts</p>
+                <div class="flex gap-1 mt-2">
+                    <button class="flex-1 text-[10px] px-2 py-1 rounded bg-[#d4a843]/10 text-[#d4a843] hover:bg-[#d4a843]/20 transition-colors"
+                            hx-post="/no-show-shield/resend/{{ item.id }}"
+                            hx-swap="outerHTML"
+                            hx-target="closest div.bg-\[\#242b4a\]">
+                        Resend
+                    </button>
+                    <button class="flex-1 text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                            hx-post="/no-show-shield/offer-waitlist/{{ item.id }}"
+                            hx-swap="none">
+                        Offer Slot
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-xs text-gray-600 text-center py-4">All confirmed!</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>

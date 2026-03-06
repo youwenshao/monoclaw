@@ -1,0 +1,86 @@
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-[#d4a843]">
+            {{ project.project_name or 'Translation Editor' }}
+            <span class="text-xs text-gray-500 font-normal ml-2">
+                {{ project.source_language|upper }} → {{ project.target_language|upper }}
+                {% if project.domain and project.domain != 'general' %}
+                · {{ project.domain }}
+                {% endif %}
+            </span>
+        </h3>
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">{{ segments|length }} segment{{ 's' if segments|length != 1 else '' }}</span>
+            {% if project.id %}
+            <button hx-post="/translate-assist/export/{{ project.id }}"
+                    hx-target="#project-export-result"
+                    hx-swap="innerHTML"
+                    class="px-3 py-1 text-xs font-medium rounded-lg bg-[#2d3352] text-gray-200 hover:bg-[#3d4562] transition-colors">
+                Export
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paragraph-aligned side-by-side view -->
+    <div class="border border-[#2d3352] rounded-lg overflow-hidden">
+        <div class="grid grid-cols-2 bg-[#0f1225]">
+            <div class="px-4 py-2 border-b border-r border-[#2d3352]">
+                <span class="text-xs text-gray-400 uppercase tracking-wider font-medium">Source</span>
+            </div>
+            <div class="px-4 py-2 border-b border-[#2d3352]">
+                <span class="text-xs text-gray-400 uppercase tracking-wider font-medium">Translation</span>
+            </div>
+        </div>
+
+        <div class="max-h-[500px] overflow-auto">
+            {% for seg in segments %}
+            <div class="grid grid-cols-2 group hover:bg-[#242b4a]/50 transition-colors
+                        {% if not loop.last %}border-b border-[#2d3352]/50{% endif %}">
+                <!-- Source paragraph -->
+                <div class="px-4 py-3 border-r border-[#2d3352] relative">
+                    {% if seg.section_name %}
+                    <p class="text-xs text-[#d4a843] font-medium mb-1">{{ seg.section_name }}</p>
+                    {% endif %}
+                    <p class="text-sm text-gray-200 leading-relaxed">{{ seg.source_text }}</p>
+                    <span class="absolute top-2 right-2 text-[10px] text-gray-600">§{{ seg.segment_index + 1 }}</span>
+                </div>
+
+                <!-- Translation paragraph -->
+                <div class="px-4 py-3 relative">
+                    <p class="text-sm text-gray-200 leading-relaxed">{{ seg.translated_text or '' }}</p>
+
+                    <!-- Confidence + review status -->
+                    <div class="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {% if seg.confidence is not none %}
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full
+                                {% if seg.confidence and seg.confidence > 0.8 %}bg-emerald-400
+                                {% elif seg.confidence and seg.confidence > 0.5 %}bg-amber-400
+                                {% else %}bg-red-400{% endif %}"></span>
+                            <span class="text-[10px] text-gray-500">{{ '%.0f'|format((seg.confidence or 0) * 100) }}%</span>
+                        </span>
+                        {% endif %}
+
+                        {% if seg.review_status == 'approved' %}
+                        <span class="px-1.5 py-0.5 bg-emerald-900/50 text-emerald-400 rounded text-[10px]">Approved</span>
+                        {% elif seg.review_status == 'reviewed' %}
+                        <span class="px-1.5 py-0.5 bg-blue-900/50 text-blue-400 rounded text-[10px]">Reviewed</span>
+                        {% else %}
+                        <span class="px-1.5 py-0.5 bg-gray-800 text-gray-500 rounded text-[10px]">Auto</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not segments %}
+            <div class="px-4 py-8 text-center text-gray-500 col-span-2">
+                No segments in this project yet
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="project-export-result"></div>
+</div>

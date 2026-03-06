@@ -1,0 +1,15 @@
+Dear {client_name},
+
+This is a reminder regarding your case {case_ref}.
+
+The following document is due in {days_remaining} day(s):
+
+Document: {document_type}
+Description: {description}
+Deadline: {deadline}
+
+Please submit this document as soon as possible to avoid delays in processing your application.
+
+If you have already submitted this document, please disregard this message.
+
+— Your Immigration Consultant Team

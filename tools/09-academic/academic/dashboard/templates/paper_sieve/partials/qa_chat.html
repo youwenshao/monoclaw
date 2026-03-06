@@ -1,0 +1,158 @@
+<!-- htmx partial: RAG Q&A chat interface -->
+<div class="flex flex-col h-[600px] bg-[#1a1f36] rounded-xl border border-[#2d3352]" x-data="qaChat()">
+    <!-- Header -->
+    <div class="p-4 border-b border-[#2d3352] flex items-center justify-between shrink-0">
+        <div>
+            <h3 class="text-sm font-semibold text-[#e0be6a]">Paper Q&A</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Ask questions about your indexed papers — answers include inline citations</p>
+        </div>
+        <span class="text-xs text-gray-500">{{ messages | length }} message{{ 's' if messages | length != 1 else '' }}</span>
+    </div>
+
+    <!-- Messages -->
+    <div class="flex-1 overflow-auto p-4 space-y-4" id="qa-messages" x-ref="messageList">
+        {% for msg in messages %}
+        <!-- User question -->
+        <div class="flex justify-end">
+            <div class="max-w-[75%] bg-[#d4a843]/10 border border-[#d4a843]/20 rounded-xl rounded-tr-sm px-4 py-3">
+                <p class="text-sm text-[#e0be6a]">{{ msg.query_text }}</p>
+                <p class="text-[10px] text-gray-500 mt-1">{{ msg.queried_at | default('') }}</p>
+            </div>
+        </div>
+        <!-- AI answer -->
+        <div class="flex justify-start">
+            <div class="max-w-[85%] space-y-2">
+                <div class="bg-[#242b4a] border border-[#2d3352] rounded-xl rounded-tl-sm px-4 py-3">
+                    <p class="text-sm text-gray-200 leading-relaxed whitespace-pre-line">{{ msg.answer_text }}</p>
+                </div>
+                {% if msg.cited_chunks %}
+                <div x-data="{ showSources: false }">
+                    <button @click="showSources = !showSources"
+                            class="flex items-center gap-1 text-xs text-gray-500 hover:text-[#d4a843] transition-colors">
+                        <svg class="w-3 h-3 transition-transform" :class="showSources && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                        {{ msg.cited_chunks | length }} source{{ 's' if msg.cited_chunks | length != 1 else '' }}
+                    </button>
+                    <div x-show="showSources" x-transition class="mt-2 space-y-1">
+                        {% for src in msg.cited_chunks %}
+                        <div class="flex items-center gap-2 px-3 py-1.5 bg-[#0f1225] rounded-lg border border-[#2d3352]/50 text-xs">
+                            <span class="text-[#d4a843] font-mono">[{{ loop.index }}]</span>
+                            <span class="text-gray-400">{{ src.section | default('—') }}</span>
+                            {% if src.paper_id %}
+                            <span class="text-gray-600 ml-auto">Paper #{{ src.paper_id }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="flex items-center justify-center h-full">
+            <div class="text-center">
+                <svg class="w-10 h-10 mx-auto mb-3 text-gray-600 opacity-40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>
+                <p class="text-sm text-gray-500">Ask a question about your papers</p>
+                <p class="text-xs text-gray-600 mt-1">Answers are generated from indexed paper content with citations</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Input -->
+    <div class="p-4 border-t border-[#2d3352] shrink-0">
+        <form @submit.prevent="submitQuestion" class="flex items-center gap-3">
+            <input type="text" x-model="question"
+                   placeholder="Ask a research question..."
+                   class="flex-1 bg-[#242b4a] border border-[#3d4466] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-[#d4a843] focus:outline-none"
+                   :disabled="loading">
+            <button type="submit"
+                    class="px-4 py-2.5 bg-[#d4a843] text-[#1a1f36] rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors disabled:opacity-50"
+                    :disabled="!question.trim() || loading">
+                <span x-show="!loading" class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
+                    Ask
+                </span>
+                <span x-show="loading" class="flex items-center gap-2">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    Thinking...
+                </span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function qaChat() {
+    return {
+        question: '',
+        loading: false,
+        async submitQuestion() {
+            if (!this.question.trim() || this.loading) return;
+            this.loading = true;
+            const q = this.question;
+            this.question = '';
+
+            const msgList = this.$refs.messageList;
+            const userBubble = document.createElement('div');
+            userBubble.className = 'flex justify-end';
+            userBubble.innerHTML = `
+                <div class="max-w-[75%] bg-[#d4a843]/10 border border-[#d4a843]/20 rounded-xl rounded-tr-sm px-4 py-3">
+                    <p class="text-sm text-[#e0be6a]">${q.replace(/</g,'&lt;')}</p>
+                </div>`;
+            msgList.appendChild(userBubble);
+            msgList.scrollTop = msgList.scrollHeight;
+
+            try {
+                const resp = await fetch('/paper-sieve/qa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: q }),
+                });
+                const data = await resp.json();
+
+                const aiBubble = document.createElement('div');
+                aiBubble.className = 'flex justify-start';
+
+                let sourcesHtml = '';
+                if (data.sources && data.sources.length > 0) {
+                    const srcItems = data.sources.map((s, i) =>
+                        `<div class="flex items-center gap-2 px-3 py-1.5 bg-[#0f1225] rounded-lg border border-[#2d3352]/50 text-xs">
+                            <span class="text-[#d4a843] font-mono">[${i+1}]</span>
+                            <span class="text-gray-400">${s.section || '—'}</span>
+                            ${s.paper_id ? `<span class="text-gray-600 ml-auto">Paper #${s.paper_id}</span>` : ''}
+                        </div>`
+                    ).join('');
+                    sourcesHtml = `
+                        <div x-data="{ showSources: false }">
+                            <button @click="showSources = !showSources" class="flex items-center gap-1 text-xs text-gray-500 hover:text-[#d4a843] transition-colors">
+                                <svg class="w-3 h-3 transition-transform" :class="showSources && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                ${data.sources.length} source${data.sources.length !== 1 ? 's' : ''}
+                            </button>
+                            <div x-show="showSources" x-transition class="mt-2 space-y-1">${srcItems}</div>
+                        </div>`;
+                }
+
+                aiBubble.innerHTML = `
+                    <div class="max-w-[85%] space-y-2">
+                        <div class="bg-[#242b4a] border border-[#2d3352] rounded-xl rounded-tl-sm px-4 py-3">
+                            <p class="text-sm text-gray-200 leading-relaxed whitespace-pre-line">${data.answer.replace(/</g,'&lt;')}</p>
+                        </div>
+                        ${sourcesHtml}
+                    </div>`;
+                msgList.appendChild(aiBubble);
+            } catch (err) {
+                const errBubble = document.createElement('div');
+                errBubble.className = 'flex justify-start';
+                errBubble.innerHTML = `
+                    <div class="bg-red-500/10 border border-red-500/20 rounded-xl rounded-tl-sm px-4 py-3">
+                        <p class="text-sm text-red-400">Failed to get answer. Please try again.</p>
+                    </div>`;
+                msgList.appendChild(errBubble);
+            }
+
+            this.loading = false;
+            msgList.scrollTop = msgList.scrollHeight;
+        }
+    };
+}
+</script>

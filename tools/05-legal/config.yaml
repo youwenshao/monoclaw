@@ -1,0 +1,83 @@
+tool_name: legal
+version: "1.0.0"
+port: 8005
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/legal"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Firm profile (set during first-run wizard)
+  firm_name: ""
+  hkls_registration: ""
+  office_address: ""
+  practice_areas: ""
+  business_hours: "09:00-18:00"
+
+  # LegalDoc Analyzer settings
+  clause_confidence_threshold: 0.80
+  anomaly_score_threshold: 0.60
+
+  # DeadlineGuardian settings
+  reminder_intervals_days: [30, 14, 7, 3, 1]
+  active_court_tracks:
+    - "CFI"
+    - "DCT"
+    - "Lands Tribunal"
+    - "Labour Tribunal"
+
+  # DiscoveryAssistant settings
+  ingestion_batch_size: 50
+  dedup_enabled: true
+  privilege_confidence_threshold: 0.75
+
+  # IntakeBot settings
+  conflict_match_threshold: 0.75
+  hkid_last4_only: true
+  intake_conversation_states: 7
+
+  # Calendar integration
+  calendar_provider: ""
+  calendar_api_credentials: ""
+
+  # Data retention (days)
+  data_retention_days: 730
+  conversation_retention_days: 365
+
+  # HK public holidays 2026
+  public_holidays:
+    - "2026-01-01"  # New Year
+    - "2026-02-17"  # Lunar New Year
+    - "2026-02-18"  # Lunar New Year
+    - "2026-02-19"  # Lunar New Year
+    - "2026-04-03"  # Good Friday
+    - "2026-04-04"  # Day after Good Friday
+    - "2026-04-05"  # Ching Ming
+    - "2026-04-06"  # Easter Monday
+    - "2026-05-01"  # Labour Day
+    - "2026-05-24"  # Buddha's Birthday
+    - "2026-06-19"  # Tuen Ng Festival
+    - "2026-07-01"  # HKSAR Establishment Day
+    - "2026-09-26"  # Day after Mid-Autumn
+    - "2026-10-01"  # National Day
+    - "2026-10-18"  # Chung Yeung Festival
+    - "2026-12-25"  # Christmas Day
+    - "2026-12-26"  # Boxing Day

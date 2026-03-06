@@ -1,0 +1,1 @@
+"""GitAssistant tests."""

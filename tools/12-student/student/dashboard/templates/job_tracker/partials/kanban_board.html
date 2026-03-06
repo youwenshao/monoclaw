@@ -1,0 +1,97 @@
+{% set stage_labels = {
+    'saved': 'Saved',
+    'applied': 'Applied',
+    'phone_screen': 'Phone Screen',
+    'assessment': 'Assessment',
+    'interview': 'Interview',
+    'final_round': 'Final Round',
+    'offer': 'Offer',
+    'accepted': 'Accepted',
+    'rejected': 'Rejected',
+    'withdrawn': 'Withdrawn'
+} %}
+
+{% set stage_colors = {
+    'saved': 'text-gray-400 border-gray-600',
+    'applied': 'text-blue-400 border-blue-600',
+    'phone_screen': 'text-cyan-400 border-cyan-600',
+    'assessment': 'text-violet-400 border-violet-600',
+    'interview': 'text-amber-400 border-amber-600',
+    'final_round': 'text-orange-400 border-orange-600',
+    'offer': 'text-emerald-400 border-emerald-600',
+    'accepted': 'text-green-400 border-green-600',
+    'rejected': 'text-red-400 border-red-600',
+    'withdrawn': 'text-gray-500 border-gray-700'
+} %}
+
+<div class="flex gap-3 overflow-x-auto pb-4" id="kanban-container">
+    {% for stage in ['saved','applied','phone_screen','assessment','interview','final_round','offer','accepted','rejected','withdrawn'] %}
+    <div class="kanban-column flex-shrink-0 w-64" data-stage="{{ stage }}">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h3 class="text-xs font-semibold uppercase tracking-wider {{ stage_colors.get(stage, 'text-gray-400') }}">
+                {{ stage_labels.get(stage, stage) }}
+            </h3>
+            <span class="text-xs bg-navy-700 text-gray-400 px-1.5 py-0.5 rounded-full">
+                {{ columns.get(stage, [])|length }}
+            </span>
+        </div>
+
+        <div class="kanban-cards space-y-2 min-h-[80px] p-1 rounded-lg bg-navy-900/40 border border-navy-700/50"
+             data-stage="{{ stage }}">
+            {% for app in columns.get(stage, []) %}
+            <div class="kanban-card bg-navy-800 rounded-lg p-3 border border-navy-700 hover:border-navy-500 cursor-grab transition-colors"
+                 data-id="{{ app.id }}"
+                 hx-get="/job-tracker/job-detail/partial?job_id={{ app.job_id }}"
+                 hx-target="#job-detail-modal"
+                 hx-swap="innerHTML"
+                 hx-trigger="dblclick">
+                <p class="text-sm font-medium text-white truncate">{{ app.company or '—' }}</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5">{{ app.title or 'Untitled' }}</p>
+                <div class="flex items-center justify-between mt-2">
+                    {% if app.match_score %}
+                    <span class="text-xs px-1.5 py-0.5 rounded-full
+                        {% if app.match_score >= 0.7 %}bg-emerald-900/40 text-emerald-400
+                        {% elif app.match_score >= 0.4 %}bg-amber-900/40 text-amber-400
+                        {% else %}bg-red-900/40 text-red-400{% endif %}">
+                        {{ (app.match_score * 100)|round|int }}% match
+                    </span>
+                    {% endif %}
+                    <span class="text-[10px] text-gray-500">{{ app.days_in_stage }}d</span>
+                </div>
+                {% if app.salary_min and app.salary_max %}
+                <p class="text-[10px] text-gray-500 mt-1">
+                    HK${{ "{:,.0f}".format(app.salary_min) }}–{{ "{:,.0f}".format(app.salary_max) }}/month
+                </p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="job-detail-modal"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.kanban-cards').forEach(function(col) {
+        new Sortable(col, {
+            group: 'kanban',
+            animation: 150,
+            ghostClass: 'opacity-30',
+            dragClass: 'shadow-lg',
+            onEnd: function(evt) {
+                const appId = evt.item.dataset.id;
+                const newStage = evt.to.dataset.stage;
+                fetch('/job-tracker/applications/' + appId + '/stage', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stage: newStage }),
+                }).then(function() {
+                    htmx.ajax('GET', '/job-tracker/kanban-board/partial', { target: '#kanban-slot', swap: 'innerHTML' });
+                });
+            }
+        });
+    });
+});
+</script>

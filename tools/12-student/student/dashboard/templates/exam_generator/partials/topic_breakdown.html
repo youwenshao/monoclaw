@@ -1,0 +1,70 @@
+<div class="bg-navy-800 rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-gold-400 mb-4">Topic Performance</h3>
+
+    {% if topics %}
+    <div class="grid grid-cols-2 gap-6">
+        <!-- Bar chart -->
+        <div>
+            <canvas id="topicChart" height="250"></canvas>
+        </div>
+
+        <!-- Topic list -->
+        <div class="space-y-2">
+            {% for t in topics %}
+            <div class="flex items-center justify-between p-2 rounded-lg bg-navy-900">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full
+                        {% if t.strength_level == 'strong' %}bg-emerald-500
+                        {% elif t.strength_level == 'developing' %}bg-amber-500
+                        {% else %}bg-red-500{% endif %}"></span>
+                    <span class="text-sm text-gray-200">{{ t.topic }}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-gray-400">{{ t.attempts }} attempts</span>
+                    <span class="text-xs font-medium
+                        {% if t.correct_rate >= 75 %}text-emerald-400
+                        {% elif t.correct_rate >= 50 %}text-amber-400
+                        {% else %}text-red-400{% endif %}">{{ t.correct_rate }}%</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const ctx = document.getElementById('topicChart');
+        if (!ctx) return;
+        const data = {{ topics | tojson }};
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(t => t.topic),
+                datasets: [{
+                    label: 'Correct Rate %',
+                    data: data.map(t => t.correct_rate),
+                    backgroundColor: data.map(t =>
+                        t.strength_level === 'strong' ? 'rgba(16,185,129,0.6)' :
+                        t.strength_level === 'developing' ? 'rgba(245,158,11,0.6)' :
+                        'rgba(239,68,68,0.6)'
+                    ),
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { color: '#6b7280' }, grid: { color: '#1e293b' } },
+                    x: { ticks: { color: '#6b7280', maxRotation: 45 }, grid: { display: false } }
+                },
+                plugins: {
+                    legend: { display: false },
+                }
+            }
+        });
+    })();
+    </script>
+    {% else %}
+    <p class="text-sm text-gray-500 text-center py-6">No topic data available yet. Take some exams to see your performance breakdown.</p>
+    {% endif %}
+</div>

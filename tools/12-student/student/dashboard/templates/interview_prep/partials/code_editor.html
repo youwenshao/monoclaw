@@ -1,0 +1,17 @@
+<div class="space-y-3">
+    {% if problem %}
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gold-400">{{ problem.title }}</h3>
+        <span class="text-xs px-2 py-0.5 rounded
+              {% if problem.difficulty == 'easy' %}bg-emerald-500/20 text-emerald-400
+              {% elif problem.difficulty == 'medium' %}bg-amber-500/20 text-amber-400
+              {% else %}bg-red-500/20 text-red-400{% endif %}">{{ problem.difficulty }}</span>
+    </div>
+    <p class="text-sm text-gray-300">{{ problem.description }}</p>
+    <div class="bg-navy-900 rounded p-3 text-xs text-gray-400">
+        <p>Time: {{ problem.optimal_time_complexity or 'N/A' }} · Space: {{ problem.optimal_space_complexity or 'N/A' }}</p>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 text-center py-8">No problem selected</p>
+    {% endif %}
+</div>

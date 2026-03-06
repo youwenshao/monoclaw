@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block title %}JobTracker{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-gold-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Applications</p>
+        <p class="text-lg font-bold text-white">{{ total_apps }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Interviews</p>
+        <p class="text-lg font-bold text-white">{{ upcoming_interviews }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Offers</p>
+        <p class="text-lg font-bold text-white">{{ offers }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="jobTracker()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <template x-for="tab in ['Kanban', 'Add Job', 'CV Match', 'Analytics', 'Calendar']" :key="tab">
+            <button @click="subTab = tab.toLowerCase().replace(' ', '-')"
+                    :class="subTab === tab.toLowerCase().replace(' ', '-')
+                        ? 'text-gold-400 border-gold-500 border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="tab"></button>
+        </template>
+    </div>
+
+    <!-- ════════════════ Kanban sub-tab ════════════════ -->
+    <div x-show="subTab === 'kanban'" x-cloak>
+        <div id="kanban-slot"
+             hx-get="/job-tracker/kanban-board/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading Kanban board…</p>
+        </div>
+    </div>
+
+    <!-- ════════════════ Add Job sub-tab ════════════════ -->
+    <div x-show="subTab === 'add-job'" x-cloak>
+        <div class="grid grid-cols-2 gap-6">
+
+            <!-- Parse from URL -->
+            <div class="bg-navy-800 rounded-lg p-5 space-y-4">
+                <h3 class="text-sm font-semibold text-gold-400">Parse from URL</h3>
+                <div class="space-y-3">
+                    <input x-model="parseUrl" type="url" placeholder="https://hk.jobsdb.com/job/..."
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                    <button @click="parseFromUrl()"
+                            :disabled="!parseUrl || parsing"
+                            class="w-full py-2 rounded-lg text-sm font-semibold transition-colors bg-gold-500 text-navy-900 hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!parsing">Parse Job Listing</span>
+                        <span x-show="parsing" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Parsing…
+                        </span>
+                    </button>
+                </div>
+
+                <div class="border-t border-navy-700 pt-4">
+                    <h4 class="text-xs font-medium text-gray-400 mb-2">Or paste job description</h4>
+                    <textarea x-model="pasteText" rows="6" placeholder="Paste the full job description here…"
+                              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500 resize-none"></textarea>
+                    <button @click="parseFromText()"
+                            :disabled="!pasteText || parsing"
+                            class="mt-2 w-full py-2 rounded-lg text-sm font-medium transition-colors bg-navy-700 text-gray-200 hover:bg-navy-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                        Parse Text
+                    </button>
+                </div>
+            </div>
+
+            <!-- Parsed result / Manual form -->
+            <div class="bg-navy-800 rounded-lg p-5 space-y-4">
+                <h3 class="text-sm font-semibold text-gold-400" x-text="parsedJob ? 'Confirm Details' : 'Manual Entry'"></h3>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Job Title</label>
+                        <input x-model="jobForm.title" type="text"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Company</label>
+                            <input x-model="jobForm.company" type="text"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Location</label>
+                            <input x-model="jobForm.location" type="text"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Salary Min (HKD/month)</label>
+                            <input x-model.number="jobForm.salary_min" type="number" placeholder="e.g. 20000"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Salary Max (HKD/month)</label>
+                            <input x-model.number="jobForm.salary_max" type="number" placeholder="e.g. 35000"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Job Type</label>
+                            <select x-model="jobForm.job_type"
+                                    class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                                <option value="full_time">Full Time</option>
+                                <option value="part_time">Part Time</option>
+                                <option value="contract">Contract</option>
+                                <option value="internship">Internship</option>
+                                <option value="graduate_programme">Graduate Programme</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Industry</label>
+                            <input x-model="jobForm.industry" type="text"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">URL</label>
+                        <input x-model="jobForm.url" type="url"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button @click="saveJob()"
+                                :disabled="!jobForm.title || !jobForm.company || saving"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-gold-500 text-navy-900 hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <span x-show="!saving">Save Job</span>
+                            <span x-show="saving">Saving…</span>
+                        </button>
+                        <button @click="saveAndApply()"
+                                :disabled="!jobForm.title || !jobForm.company || saving"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                            Save & Apply
+                        </button>
+                    </div>
+
+                    <template x-if="saveResult">
+                        <div class="p-3 rounded-lg text-sm"
+                             :class="saveResult.status === 'created' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'"
+                             x-text="saveResult.status === 'created' ? 'Job saved successfully!' : 'Error saving job'">
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ CV Match sub-tab ════════════════ -->
+    <div x-show="subTab === 'cv-match'" x-cloak>
+        <div class="grid grid-cols-3 gap-6">
+
+            <!-- Upload CV -->
+            <div class="bg-navy-800 rounded-lg p-5 space-y-4">
+                <h3 class="text-sm font-semibold text-gold-400">Upload CV</h3>
+                <div class="border-2 border-dashed border-navy-600 rounded-lg p-6 text-center hover:border-gold-500 transition-colors">
+                    <input type="file" accept=".pdf,.docx" @change="uploadCV($event)"
+                           class="hidden" id="cv-upload-input">
+                    <label for="cv-upload-input" class="cursor-pointer space-y-2 block">
+                        <svg class="w-8 h-8 mx-auto text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                        </svg>
+                        <p class="text-xs text-gray-400">PDF or DOCX</p>
+                    </label>
+                </div>
+                <template x-if="cvUploadResult">
+                    <div class="p-3 rounded-lg bg-emerald-900/30 text-emerald-400 text-sm">
+                        CV parsed — <span x-text="cvUploadResult.skills_found"></span> skills found
+                    </div>
+                </template>
+
+                <h4 class="text-xs font-medium text-gray-400 mt-4">Select a Job to Match</h4>
+                <select x-model="matchJobId" @change="runMatch()"
+                        class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="">— Choose job —</option>
+                    <template x-for="j in jobsList" :key="j.id">
+                        <option :value="j.id" x-text="j.title + ' — ' + j.company"></option>
+                    </template>
+                </select>
+            </div>
+
+            <!-- Match Results -->
+            <div class="col-span-2 bg-navy-800 rounded-lg p-5">
+                <template x-if="!matchResult">
+                    <p class="text-sm text-gray-500 py-8 text-center">Upload a CV and select a job to see match results</p>
+                </template>
+                <template x-if="matchResult">
+                    <div class="space-y-5">
+                        <!-- Score Gauge -->
+                        <div class="flex items-center gap-6">
+                            <div class="relative w-24 h-24">
+                                <svg class="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="10"/>
+                                    <circle cx="50" cy="50" r="40" fill="none"
+                                            :stroke="matchResult.match_score >= 0.7 ? '#10b981' : matchResult.match_score >= 0.4 ? '#f59e0b' : '#ef4444'"
+                                            stroke-width="10" stroke-linecap="round"
+                                            :stroke-dasharray="(matchResult.match_score * 251.2) + ' 251.2'"/>
+                                </svg>
+                                <span class="absolute inset-0 flex items-center justify-center text-lg font-bold text-white"
+                                      x-text="Math.round(matchResult.match_score * 100) + '%'"></span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">Match Score</h3>
+                                <p class="text-sm text-gray-400"
+                                   x-text="matchResult.match_score >= 0.7 ? 'Strong match' : matchResult.match_score >= 0.4 ? 'Moderate match' : 'Needs improvement'"></p>
+                            </div>
+                        </div>
+
+                        <!-- Matched Skills -->
+                        <div>
+                            <h4 class="text-xs font-medium text-emerald-400 mb-2">Matched Skills</h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="s in matchResult.matched_skills" :key="s">
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-700" x-text="s"></span>
+                                </template>
+                                <template x-if="!matchResult.matched_skills.length">
+                                    <span class="text-xs text-gray-500">None</span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Missing Skills -->
+                        <div>
+                            <h4 class="text-xs font-medium text-red-400 mb-2">Missing / Gap Skills</h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="s in matchResult.unmatched_jd_skills" :key="s">
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-red-900/40 text-red-300 border border-red-700" x-text="s"></span>
+                                </template>
+                                <template x-if="!matchResult.unmatched_jd_skills.length">
+                                    <span class="text-xs text-gray-500">None — great fit!</span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Recommendations -->
+                        <template x-if="matchResult.gap_analysis && matchResult.gap_analysis.recommendations">
+                            <div>
+                                <h4 class="text-xs font-medium text-gold-400 mb-2">Recommendations</h4>
+                                <ul class="space-y-1.5">
+                                    <template x-for="rec in matchResult.gap_analysis.recommendations" :key="rec">
+                                        <li class="flex gap-2 text-sm text-gray-300">
+                                            <span class="text-gold-500 shrink-0">&#9679;</span>
+                                            <span x-text="rec"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Analytics sub-tab ════════════════ -->
+    <div x-show="subTab === 'analytics'" x-cloak>
+        <div id="analytics-slot"
+             hx-get="/job-tracker/analytics-charts/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading analytics…</p>
+        </div>
+    </div>
+
+    <!-- ════════════════ Calendar sub-tab ════════════════ -->
+    <div x-show="subTab === 'calendar'" x-cloak>
+        <div id="calendar-slot"
+             hx-get="/job-tracker/interview-calendar/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-sm text-gray-500 py-8 text-center">Loading interview calendar…</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function jobTracker() {
+    return {
+        subTab: 'kanban',
+        parseUrl: '',
+        pasteText: '',
+        parsing: false,
+        parsedJob: null,
+        saving: false,
+        saveResult: null,
+        cvUploadResult: null,
+        matchJobId: '',
+        matchResult: null,
+        jobsList: [],
+
+        jobForm: {
+            title: '', company: '', location: 'Hong Kong', district: '',
+            salary_min: null, salary_max: null, job_type: 'full_time',
+            industry: '', url: '', source: 'other',
+            requirements: [], skills_required: [], benefits: '',
+        },
+
+        async parseFromUrl() {
+            this.parsing = true;
+            this.parsedJob = null;
+            try {
+                const resp = await fetch('/job-tracker/jobs/parse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: this.parseUrl }),
+                });
+                if (!resp.ok) throw new Error((await resp.json()).detail || 'Parse failed');
+                this.parsedJob = await resp.json();
+                this._fillForm(this.parsedJob);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                this.parsing = false;
+            }
+        },
+
+        async parseFromText() {
+            this.parsing = true;
+            this.parsedJob = null;
+            try {
+                const resp = await fetch('/job-tracker/jobs/parse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: this.pasteText }),
+                });
+                if (!resp.ok) throw new Error('Parse failed');
+                this.parsedJob = await resp.json();
+                this._fillForm(this.parsedJob);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                this.parsing = false;
+            }
+        },
+
+        _fillForm(data) {
+            this.jobForm.title = data.title || '';
+            this.jobForm.company = data.company || '';
+            this.jobForm.location = data.location || 'Hong Kong';
+            this.jobForm.district = data.district || '';
+            this.jobForm.salary_min = data.salary_min;
+            this.jobForm.salary_max = data.salary_max;
+            this.jobForm.job_type = data.job_type || 'full_time';
+            this.jobForm.industry = data.industry || '';
+            this.jobForm.url = this.parseUrl || data.url || '';
+            this.jobForm.requirements = data.requirements || [];
+            this.jobForm.skills_required = data.skills_required || [];
+            this.jobForm.benefits = data.benefits || '';
+        },
+
+        async saveJob(stage = 'saved') {
+            this.saving = true;
+            this.saveResult = null;
+            try {
+                const resp = await fetch('/job-tracker/jobs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.jobForm),
+                });
+                const data = await resp.json();
+                this.saveResult = data;
+                if (data.status === 'created' && stage === 'applied') {
+                    await fetch('/job-tracker/applications', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ job_id: data.job_id, stage: 'applied' }),
+                    });
+                }
+                this._resetForm();
+                this.loadJobs();
+            } catch (e) {
+                this.saveResult = { status: 'error' };
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        saveAndApply() {
+            this.saveJob('applied');
+        },
+
+        _resetForm() {
+            this.jobForm = {
+                title: '', company: '', location: 'Hong Kong', district: '',
+                salary_min: null, salary_max: null, job_type: 'full_time',
+                industry: '', url: '', source: 'other',
+                requirements: [], skills_required: [], benefits: '',
+            };
+            this.parsedJob = null;
+            this.parseUrl = '';
+            this.pasteText = '';
+        },
+
+        async uploadCV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const form = new FormData();
+            form.append('file', file);
+            try {
+                const resp = await fetch('/job-tracker/cv/upload', { method: 'POST', body: form });
+                this.cvUploadResult = await resp.json();
+            } catch (e) {
+                alert('Upload failed');
+            }
+        },
+
+        async runMatch() {
+            if (!this.matchJobId) { this.matchResult = null; return; }
+            try {
+                const resp = await fetch('/job-tracker/cv/match/' + this.matchJobId);
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Match failed');
+                    return;
+                }
+                this.matchResult = await resp.json();
+            } catch (e) {
+                alert('Match failed');
+            }
+        },
+
+        async loadJobs() {
+            try {
+                const resp = await fetch('/job-tracker/jobs');
+                this.jobsList = await resp.json();
+            } catch (e) { /* noop */ }
+        },
+
+        init() {
+            this.loadJobs();
+        }
+    };
+}
+</script>
+{% endblock %}

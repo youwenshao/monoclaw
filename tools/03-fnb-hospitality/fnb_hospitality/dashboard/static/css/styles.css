@@ -1,0 +1,119 @@
+/* MonoClaw F&B Hospitality Dashboard — supplementary styles */
+
+:root {
+    --navy-950: #0f1225;
+    --navy-900: #1a1f36;
+    --navy-800: #242b4a;
+    --navy-700: #2d3352;
+    --navy-600: #3d4466;
+    --gold-500: #d4a843;
+    --gold-400: #e0be6a;
+}
+
+/* Status dots */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.status-dot.green  { background-color: #22c55e; }
+.status-dot.red    { background-color: #ef4444; }
+.status-dot.amber  { background-color: #f59e0b; }
+.status-dot.blue   { background-color: #3b82f6; }
+.status-dot.grey   { background-color: #6b7280; }
+
+/* Table status colours (floor plan) */
+.table-available  { background-color: #22c55e; }
+.table-reserved   { background-color: #3b82f6; }
+.table-occupied   { background-color: #f97316; }
+.table-clearing   { background-color: #6b7280; }
+
+/* Queue position indicator */
+.queue-position {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--gold-500);
+    line-height: 1;
+}
+
+/* Reliability score badges */
+.score-A { background-color: #22c55e; color: #000; }
+.score-B { background-color: #3b82f6; color: #fff; }
+.score-C { background-color: #f59e0b; color: #000; }
+.score-D { background-color: #ef4444; color: #fff; }
+
+/* Allergy severity badges */
+.allergy-mild        { background-color: #fef3c7; color: #92400e; }
+.allergy-moderate     { background-color: #fed7aa; color: #9a3412; }
+.allergy-severe       { background-color: #fecaca; color: #991b1b; font-weight: 700; }
+.allergy-anaphylactic { background-color: #ef4444; color: #fff; font-weight: 700; animation: pulse-red 1.5s ease-in-out infinite; }
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* VIP tier badges */
+.tier-regular { color: #9ca3af; }
+.tier-vip     { color: var(--gold-500); font-weight: 600; }
+.tier-vvip    { color: var(--gold-400); font-weight: 700; text-shadow: 0 0 8px rgba(212, 168, 67, 0.4); }
+
+/* Channel icons */
+.channel-whatsapp  { color: #25d366; }
+.channel-instagram { color: #e1306c; }
+.channel-openrice  { color: #ff6600; }
+.channel-phone     { color: #3b82f6; }
+.channel-walkin    { color: #8b5cf6; }
+.channel-telegram  { color: #0088cc; }
+.channel-qr        { color: #a855f7; }
+
+/* Heatmap cell gradient */
+.heatmap-cell {
+    transition: background-color 0.2s;
+    border-radius: 2px;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+/* Confirmation pipeline stages */
+.pipeline-sent      { border-left: 3px solid #3b82f6; }
+.pipeline-delivered  { border-left: 3px solid #8b5cf6; }
+.pipeline-confirmed  { border-left: 3px solid #22c55e; }
+.pipeline-unconfirmed { border-left: 3px solid #ef4444; }
+
+/* Drag-and-drop zones */
+.dragover {
+    outline: 2px dashed var(--gold-500);
+    outline-offset: -2px;
+    background-color: rgba(212, 168, 67, 0.05);
+}
+
+/* Customer-facing queue join form */
+.customer-form {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* SSE live indicator */
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #22c55e;
+}
+.live-indicator::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #22c55e;
+    animation: blink 1.5s ease-in-out infinite;
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}

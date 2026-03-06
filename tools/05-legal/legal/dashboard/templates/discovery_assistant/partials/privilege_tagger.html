@@ -1,0 +1,120 @@
+<div x-data="{ selected: [], allChecked: false }">
+    <!-- Batch Action Bar -->
+    <div class="flex items-center gap-3 mb-4 p-3 bg-navy-800 rounded-lg border border-navy-700"
+         x-show="selected.length > 0" x-transition>
+        <span class="text-sm text-gray-400">
+            <span x-text="selected.length"></span> selected
+        </span>
+        <div class="flex gap-2 ml-auto">
+            <button class="text-xs px-3 py-1.5 rounded-lg bg-red-900/40 text-red-300 hover:bg-red-900/60 transition-colors"
+                    hx-post="/discovery-assistant/batch-tag"
+                    hx-vals='{"status": "privileged"}'
+                    hx-include="[name='doc_ids']"
+                    hx-target="#privilege-table-body">
+                Set Privileged
+            </button>
+            <button class="text-xs px-3 py-1.5 rounded-lg bg-green-900/40 text-green-300 hover:bg-green-900/60 transition-colors"
+                    hx-post="/discovery-assistant/batch-tag"
+                    hx-vals='{"status": "not_privileged"}'
+                    hx-include="[name='doc_ids']"
+                    hx-target="#privilege-table-body">
+                Set Not Privileged
+            </button>
+            <button class="text-xs px-3 py-1.5 rounded-lg bg-blue-900/40 text-blue-300 hover:bg-blue-900/60 transition-colors"
+                    hx-post="/discovery-assistant/batch-tag"
+                    hx-vals='{"status": "needs_review"}'
+                    hx-include="[name='doc_ids']"
+                    hx-target="#privilege-table-body">
+                Set Needs Review
+            </button>
+        </div>
+    </div>
+
+    <!-- Documents Table -->
+    <div class="card overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-navy-700 text-left text-gray-400">
+                    <th class="px-4 py-3 w-10">
+                        <input type="checkbox"
+                               class="rounded bg-navy-900 border-navy-600"
+                               @change="allChecked = $event.target.checked;
+                                        selected = allChecked ? {{ documents|map(attribute='id')|list|tojson }} : []">
+                    </th>
+                    <th class="px-4 py-3 font-medium">Document</th>
+                    <th class="px-4 py-3 font-medium">Date</th>
+                    <th class="px-4 py-3 font-medium">Author</th>
+                    <th class="px-4 py-3 font-medium">Privilege Status</th>
+                    <th class="px-4 py-3 font-medium">Relevance</th>
+                    <th class="px-4 py-3 font-medium">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="privilege-table-body">
+                {% for doc in documents %}
+                {% set cls = classifications.get(doc.id) if classifications else None %}
+                <tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+                    <td class="px-4 py-3">
+                        <input type="checkbox" name="doc_ids" value="{{ doc.id }}"
+                               class="rounded bg-navy-900 border-navy-600"
+                               x-model="selected"
+                               :value="{{ doc.id }}">
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-200 font-medium truncate max-w-[200px]">
+                                {{ doc.subject or doc.source_file }}
+                            </span>
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-gray-400">
+                                {{ doc.doc_type }}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400">
+                        {{ doc.date_created[:10] if doc.date_created else '—' }}
+                    </td>
+                    <td class="px-4 py-3 text-gray-300">
+                        {{ doc.author or '—' }}
+                    </td>
+                    <td class="px-4 py-3">
+                        <select name="privilege_status_{{ doc.id }}"
+                                class="bg-navy-900 border border-navy-600 rounded-lg px-2 py-1 text-xs"
+                                hx-post="/discovery-assistant/tag/{{ doc.id }}"
+                                hx-trigger="change"
+                                hx-include="this"
+                                hx-swap="none">
+                            <option value="needs_review" {% if cls and cls.privilege_status == 'needs_review' %}selected{% endif %}>Needs Review</option>
+                            <option value="privileged" {% if cls and cls.privilege_status == 'privileged' %}selected{% endif %}>Privileged</option>
+                            <option value="not_privileged" {% if cls and cls.privilege_status == 'not_privileged' %}selected{% endif %}>Not Privileged</option>
+                            <option value="partial" {% if cls and cls.privilege_status == 'partial' %}selected{% endif %}>Partial</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if cls and cls.relevance_tier %}
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium relevance-{{ cls.relevance_tier }}">
+                            {{ cls.relevance_tier|replace('_', ' ')|title }}
+                        </span>
+                        {% else %}
+                        <span class="text-xs text-gray-500">Unclassified</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <button class="text-xs text-gold-400 hover:text-gold-300 transition-colors"
+                                hx-get="/discovery-assistant/document/{{ doc.id }}"
+                                hx-target="#document-preview-panel"
+                                hx-swap="innerHTML">
+                            Preview
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not documents %}
+                <tr>
+                    <td colspan="7" class="px-4 py-12 text-center text-gray-500">
+                        No documents to review.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

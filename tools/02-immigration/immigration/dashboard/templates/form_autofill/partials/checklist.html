@@ -1,0 +1,56 @@
+<div class="space-y-3">
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gold-400">Document Checklist</h3>
+        <span class="text-xs font-medium
+                     {% if checklist.completeness_pct >= 80 %}text-emerald-400
+                     {% elif checklist.completeness_pct >= 50 %}text-amber-400
+                     {% else %}text-red-400{% endif %}">
+            {{ checklist.completeness_pct }}% complete
+        </span>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="w-full bg-navy-700 rounded-full h-1.5">
+        <div class="h-1.5 rounded-full transition-all duration-500
+                    {% if checklist.completeness_pct >= 80 %}bg-emerald-500
+                    {% elif checklist.completeness_pct >= 50 %}bg-amber-500
+                    {% else %}bg-red-500{% endif %}"
+             style="width: {{ checklist.completeness_pct }}%"></div>
+    </div>
+
+    <ul class="space-y-2">
+        {% for item in checklist.items %}
+        <li class="flex items-start gap-2.5 p-2 rounded-lg
+                   {% if not item.submitted and item.required %}bg-red-950/30{% else %}bg-navy-900{% endif %}">
+            <!-- Checkbox icon -->
+            {% if item.submitted %}
+            <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {% elif item.required %}
+            <svg class="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+            </svg>
+            {% else %}
+            <svg class="w-4 h-4 text-gray-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {% endif %}
+
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium
+                          {% if item.submitted %}text-gray-300{% elif item.required %}text-red-300{% else %}text-gray-400{% endif %}">
+                    {{ item.name }}
+                    {% if item.required %}<span class="text-red-500 ml-1">*</span>{% endif %}
+                </p>
+                {% if item.notes %}
+                <p class="text-[10px] text-gray-500 mt-0.5">{{ item.notes }}</p>
+                {% endif %}
+                {% if not item.submitted and item.required %}
+                <p class="text-[10px] text-red-400 mt-0.5 font-medium">Missing — required for submission</p>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

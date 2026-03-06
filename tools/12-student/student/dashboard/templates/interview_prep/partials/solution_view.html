@@ -1,0 +1,25 @@
+<div class="space-y-4">
+    {% if problem %}
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gold-400">{{ problem.title }} — Solution</h3>
+        <span class="text-xs text-gray-400">{{ problem.optimal_time_complexity }} / {{ problem.optimal_space_complexity }}</span>
+    </div>
+
+    {% if problem.solution_python %}
+    <div>
+        <p class="text-xs text-gray-400 mb-1">Python</p>
+        <pre class="bg-navy-900 rounded-lg p-3 text-sm text-gray-200 overflow-x-auto"><code>{{ problem.solution_python }}</code></pre>
+    </div>
+    {% endif %}
+
+    {% if problem.solution_javascript %}
+    <div>
+        <p class="text-xs text-gray-400 mb-1">JavaScript</p>
+        <pre class="bg-navy-900 rounded-lg p-3 text-sm text-gray-200 overflow-x-auto"><code>{{ problem.solution_javascript }}</code></pre>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p class="text-sm text-gray-500 text-center py-8">No problem selected</p>
+    {% endif %}
+</div>

@@ -1,0 +1,114 @@
+<div class="space-y-6">
+    <!-- Summary cards -->
+    <div class="grid grid-cols-3 gap-4">
+        {% for period, label in [('30_day', '30 Days'), ('60_day', '60 Days'), ('90_day', '90 Days')] %}
+        {% set data = summary.get(period, {}) %}
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+            <h4 class="text-xs text-gray-400 mb-3">{{ label }} Forecast</h4>
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Inflows</span>
+                    <span class="text-green-400 font-medium">+HK${{ "{:,.0f}".format(data.get('inflows', 0)) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Outflows</span>
+                    <span class="text-red-400 font-medium">-HK${{ "{:,.0f}".format(data.get('outflows', 0)) }}</span>
+                </div>
+                <div class="border-t border-[#2d3352] pt-2 flex justify-between text-sm">
+                    <span class="text-gray-300 font-medium">Net</span>
+                    <span class="font-bold {% if data.get('net', 0) >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                        HK${{ "{:,.0f}".format(data.get('net', 0)) }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+        <h4 class="text-sm text-gray-400 mb-3">Weekly Inflows vs Outflows</h4>
+        <div style="height: 320px;">
+            <canvas id="cashFlowChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const weeks = {{ forecast.weeks | tojson }};
+    const labels = weeks.map(w => w.week_start.slice(5));
+    const inflows = weeks.map(w => w.inflows);
+    const outflows = weeks.map(w => w.outflows);
+    const net = weeks.map(w => w.net);
+
+    const ctx = document.getElementById('cashFlowChart');
+    if (ctx && typeof Chart !== 'undefined') {
+        if (ctx._chartInstance) ctx._chartInstance.destroy();
+        ctx._chartInstance = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Inflows',
+                        data: inflows,
+                        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                        borderColor: 'rgb(34, 197, 94)',
+                        borderWidth: 1,
+                        borderRadius: 3,
+                    },
+                    {
+                        label: 'Outflows',
+                        data: outflows,
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgb(239, 68, 68)',
+                        borderWidth: 1,
+                        borderRadius: 3,
+                    },
+                    {
+                        label: 'Net Position',
+                        data: net,
+                        type: 'line',
+                        borderColor: '#d4a843',
+                        backgroundColor: 'rgba(212, 168, 67, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#d4a843',
+                        fill: true,
+                        tension: 0.3,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: {
+                    x: {
+                        ticks: { color: '#9ca3af', font: { size: 10 } },
+                        grid: { color: '#2d3352' },
+                    },
+                    y: {
+                        ticks: {
+                            color: '#9ca3af',
+                            callback: v => 'HK$' + v.toLocaleString(),
+                        },
+                        grid: { color: '#2d3352' },
+                    },
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#d1d5db', usePointStyle: true, pointStyle: 'rectRounded' },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.dataset.label + ': HK$' + ctx.parsed.y.toLocaleString(),
+                        },
+                    },
+                },
+            },
+        });
+    }
+})();
+</script>

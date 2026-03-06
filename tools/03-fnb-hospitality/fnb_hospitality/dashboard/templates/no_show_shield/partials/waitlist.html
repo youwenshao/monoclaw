@@ -1,0 +1,70 @@
+<!-- htmx partial: waitlist ranked list -->
+<div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+    <div class="p-4 border-b border-[#2d3352] flex items-center justify-between">
+        <div>
+            <h3 class="text-sm font-semibold text-[#e0be6a]">Active Waitlist</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Ranked by request time — guests who can fill cancelled/no-show slots</p>
+        </div>
+        <span class="text-xs text-gray-500 bg-[#242b4a] px-2.5 py-1 rounded-full">{{ waitlist | length if waitlist else 0 }} entries</span>
+    </div>
+
+    <div class="divide-y divide-[#2d3352]">
+        {% for entry in waitlist %}
+        <div class="flex items-center gap-4 px-5 py-4 hover:bg-[#242b4a]/30 transition-colors group">
+            <!-- Rank -->
+            <div class="w-8 h-8 rounded-lg bg-[#242b4a] flex items-center justify-center shrink-0">
+                <span class="text-sm font-bold {% if loop.index <= 3 %}text-[#d4a843]{% else %}text-gray-400{% endif %}">{{ loop.index }}</span>
+            </div>
+
+            <!-- Guest Info -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <p class="text-sm font-medium text-white truncate">{{ entry.guest_name }}</p>
+                    {% if entry.reliability_score %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
+                        {% if entry.reliability_score == 'A' %}bg-emerald-500/10 text-emerald-400
+                        {% elif entry.reliability_score == 'B' %}bg-blue-500/10 text-blue-400
+                        {% elif entry.reliability_score == 'C' %}bg-[#d4a843]/10 text-[#d4a843]
+                        {% else %}bg-red-500/10 text-red-400{% endif %}">
+                        {{ entry.reliability_score }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                    <span>{{ entry.party_size }}人</span>
+                    <span>·</span>
+                    <span>{{ entry.phone }}</span>
+                    <span>·</span>
+                    <span>Preferred: {{ entry.preferred_date }} {{ entry.preferred_time }}</span>
+                </div>
+            </div>
+
+            <!-- Flexibility -->
+            <div class="shrink-0 text-right">
+                {% if entry.flexible %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Flexible</span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#242b4a] text-gray-400">Fixed Time</span>
+                {% endif %}
+                <p class="text-[10px] text-gray-600 mt-0.5">Added {{ entry.added_ago }}</p>
+            </div>
+
+            <!-- Action -->
+            <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button class="px-3 py-1.5 rounded-lg bg-[#d4a843] text-[#1a1f36] text-xs font-semibold hover:bg-[#e0be6a] transition-colors"
+                        hx-post="/no-show-shield/offer/{{ entry.id }}"
+                        hx-target="closest div.flex.items-center.gap-4"
+                        hx-swap="outerHTML">
+                    Offer Table
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div class="py-16 text-center">
+            <svg class="w-12 h-12 mx-auto mb-3 text-gray-600 opacity-40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+            <p class="text-sm text-gray-500">Waitlist is empty</p>
+            <p class="text-xs text-gray-600 mt-1">Guests can join via the booking channels</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>

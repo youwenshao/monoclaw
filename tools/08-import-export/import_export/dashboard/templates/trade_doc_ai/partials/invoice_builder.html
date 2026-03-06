@@ -1,0 +1,218 @@
+<div x-data="{
+    items: [{hs_code:'', description:'', quantity:1, unit_price:0, unit:'pieces'}],
+    generating: false,
+    result: null,
+    invoiceHtml: '',
+    addItem() { this.items.push({hs_code:'', description:'', quantity:1, unit_price:0, unit:'pieces'}) },
+    removeItem(idx) { if(this.items.length > 1) this.items.splice(idx, 1) },
+    async generate() {
+        this.generating = true;
+        this.result = null;
+        this.invoiceHtml = '';
+        const form = this.$refs.invoiceForm;
+        const fd = new FormData(form);
+        const payload = {
+            currency: fd.get('currency'),
+            incoterms: fd.get('incoterms'),
+            incoterms_location: fd.get('incoterms_location'),
+            seller: { name: fd.get('seller_name'), address: fd.get('seller_address'), br_number: fd.get('seller_br') },
+            buyer: { name: fd.get('buyer_name'), address: fd.get('buyer_address'), vat_number: fd.get('buyer_vat') },
+            items: this.items,
+            freight: parseFloat(fd.get('freight') || 0),
+            insurance: parseFloat(fd.get('insurance') || 0),
+            country_of_origin: fd.get('country_of_origin'),
+            transport_mode: fd.get('transport_mode')
+        };
+        try {
+            const resp = await fetch('/trade-doc-ai/api/invoice', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            this.result = data.invoice;
+            this.invoiceHtml = data.html;
+        } catch(e) { this.result = {error: e.message}; }
+        this.generating = false;
+    }
+}">
+    <h2 class="text-lg font-semibold text-gray-100 mb-1">Commercial Invoice Builder</h2>
+    <p class="text-sm text-gray-400 mb-6">Generate a commercial invoice with Incoterms, HS codes, and multi-currency support.</p>
+
+    <form x-ref="invoiceForm" @submit.prevent="generate()" class="space-y-6">
+        <!-- Trade terms -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Currency</label>
+                <select name="currency"
+                        class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="HKD">HKD</option>
+                    <option value="CNY">CNY</option>
+                    <option value="GBP">GBP</option>
+                    <option value="JPY">JPY</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Incoterms</label>
+                <select name="incoterms"
+                        class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+                    <option value="FOB">FOB</option>
+                    <option value="CIF">CIF</option>
+                    <option value="CFR">CFR</option>
+                    <option value="EXW">EXW</option>
+                    <option value="FCA">FCA</option>
+                    <option value="CPT">CPT</option>
+                    <option value="CIP">CIP</option>
+                    <option value="DAP">DAP</option>
+                    <option value="DPU">DPU</option>
+                    <option value="DDP">DDP</option>
+                    <option value="FAS">FAS</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Incoterms Location</label>
+                <input type="text" name="incoterms_location" placeholder="e.g. Hong Kong Port"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Transport</label>
+                <input type="text" name="transport_mode" value="Sea" placeholder="Sea / Air / Land"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+        </div>
+
+        <!-- Seller / Buyer -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-3">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Seller / Exporter</h3>
+                <input type="text" name="seller_name" placeholder="Company name"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                <input type="text" name="seller_address" placeholder="Address"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                <input type="text" name="seller_br" placeholder="BR number"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+            <div class="space-y-3">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Buyer / Importer</h3>
+                <input type="text" name="buyer_name" placeholder="Company name"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                <input type="text" name="buyer_address" placeholder="Address"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                <input type="text" name="buyer_vat" placeholder="VAT / Tax ID"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+        </div>
+
+        <input type="hidden" name="country_of_origin" value="Hong Kong">
+
+        <!-- Line Items -->
+        <div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="text-xs font-medium text-gray-400">Line Items</label>
+                <button type="button" @click="addItem()"
+                        class="text-xs text-gold-400 hover:text-gold-300 font-medium transition-colors">+ Add Item</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-xs text-gray-500 uppercase">
+                            <th class="text-left py-2 px-2">HS Code</th>
+                            <th class="text-left py-2 px-2">Description</th>
+                            <th class="text-left py-2 px-2 w-16">Qty</th>
+                            <th class="text-left py-2 px-2 w-24">Unit Price</th>
+                            <th class="text-left py-2 px-2 w-20">Unit</th>
+                            <th class="text-right py-2 px-2 w-24">Amount</th>
+                            <th class="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(item, idx) in items" :key="idx">
+                            <tr class="border-t border-navy-700">
+                                <td class="py-2 px-2">
+                                    <input type="text" x-model="item.hs_code" placeholder="85423100"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 font-mono focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="text" x-model="item.description" placeholder="Product description"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="number" x-model.number="item.quantity" min="1"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <input type="number" x-model.number="item.unit_price" min="0" step="0.01"
+                                           class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <select x-model="item.unit"
+                                            class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-xs rounded px-2 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                                        <option value="pieces">pcs</option>
+                                        <option value="kg">kg</option>
+                                        <option value="litres">L</option>
+                                        <option value="sets">sets</option>
+                                        <option value="rolls">rolls</option>
+                                    </select>
+                                </td>
+                                <td class="py-2 px-2 text-right text-xs text-gray-300 font-mono"
+                                    x-text="(item.quantity * item.unit_price).toFixed(2)">
+                                </td>
+                                <td class="py-2 px-2">
+                                    <button type="button" @click="removeItem(idx)" x-show="items.length > 1"
+                                            class="text-red-400 hover:text-red-300 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Charges -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Freight</label>
+                <input type="number" name="freight" value="0" min="0" step="0.01"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Insurance</label>
+                <input type="number" name="insurance" value="0" min="0" step="0.01"
+                       class="w-full bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:ring-gold-500 focus:border-gold-500">
+            </div>
+        </div>
+
+        <button type="submit" :disabled="generating"
+                class="px-6 py-2.5 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+            <span x-show="!generating">Generate Invoice</span>
+            <span x-show="generating" class="flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Generating...
+            </span>
+        </button>
+    </form>
+
+    <!-- Preview -->
+    <template x-if="invoiceHtml">
+        <div class="mt-6">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-300">Invoice Preview</h3>
+                <button @click="const w=window.open('','_blank'); w.document.write(invoiceHtml); w.document.close(); w.print()"
+                        class="text-xs text-gold-400 hover:text-gold-300 font-medium transition-colors">
+                    Print / PDF
+                </button>
+            </div>
+            <div class="bg-white rounded-lg overflow-hidden shadow-lg">
+                <iframe :srcdoc="invoiceHtml" class="w-full h-[600px] border-0"></iframe>
+            </div>
+        </div>
+    </template>
+</div>

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}FXInvoice{% endblock %}
+
+{% block status_cards %}
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Total Outstanding</p>
+    <p class="text-2xl font-bold text-white">HKD {{ "{:,.0f}".format(outstanding_hkd) }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Overdue Invoices</p>
+    <p class="text-2xl font-bold {% if overdue_count > 0 %}text-red-400{% else %}text-emerald-400{% endif %}">{{ overdue_count }}</p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">FX Gain/Loss (MTD)</p>
+    <p class="text-2xl font-bold {% if fx_gain_loss_mtd >= 0 %}text-emerald-400{% else %}text-red-400{% endif %}">
+        HKD {{ "{:+,.0f}".format(fx_gain_loss_mtd) }}
+    </p>
+</div>
+<div class="flex-1 bg-navy-800 rounded-xl p-4 border border-navy-700">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Active Currencies</p>
+    <p class="text-2xl font-bold text-gold-400">{{ active_currencies | length }}</p>
+    <p class="text-xs text-gray-500 mt-0.5">{{ active_currencies | join(', ') }}</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'invoices' }">
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 mb-6 bg-navy-800 rounded-lg p-1 w-fit">
+        <button @click="tab = 'invoices'"
+                :class="tab === 'invoices' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            Invoice Builder
+        </button>
+        <button @click="tab = 'fx-rates'"
+                :class="tab === 'fx-rates' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            FX Rate Lookup
+        </button>
+        <button @click="tab = 'payments'"
+                :class="tab === 'payments' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            Payment Tracker
+        </button>
+        <button @click="tab = 'fx-gl'"
+                :class="tab === 'fx-gl' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            FX Gain/Loss
+        </button>
+        <button @click="tab = 'summary'"
+                :class="tab === 'summary' ? 'bg-navy-600 text-gold-400' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            Monthly Summary
+        </button>
+    </div>
+
+    <!-- ── Invoice Builder ────────────────────────────────────────── -->
+    <div x-show="tab === 'invoices'" x-transition>
+        <div id="invoice-builder-content"
+             hx-get="/fx-invoice/partials/invoice-builder"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-xs text-gray-500 text-center py-8">Loading Invoice Builder…</p>
+        </div>
+    </div>
+
+    <!-- ── FX Rate Lookup ─────────────────────────────────────────── -->
+    <div x-show="tab === 'fx-rates'" x-transition>
+        {% include "fx_invoice/partials/fx_rate_lookup.html" %}
+    </div>
+
+    <!-- ── Payment Tracker ────────────────────────────────────────── -->
+    <div x-show="tab === 'payments'" x-transition>
+        <div id="payment-tracker-content"
+             hx-get="/fx-invoice/partials/payment-tracker"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-xs text-gray-500 text-center py-8">Loading Payment Tracker…</p>
+        </div>
+    </div>
+
+    <!-- ── FX Gain/Loss ───────────────────────────────────────────── -->
+    <div x-show="tab === 'fx-gl'" x-transition>
+        {% include "fx_invoice/partials/fx_gain_loss.html" %}
+    </div>
+
+    <!-- ── Monthly Summary ────────────────────────────────────────── -->
+    <div x-show="tab === 'summary'" x-transition>
+        {% include "fx_invoice/partials/monthly_summary.html" %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatCurrency(amount, currency) {
+    return new Intl.NumberFormat('en-HK', {
+        style: 'currency',
+        currency: currency || 'HKD',
+        minimumFractionDigits: 2,
+    }).format(amount);
+}
+</script>
+{% endblock %}

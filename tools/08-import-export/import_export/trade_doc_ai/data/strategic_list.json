@@ -1,0 +1,32 @@
+[
+  {
+    "category": "Dual-use goods",
+    "keywords": ["semiconductor", "integrated circuit", "wafer", "lithography", "nuclear", "centrifuge", "laser", "encryption", "cryptograph"],
+    "description": "Items with both civilian and military applications, controlled under the Wassenaar Arrangement and HK Strategic Trade Controls"
+  },
+  {
+    "category": "Chemical weapons precursors",
+    "keywords": ["thiodiglycol", "phosphorus trichloride", "dimethyl methylphosphonate", "chemical precursor", "nerve agent"],
+    "description": "Chemicals that can be used in the manufacture of chemical weapons, controlled under the CWC"
+  },
+  {
+    "category": "Missile technology",
+    "keywords": ["guidance system", "inertial navigation", "rocket motor", "propellant", "thrust vector", "re-entry vehicle", "payload delivery"],
+    "description": "Items related to missile delivery systems, controlled under the MTCR"
+  },
+  {
+    "category": "Nuclear materials",
+    "keywords": ["uranium", "plutonium", "heavy water", "deuterium", "reactor", "fuel rod", "enrichment"],
+    "description": "Nuclear materials and related technology controlled under the Nuclear Suppliers Group guidelines"
+  },
+  {
+    "category": "Military items",
+    "keywords": ["ammunition", "firearm", "explosive", "armoured", "military vehicle", "weapon", "ordnance", "ballistic"],
+    "description": "Conventional military items requiring Strategic Commodities licence from TID"
+  },
+  {
+    "category": "Advanced surveillance",
+    "keywords": ["interception", "surveillance equipment", "intrusion software", "monitoring system", "wiretap", "IMSI catcher"],
+    "description": "Advanced surveillance and law-enforcement equipment with dual-use potential"
+  }
+]

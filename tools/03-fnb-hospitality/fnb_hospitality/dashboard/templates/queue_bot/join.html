@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>加入排隊 Join Queue — MonoClaw</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4/cdn.min.css">
+    <script defer src="https://unpkg.com/alpinejs@3.14/dist/cdn.min.js"></script>
+    <style>
+        body { -webkit-font-smoothing: antialiased; }
+        select, input { font-size: 16px !important; /* prevent iOS zoom */ }
+    </style>
+</head>
+<body class="h-full bg-[#0f1225] text-gray-100 flex flex-col" x-data="{ lang: 'zh', submitting: false }">
+    <!-- Header -->
+    <header class="bg-[#1a1f36] border-b border-[#2d3352] px-5 py-4 shrink-0">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-[#d4a843]">{{ restaurant_name | default('MonoClaw') }}</h1>
+                <p class="text-xs text-gray-400" x-show="lang==='zh'">智能排隊系統</p>
+                <p class="text-xs text-gray-400" x-show="lang==='en'">Smart Queue System</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="lang='zh'" :class="lang==='zh' ? 'text-[#d4a843] font-semibold' : 'text-gray-500'" class="text-sm transition-colors">中文</button>
+                <span class="text-gray-600">|</span>
+                <button @click="lang='en'" :class="lang==='en' ? 'text-[#d4a843] font-semibold' : 'text-gray-500'" class="text-sm transition-colors">EN</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Form -->
+    <main class="flex-1 overflow-auto">
+        <div class="max-w-md mx-auto px-5 py-8">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 rounded-2xl bg-[#d4a843]/10 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-[#d4a843]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-white" x-show="lang==='zh'">加入排隊</h2>
+                <h2 class="text-xl font-bold text-white" x-show="lang==='en'">Join the Queue</h2>
+                <p class="text-sm text-gray-400 mt-2" x-show="lang==='zh'">填寫以下資料以加入等候名單</p>
+                <p class="text-sm text-gray-400 mt-2" x-show="lang==='en'">Fill in your details to join the waitlist</p>
+            </div>
+
+            {% if queue_status %}
+            <div class="bg-[#d4a843]/10 border border-[#d4a843]/20 rounded-xl p-4 mb-6 text-center">
+                <p class="text-sm text-[#d4a843]" x-show="lang==='zh'">目前等候：<strong>{{ queue_status.waiting }}</strong> 組 · 預計等候 <strong>{{ queue_status.est_wait }}</strong></p>
+                <p class="text-sm text-[#d4a843]" x-show="lang==='en'">Currently waiting: <strong>{{ queue_status.waiting }}</strong> parties · Est. wait <strong>{{ queue_status.est_wait }}</strong></p>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/queue-bot/join" @submit="submitting = true" class="space-y-5">
+                <!-- Party Size -->
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1.5">
+                        <span x-show="lang==='zh'">人數 <span class="text-gray-500">Party Size</span></span>
+                        <span x-show="lang==='en'">Party Size <span class="text-gray-500">人數</span></span>
+                    </label>
+                    <select name="party_size" required
+                            class="w-full bg-[#242b4a] border border-[#3d4466] rounded-xl px-4 py-3.5 text-base focus:border-[#d4a843] focus:outline-none appearance-none">
+                        {% for i in range(1, 13) %}
+                        <option value="{{ i }}">{{ i }} {% if i == 1 %}位 person{% else %}位 people{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Phone -->
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1.5">
+                        <span x-show="lang==='zh'">電話號碼 <span class="text-gray-500">Phone Number</span></span>
+                        <span x-show="lang==='en'">Phone Number <span class="text-gray-500">電話號碼</span></span>
+                    </label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-4 bg-[#2d3352] border border-r-0 border-[#3d4466] rounded-l-xl text-sm text-gray-400">+852</span>
+                        <input type="tel" name="phone" required pattern="[0-9]{8}" inputmode="numeric"
+                               class="w-full bg-[#242b4a] border border-[#3d4466] rounded-r-xl px-4 py-3.5 text-base focus:border-[#d4a843] focus:outline-none"
+                               placeholder="9123 4567">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1" x-show="lang==='zh'">我們會透過短訊通知您入座</p>
+                    <p class="text-xs text-gray-500 mt-1" x-show="lang==='en'">We'll SMS you when your table is ready</p>
+                </div>
+
+                <!-- Name -->
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1.5">
+                        <span x-show="lang==='zh'">姓名（選填）<span class="text-gray-500">Name (optional)</span></span>
+                        <span x-show="lang==='en'">Name (optional) <span class="text-gray-500">姓名（選填）</span></span>
+                    </label>
+                    <input type="text" name="name"
+                           class="w-full bg-[#242b4a] border border-[#3d4466] rounded-xl px-4 py-3.5 text-base focus:border-[#d4a843] focus:outline-none"
+                           placeholder="陳先生 / Mr. Chan">
+                </div>
+
+                <!-- Seating Preference -->
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1.5">
+                        <span x-show="lang==='zh'">座位偏好 <span class="text-gray-500">Seating Preference</span></span>
+                        <span x-show="lang==='en'">Seating Preference <span class="text-gray-500">座位偏好</span></span>
+                    </label>
+                    <select name="seating_preference"
+                            class="w-full bg-[#242b4a] border border-[#3d4466] rounded-xl px-4 py-3.5 text-base focus:border-[#d4a843] focus:outline-none appearance-none">
+                        <option value="any" x-text="lang==='zh' ? '不限 No Preference' : 'No Preference 不限'"></option>
+                        <option value="window" x-text="lang==='zh' ? '窗邊 Window' : 'Window 窗邊'"></option>
+                        <option value="booth" x-text="lang==='zh' ? '卡座 Booth' : 'Booth 卡座'"></option>
+                        <option value="outdoor" x-text="lang==='zh' ? '戶外 Outdoor' : 'Outdoor 戶外'"></option>
+                        <option value="bar" x-text="lang==='zh' ? '吧台 Bar' : 'Bar 吧台'"></option>
+                    </select>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" :disabled="submitting"
+                        class="w-full py-4 bg-[#d4a843] text-[#1a1f36] font-bold text-base rounded-xl hover:bg-[#e0be6a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!submitting && lang==='zh'">確認排隊</span>
+                    <span x-show="!submitting && lang==='en'">Join Queue</span>
+                    <span x-show="submitting" class="flex items-center justify-center gap-2">
+                        <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        <span x-show="lang==='zh'">正在加入排隊...</span>
+                        <span x-show="lang==='en'">Joining queue...</span>
+                    </span>
+                </button>
+            </form>
+
+            {% if error %}
+            <div class="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                <p class="text-sm text-red-400">{{ error }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#1a1f36] border-t border-[#2d3352] px-5 py-3 text-center shrink-0">
+        <p class="text-xs text-gray-500">Powered by <span class="text-[#d4a843]">MonoClaw</span></p>
+    </footer>
+</body>
+</html>

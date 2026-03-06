@@ -1,0 +1,73 @@
+<div class="bg-navy-800 rounded-lg overflow-hidden">
+    <div class="px-4 py-3 border-b border-navy-700">
+        <h3 class="text-sm font-semibold text-gold-400">Exam History</h3>
+    </div>
+    <table class="w-full text-sm">
+        <thead class="bg-navy-900 text-gray-400 text-xs uppercase tracking-wider">
+            <tr>
+                <th class="px-4 py-3 text-left">Exam</th>
+                <th class="px-4 py-3 text-left">Date</th>
+                <th class="px-4 py-3 text-left">Score</th>
+                <th class="px-4 py-3 text-left">Grade</th>
+                <th class="px-4 py-3 text-left">Status</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-navy-700">
+            {% for a in attempts %}
+            <tr class="hover:bg-navy-700 transition-colors">
+                <td class="px-4 py-3 text-white font-medium">{{ a.exam_title or 'Exam #' ~ a.exam_id }}</td>
+                <td class="px-4 py-3 text-gray-400 text-xs">{{ a.started_at[:10] if a.started_at else '—' }}</td>
+                <td class="px-4 py-3">
+                    {% if a.percentage is not none %}
+                    <div class="flex items-center gap-2">
+                        <div class="w-16 bg-navy-700 rounded-full h-1.5">
+                            <div class="h-1.5 rounded-full
+                                {% if a.percentage >= 75 %}bg-emerald-500{% elif a.percentage >= 50 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+                                style="width: {{ a.percentage }}%"></div>
+                        </div>
+                        <span class="text-xs text-gray-300">{{ a.percentage }}%</span>
+                    </div>
+                    {% else %}
+                    <span class="text-xs text-gray-500">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    {% if a.letter_grade %}
+                    <span class="text-sm font-semibold
+                        {% if a.letter_grade.startswith('A') %}text-emerald-400
+                        {% elif a.letter_grade.startswith('B') %}text-blue-400
+                        {% elif a.letter_grade.startswith('C') %}text-amber-400
+                        {% else %}text-red-400{% endif %}">{{ a.letter_grade }}</span>
+                    {% else %}
+                    <span class="text-xs text-gray-500">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    {% if a.status == 'graded' %}
+                    <span class="text-xs px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Graded</span>
+                    {% elif a.status == 'submitted' %}
+                    <span class="text-xs px-2 py-0.5 rounded bg-amber-900/40 text-amber-400">Submitted</span>
+                    {% elif a.status == 'in_progress' %}
+                    <span class="text-xs px-2 py-0.5 rounded bg-blue-900/40 text-blue-400">In Progress</span>
+                    {% else %}
+                    <span class="text-xs px-2 py-0.5 rounded bg-navy-700 text-gray-400">{{ a.status }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right">
+                    {% if a.status == 'graded' %}
+                    <button onclick="
+                        const gen = Alpine.closestDataStack(this).find(d => d.viewResults);
+                        if (gen) gen.viewResults({{ a.id }});
+                    " class="text-xs text-gold-400 hover:text-gold-300 transition-colors">View Results</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No exam attempts yet</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,12 @@
+Hello {client_name}! Welcome to our immigration client portal.
+
+Your case reference: {case_ref}
+Scheme: {scheme}
+
+I can help you with:
+- Checking your case status
+- Document requirements and deadlines
+- Booking a consultation
+- General immigration questions
+
+How can I assist you today?

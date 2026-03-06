@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+{% block title %}DefectsManager{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-gold-400">{{ total_defects|default(0) }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Total<br>Defects</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-amber-400">{{ open_defects|default(0) }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Open<br>Defects</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-red-400">{{ emergency_count|default(0) }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Emergency<br>Items</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-gold-400">{{ pending_wo|default(0) }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Pending<br>Work Orders</div>
+</div>
+<div class="ml-auto">
+    <button @click="newDefectModal = true"
+            class="px-4 py-2 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Report Defect
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="defectsManagerApp()" class="space-y-6">
+
+    <!-- Sub-navigation tabs -->
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <button @click="tab = 'defects'"
+                :class="tab === 'defects' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Defects
+        </button>
+        <button @click="tab = 'work_orders'"
+                :class="tab === 'work_orders' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Work Orders
+        </button>
+        <button @click="tab = 'contractors'"
+                :class="tab === 'contractors' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Contractors
+        </button>
+        <button @click="tab = 'analytics'"
+                :class="tab === 'analytics' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Analytics
+        </button>
+        <button @click="tab = 'dmc'"
+                :class="tab === 'dmc' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            DMC Matrix
+        </button>
+    </div>
+
+    <!-- ═══════ Defects Tab ═══════ -->
+    <div x-show="tab === 'defects'" x-cloak>
+        <div class="flex items-center gap-4 mb-4">
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-400">Property:</label>
+                <select name="property_id"
+                        hx-get="/defects-manager/defect-log/partial"
+                        hx-target="#defect-table-body"
+                        hx-trigger="change"
+                        hx-include="[name='property_id'], [name='status_filter']"
+                        hx-swap="innerHTML"
+                        class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5">
+                    <option value="all">All Properties</option>
+                    {% for prop in properties %}
+                    <option value="{{ prop.id }}">{{ prop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-400">Status:</label>
+                <select name="status_filter"
+                        hx-get="/defects-manager/defect-log/partial"
+                        hx-target="#defect-table-body"
+                        hx-trigger="change"
+                        hx-include="[name='property_id'], [name='status_filter']"
+                        hx-swap="innerHTML"
+                        class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5">
+                    <option value="all">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="pending_review">Pending Review</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-navy-700 text-left text-gray-400">
+                        <th class="px-4 py-3 font-medium">ID</th>
+                        <th class="px-4 py-3 font-medium">Property</th>
+                        <th class="px-4 py-3 font-medium">Floor / Unit</th>
+                        <th class="px-4 py-3 font-medium">Category</th>
+                        <th class="px-4 py-3 font-medium">Description</th>
+                        <th class="px-4 py-3 font-medium">Priority</th>
+                        <th class="px-4 py-3 font-medium">Status</th>
+                        <th class="px-4 py-3 font-medium">Reported</th>
+                        <th class="px-4 py-3 font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="defect-table-body"
+                       hx-get="/defects-manager/defect-log/partial"
+                       hx-trigger="load, defectUpdated from:body"
+                       hx-swap="innerHTML">
+                    <tr>
+                        <td colspan="9" class="px-4 py-12 text-center text-gray-500">
+                            <svg class="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Loading defects…
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="defect-detail-panel" class="mt-4"></div>
+    </div>
+
+    <!-- ═══════ Work Orders Tab ═══════ -->
+    <div x-show="tab === 'work_orders'" x-cloak>
+        <div id="work-orders-container"
+             hx-get="/defects-manager/work-orders/partial"
+             hx-trigger="load, workOrderUpdated from:body"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading work orders…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Contractors Tab ═══════ -->
+    <div x-show="tab === 'contractors'" x-cloak>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gold-400">Contractor Directory</h3>
+            <button @click="addContractorOpen = !addContractorOpen"
+                    class="px-4 py-2 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Contractor
+            </button>
+        </div>
+
+        <!-- Add contractor form -->
+        <div x-show="addContractorOpen" x-transition class="card p-4 mb-4">
+            <form hx-post="/defects-manager/contractors"
+                  hx-target="#contractor-list"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="this.reset()"
+                  class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Company Name *</label>
+                    <input type="text" name="company_name" required
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Contact Person</label>
+                    <input type="text" name="contact_person"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Phone</label>
+                    <input type="tel" name="phone"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Email</label>
+                    <input type="email" name="email"
+                           class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Specialisation</label>
+                    <select name="specialisation"
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="plumbing">Plumbing</option>
+                        <option value="electrical">Electrical</option>
+                        <option value="structural">Structural</option>
+                        <option value="waterproofing">Waterproofing</option>
+                        <option value="hvac">HVAC</option>
+                        <option value="fire_services">Fire Services</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit"
+                            class="px-6 py-2 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+                        Save Contractor
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="contractor-list"
+             hx-get="/defects-manager/contractors/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading contractors…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ Analytics Tab ═══════ -->
+    <div x-show="tab === 'analytics'" x-cloak>
+        <div id="analytics-container"
+             hx-get="/defects-manager/analytics/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading analytics…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ DMC Matrix Tab ═══════ -->
+    <div x-show="tab === 'dmc'" x-cloak>
+        <div id="dmc-container"
+             hx-get="/defects-manager/dmc-matrix/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading responsibility matrix…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ New Defect Modal ═══════ -->
+    <div x-show="newDefectModal" x-transition
+         class="flex items-center justify-center p-4"
+         style="position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="newDefectModal = false">
+        <div @click.outside="newDefectModal = false"
+             class="bg-navy-800 border border-navy-700 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-semibold text-gold-400 mb-4">Report New Defect</h3>
+            <form @submit.prevent="submitDefect()" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Property *</label>
+                    <select x-model="defectForm.property_id" required
+                            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select property…</option>
+                        {% for prop in properties %}
+                        <option value="{{ prop.id }}">{{ prop.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Floor</label>
+                        <input type="text" x-model="defectForm.floor" placeholder="e.g. 12/F"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Unit</label>
+                        <input type="text" x-model="defectForm.unit" placeholder="e.g. A"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Category *</label>
+                        <select x-model="defectForm.category" required
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Select…</option>
+                            <option value="plumbing">Plumbing</option>
+                            <option value="electrical">Electrical</option>
+                            <option value="structural">Structural</option>
+                            <option value="waterproofing">Waterproofing</option>
+                            <option value="fire_safety">Fire Safety</option>
+                            <option value="hvac">HVAC</option>
+                            <option value="finishing">Finishing</option>
+                            <option value="common_area">Common Area</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Priority *</label>
+                        <select x-model="defectForm.priority" required
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="low">Low</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="emergency">Emergency</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Description *</label>
+                    <textarea x-model="defectForm.description" required rows="3" placeholder="Describe the defect…"
+                              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Photos</label>
+                    <input type="file" x-ref="defectPhotos" accept="image/*" multiple
+                           class="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-navy-700 file:text-gray-300 hover:file:bg-navy-600">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary" :disabled="defectSubmitting">
+                        <span x-show="!defectSubmitting">Submit Defect</span>
+                        <span x-show="defectSubmitting" class="flex items-center gap-1">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Submitting…
+                        </span>
+                    </button>
+                    <button type="button" @click="newDefectModal = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('defectsManagerApp', () => ({
+        tab: 'defects',
+        newDefectModal: false,
+        defectSubmitting: false,
+        addContractorOpen: false,
+
+        defectForm: {
+            property_id: '',
+            floor: '',
+            unit: '',
+            category: '',
+            priority: 'normal',
+            description: ''
+        },
+
+        async submitDefect() {
+            if (this.defectSubmitting) return;
+            this.defectSubmitting = true;
+            try {
+                const formData = new FormData();
+                Object.entries(this.defectForm).forEach(([k, v]) => formData.append(k, v));
+                const photos = this.$refs.defectPhotos?.files;
+                if (photos) {
+                    for (const f of photos) formData.append('photos', f);
+                }
+                const resp = await fetch('/defects-manager/defects', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (data.defect_id) {
+                    this.newDefectModal = false;
+                    this.defectForm = { property_id: '', floor: '', unit: '', category: '', priority: 'normal', description: '' };
+                    htmx.trigger(document.body, 'defectUpdated');
+                } else if (data.detail) {
+                    alert('Error: ' + (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : data.detail));
+                }
+            } catch (e) {
+                alert('Failed to submit defect: ' + e.message);
+            }
+            this.defectSubmitting = false;
+        }
+    }));
+});
+</script>
+{% endblock %}

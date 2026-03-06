@@ -1,0 +1,62 @@
+{% set time_slots = [
+    ('morning', 'Morning 早上', '06:00 – 12:00', 'text-amber-400'),
+    ('afternoon', 'Afternoon 下午', '12:00 – 18:00', 'text-blue-400'),
+    ('evening', 'Evening 晚上', '18:00 – 22:00', 'text-purple-400'),
+    ('bedtime', 'Bedtime 睡前', '22:00 – 06:00', 'text-gray-400'),
+] %}
+
+{% for slot_id, label, time_range, color_class in time_slots %}
+<div>
+    <div class="flex items-center justify-between mb-2">
+        <h4 class="text-xs font-semibold {{ color_class }} uppercase">{{ label }}</h4>
+        <span class="text-xs text-gray-600">{{ time_range }}</span>
+    </div>
+
+    {% set slot_reminders = reminders.get(slot_id, []) if reminders else [] %}
+    {% if slot_reminders %}
+    <div class="space-y-1.5">
+        {% for reminder in slot_reminders %}
+        <div class="flex items-center justify-between bg-[#242b4a] rounded px-3 py-2 text-xs">
+            <div class="flex items-center gap-2">
+                {% if reminder.status == 'taken' %}
+                <span class="status-dot green" title="Taken 已服用"></span>
+                {% elif reminder.status == 'missed' %}
+                <span class="status-dot red" title="Missed 未服用"></span>
+                {% elif reminder.status == 'sent' %}
+                <span class="status-dot amber" title="Sent 已發送"></span>
+                {% else %}
+                <span class="status-dot grey" title="Pending 待發送"></span>
+                {% endif %}
+                <span class="text-gray-200">{{ reminder.patient_name }}</span>
+                <span class="text-gray-500">·</span>
+                <span class="text-gray-400">{{ reminder.medication }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-500">{{ reminder.time }}</span>
+                {% if reminder.status == 'sent' %}
+                <button hx-post="/med-reminder/api/reminders/{{ reminder.id }}/mark-taken"
+                        hx-target="#reminder-board" hx-swap="innerHTML"
+                        class="text-green-400 hover:text-green-300 transition-colors" title="Mark taken 標記已服">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                    </svg>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-gray-600 py-2 pl-2">No reminders for this slot. 此時段暫無提醒。</p>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if summary %}
+<div class="pt-3 border-t border-[#2d3352] flex gap-4 text-xs text-gray-500">
+    <span>Total: <strong class="text-gray-300">{{ summary.total }}</strong></span>
+    <span>Sent: <strong class="text-amber-400">{{ summary.sent }}</strong></span>
+    <span>Taken: <strong class="text-green-400">{{ summary.taken }}</strong></span>
+    <span>Missed: <strong class="text-red-400">{{ summary.missed }}</strong></span>
+</div>
+{% endif %}

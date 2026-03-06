@@ -1,0 +1,98 @@
+{% if submissions %}
+<div class="overflow-x-auto">
+    <table class="w-full text-sm text-left">
+        <thead>
+            <tr class="border-b border-navy-700 text-xs text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-3">BD Reference</th>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Project</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3 text-right">Days Elapsed</th>
+                <th class="px-4 py-3 text-right">Expected Days</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody x-data="{ expanded: null }">
+            {% for s in submissions %}
+            <tr class="border-b border-navy-700/50 hover:bg-navy-800/60 transition-colors cursor-pointer"
+                @click="expanded = expanded === {{ s.id }} ? null : {{ s.id }}">
+                <td class="px-4 py-3 font-medium text-gray-200">{{ s.bd_reference or '—' }}</td>
+                <td class="px-4 py-3 text-gray-300">{{ s.submission_type }}</td>
+                <td class="px-4 py-3 text-gray-300">{{ s.project_name }}</td>
+                <td class="px-4 py-3">
+                    {% if s.current_status == 'Received' %}
+                    <span class="badge-blue">Received</span>
+                    {% elif s.current_status == 'Under Examination' %}
+                    <span class="badge-amber">Under Examination</span>
+                    {% elif s.current_status == 'Amendments Required' %}
+                    <span class="badge-red">Amendments Required</span>
+                    {% elif s.current_status == 'Approved' %}
+                    <span class="badge-green">Approved</span>
+                    {% elif s.current_status == 'Rejected' %}
+                    <span class="badge-red">Rejected</span>
+                    {% else %}
+                    <span class="badge-grey">{{ s.current_status }}</span>
+                    {% endif %}
+                    {% if s.is_overdue %}
+                    <span class="badge-red ml-1">OVERDUE</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right tabular-nums {{ 'text-red-400 font-semibold' if s.is_overdue else 'text-gray-300' }}">
+                    {{ s.days_elapsed or 0 }}
+                </td>
+                <td class="px-4 py-3 text-right tabular-nums text-gray-400">
+                    {{ s.expected_days or '—' }}
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <button hx-get="/permit-tracker/submissions/{{ s.id }}/detail"
+                            hx-target="#detail-panel"
+                            hx-swap="innerHTML"
+                            @click.stop
+                            class="text-xs text-gold-400 hover:text-gold-300 font-medium transition-colors">
+                        View
+                    </button>
+                </td>
+            </tr>
+            <!-- Expandable detail row -->
+            <tr x-show="expanded === {{ s.id }}" x-cloak>
+                <td colspan="7" class="px-4 py-4 bg-navy-800/40">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div>
+                            <span class="text-gray-500 block mb-0.5">Submitted</span>
+                            <span class="text-gray-300">{{ s.submitted_date or '—' }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block mb-0.5">Expected Completion</span>
+                            <span class="text-gray-300">{{ s.expected_completion or '—' }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block mb-0.5">Assigned AP/RSE</span>
+                            <span class="text-gray-300">{{ s.assigned_person or '—' }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block mb-0.5">Last Checked</span>
+                            <span class="text-gray-300">{{ s.last_checked or '—' }}</span>
+                        </div>
+                    </div>
+                    {% if s.notes %}
+                    <p class="text-xs text-gray-400 mt-3 leading-relaxed">{{ s.notes }}</p>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Detail panel (populated by htmx) -->
+<div id="detail-panel"></div>
+
+{% else %}
+<div class="text-center py-12">
+    <svg class="mx-auto h-10 w-10 text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+    </svg>
+    <p class="text-sm text-gray-500">No permit submissions yet.</p>
+    <p class="text-xs text-gray-600 mt-1">Submissions will appear here once added via the BD portal or manually.</p>
+</div>
+{% endif %}

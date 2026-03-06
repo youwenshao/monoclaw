@@ -1,0 +1,80 @@
+<div x-data="{ memorySearch: '{{ query }}' }" class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-[#d4a843]">Translation Memory</h3>
+        <span class="text-xs text-gray-500">{{ entries|length }} entr{{ 'ies' if entries|length != 1 else 'y' }}</span>
+    </div>
+
+    <!-- Search -->
+    <div class="relative">
+        <input type="text" x-model="memorySearch" placeholder="Search source or translated text…"
+               hx-get="/translate-assist/translation-memory/partial"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#memory-panel-slot"
+               hx-swap="innerHTML"
+               name="q"
+               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg pl-9 pr-3 py-2 text-sm text-gray-100 focus:ring-[#d4a843] focus:border-[#d4a843]">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+        </svg>
+    </div>
+
+    <!-- Memory table -->
+    <div class="bg-[#1a1f36] rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-[#0f1225] text-gray-400 text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-3 text-left">Source</th>
+                    <th class="px-4 py-3 text-left">Translated</th>
+                    <th class="px-4 py-3 text-left w-20">Quality</th>
+                    <th class="px-4 py-3 text-left w-16">Used</th>
+                    <th class="px-4 py-3 text-left w-16">Lang</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2d3352]">
+                {% for e in entries %}
+                <tr class="hover:bg-[#242b4a] transition-colors">
+                    <td class="px-4 py-3 text-gray-200 max-w-[280px]">
+                        <p class="truncate" title="{{ e.source_text }}">{{ e.source_text }}</p>
+                    </td>
+                    <td class="px-4 py-3 text-gray-200 max-w-[280px]">
+                        <p class="truncate" title="{{ e.translated_text }}">{{ e.translated_text }}</p>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if e.quality_score is not none %}
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-12 h-1.5 bg-[#2d3352] rounded-full overflow-hidden">
+                                <div class="h-full rounded-full
+                                    {% if e.quality_score and e.quality_score > 0.8 %}bg-emerald-400
+                                    {% elif e.quality_score and e.quality_score > 0.5 %}bg-amber-400
+                                    {% else %}bg-red-400{% endif %}"
+                                     style="width: {{ (e.quality_score or 0) * 100 }}%"></div>
+                            </div>
+                            <span class="text-[10px] text-gray-500">{{ '%.0f'|format((e.quality_score or 0) * 100) }}%</span>
+                        </div>
+                        {% else %}
+                        <span class="text-gray-600 text-xs">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-center">{{ e.used_count or 0 }}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-[10px] px-1.5 py-0.5 bg-[#2d3352] rounded text-gray-400">
+                            {{ (e.source_language or '?')|upper }}→{{ (e.target_language or '?')|upper }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not entries %}
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                        {% if query %}
+                        No matches for "{{ query }}"
+                        {% else %}
+                        No translation memory entries yet — translate some text to build your memory
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

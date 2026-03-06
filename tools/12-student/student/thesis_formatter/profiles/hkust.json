@@ -1,0 +1,23 @@
+{
+    "university": "HKUST",
+    "font_name": "Times New Roman",
+    "font_size": 12,
+    "line_spacing": 1.5,
+    "margins": {
+        "top": 25,
+        "bottom": 25,
+        "left": 25,
+        "right": 25
+    },
+    "required_sections": [
+        "cover", "title", "declaration", "abstract_en",
+        "acknowledgments", "toc", "chapter", "bibliography"
+    ],
+    "heading_styles": {
+        "1": {"font_size": 16, "bold": true, "all_caps": false},
+        "2": {"font_size": 14, "bold": true, "all_caps": false},
+        "3": {"font_size": 12, "bold": true, "all_caps": false}
+    },
+    "citation_style": "apa",
+    "notes": "1.5 or double spacing accepted. Electronic submission. A4 paper."
+}

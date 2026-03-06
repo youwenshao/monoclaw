@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}BizOwner OS{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-6 w-full">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400">Today's Revenue</p>
+            <p class="text-lg font-bold text-emerald-400">HK${{ "{:,.2f}".format(today_revenue) }}</p>
+        </div>
+    </div>
+
+    <div class="w-px h-10 bg-[#2d3352]"></div>
+
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
+            </svg>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400">Pending Messages</p>
+            <p class="text-lg font-bold {% if pending_messages > 0 %}text-amber-400{% else %}text-gray-300{% endif %}">{{ pending_messages }}</p>
+        </div>
+    </div>
+
+    <div class="w-px h-10 bg-[#2d3352]"></div>
+
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
+            </svg>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400">Cash Position</p>
+            <p class="text-lg font-bold {% if cash_position >= 0 %}text-blue-400{% else %}text-red-400{% endif %}">HK${{ "{:,.2f}".format(cash_position) }}</p>
+        </div>
+    </div>
+
+    <div class="ml-auto flex items-center gap-2">
+        <button onclick="document.getElementById('expense-modal').classList.remove('hidden')"
+                class="px-3 py-1.5 text-xs font-medium bg-[#2d3352] hover:bg-[#3d4562] text-gray-200 rounded-lg transition-colors">
+            + Expense
+        </button>
+        <button onclick="document.getElementById('sale-modal').classList.remove('hidden')"
+                class="px-3 py-1.5 text-xs font-medium bg-[#2d3352] hover:bg-[#3d4562] text-gray-200 rounded-lg transition-colors">
+            + Sale
+        </button>
+        <button onclick="document.getElementById('broadcast-modal').classList.remove('hidden')"
+                class="px-3 py-1.5 text-xs font-medium bg-[#2d3352] hover:bg-[#3d4562] text-gray-200 rounded-lg transition-colors">
+            Broadcast
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'boss-mode' }">
+    <!-- Tab navigation -->
+    <div class="flex items-center gap-1 mb-6 border-b border-[#2d3352] pb-3">
+        {% set tabs = [
+            ("boss-mode", "Boss Mode"),
+            ("revenue", "Revenue"),
+            ("inbox", "Inbox"),
+            ("inventory", "Inventory"),
+            ("crm", "CRM"),
+        ] %}
+        {% for slug, label in tabs %}
+        <button @click="tab = '{{ slug }}'"
+                :class="tab === '{{ slug }}' ? 'bg-[#2d3352] text-[#d4a843]' : 'text-gray-400 hover:text-gray-200 hover:bg-[#242b4a]'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            {{ label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- Boss Mode -->
+    <div x-show="tab === 'boss-mode'"
+         hx-get="/biz-owner-os/partials/boss-mode"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-20">
+            <div class="animate-pulse text-gray-500 text-sm">Loading Boss Mode...</div>
+        </div>
+    </div>
+
+    <!-- Revenue -->
+    <div x-show="tab === 'revenue'" x-cloak
+         hx-get="/biz-owner-os/partials/revenue-dashboard"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-20">
+            <div class="animate-pulse text-gray-500 text-sm">Loading Revenue Dashboard...</div>
+        </div>
+    </div>
+
+    <!-- Inbox -->
+    <div x-show="tab === 'inbox'" x-cloak
+         hx-get="/biz-owner-os/partials/whatsapp-inbox"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-20">
+            <div class="animate-pulse text-gray-500 text-sm">Loading Inbox...</div>
+        </div>
+    </div>
+
+    <!-- Inventory -->
+    <div x-show="tab === 'inventory'" x-cloak
+         hx-get="/biz-owner-os/partials/inventory-alerts"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-20">
+            <div class="animate-pulse text-gray-500 text-sm">Loading Inventory...</div>
+        </div>
+    </div>
+
+    <!-- CRM -->
+    <div x-show="tab === 'crm'" x-cloak
+         hx-get="/biz-owner-os/partials/customer-crm"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center py-20">
+            <div class="animate-pulse text-gray-500 text-sm">Loading CRM...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Sale Modal -->
+<div id="sale-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-semibold text-[#d4a843]">Record Sale</h3>
+            <button onclick="document.getElementById('sale-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form hx-post="/biz-owner-os/sales" hx-swap="none"
+              hx-on::after-request="if(event.detail.successful){document.getElementById('sale-modal').classList.add('hidden');htmx.trigger(document.body,'refreshKPI')}"
+              class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Amount (HKD)</label>
+                <input type="number" name="total_amount" step="0.01" required
+                       class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Payment Method</label>
+                <select name="payment_method" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+                    <option value="cash">Cash</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="octopus">Octopus</option>
+                    <option value="fps">FPS</option>
+                    <option value="alipay">Alipay</option>
+                    <option value="wechat_pay">WeChat Pay</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Customer Phone (optional)</label>
+                <input type="text" name="customer_phone" placeholder="e.g. 91234567"
+                       class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-[#d4a843] text-[#0f1225] font-semibold rounded-lg hover:bg-[#e0b84f] transition-colors text-sm">
+                Record Sale
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Record Expense Modal -->
+<div id="expense-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-semibold text-[#d4a843]">Record Expense</h3>
+            <button onclick="document.getElementById('expense-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form hx-post="/biz-owner-os/expenses" hx-encoding="multipart/form-data" hx-swap="none"
+              hx-on::after-request="if(event.detail.successful){document.getElementById('expense-modal').classList.add('hidden');htmx.trigger(document.body,'refreshKPI')}"
+              class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Description</label>
+                <input type="text" name="description" required
+                       class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Amount (HKD)</label>
+                <input type="number" name="amount" step="0.01" required
+                       class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Category</label>
+                <select name="category" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+                    <option value="auto">Auto-detect</option>
+                    <option value="rent">Rent</option>
+                    <option value="salary">Salary</option>
+                    <option value="inventory">Inventory</option>
+                    <option value="utilities">Utilities</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="equipment">Equipment</option>
+                    <option value="mpf">MPF</option>
+                    <option value="insurance">Insurance</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Payment Method</label>
+                <select name="payment_method" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+                    <option value="cash">Cash</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="fps">FPS</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Receipt Photo (optional)</label>
+                <input type="file" name="receipt" accept="image/*"
+                       class="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#2d3352] file:text-gray-200 file:text-xs hover:file:bg-[#3d4562]">
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-[#d4a843] text-[#0f1225] font-semibold rounded-lg hover:bg-[#e0b84f] transition-colors text-sm">
+                Record Expense
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Broadcast Modal -->
+<div id="broadcast-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-semibold text-[#d4a843]">Broadcast Message</h3>
+            <button onclick="document.getElementById('broadcast-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form hx-post="/biz-owner-os/broadcast" hx-swap="none"
+              hx-on::after-request="if(event.detail.successful){document.getElementById('broadcast-modal').classList.add('hidden')}"
+              class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Message</label>
+                <textarea name="message" rows="4" required
+                          class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none resize-none"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Target Tags (comma-separated, leave empty for all)</label>
+                <input type="text" name="customer_tags" placeholder="e.g. vip, regular"
+                       class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:border-[#d4a843] focus:outline-none">
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-[#d4a843] text-[#0f1225] font-semibold rounded-lg hover:bg-[#e0b84f] transition-colors text-sm">
+                Send Broadcast
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

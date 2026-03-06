@@ -1,0 +1,96 @@
+<div class="space-y-6">
+    <!-- Segment summary -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% set segment_config = [
+            ("vip", "VIP", "text-amber-400", "bg-amber-500/10"),
+            ("regular", "Regular", "text-blue-400", "bg-blue-500/10"),
+            ("occasional", "Occasional", "text-gray-300", "bg-gray-500/10"),
+            ("inactive", "Inactive", "text-gray-500", "bg-gray-500/10"),
+        ] %}
+        {% for key, label, text_color, bg_color in segment_config %}
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full {{ text_color.replace('text-', 'bg-') }}"></div>
+                <p class="text-xs text-gray-500 uppercase tracking-wider">{{ label }}</p>
+            </div>
+            <p class="text-2xl font-bold {{ text_color }}">{{ segments.counts.get(key, 0) }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Search -->
+    <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-4">
+        <input type="text" placeholder="Search by name or phone..."
+               hx-get="/biz-owner-os/partials/customer-crm"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#customer-list"
+               hx-swap="innerHTML"
+               name="search"
+               class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:border-[#d4a843] focus:outline-none">
+    </div>
+
+    <!-- Customer cards -->
+    <div id="customer-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% if customers %}
+        {% for customer in customers %}
+        <div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-5 hover:border-[#3d4562] transition-colors">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <p class="text-sm font-medium text-gray-200">{{ customer.name or customer.name_tc or 'Unknown' }}</p>
+                    {% if customer.name_tc and customer.name %}
+                    <p class="text-xs text-gray-500">{{ customer.name_tc }}</p>
+                    {% endif %}
+                    {% if customer.phone %}
+                    <p class="text-xs text-gray-500 mt-0.5">{{ customer.phone }}</p>
+                    {% endif %}
+                </div>
+                {% if customer.whatsapp_enabled %}
+                <div class="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center" title="WhatsApp enabled">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    </svg>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-3">
+                <div>
+                    <p class="text-xs text-gray-600">Spent</p>
+                    <p class="text-sm font-medium text-[#d4a843]">HK${{ "{:,.0f}".format(customer.total_spend or 0) }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600">Visits</p>
+                    <p class="text-sm font-medium text-gray-300">{{ customer.visit_count or 0 }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600">Last Visit</p>
+                    <p class="text-sm text-gray-400">{{ customer.last_visit or '—' }}</p>
+                </div>
+            </div>
+
+            {% if customer.tags %}
+            <div class="flex flex-wrap gap-1 pt-3 border-t border-[#2d3352]">
+                {% for tag in (customer.tags or '').split(',') %}
+                {% if tag.strip() %}
+                <span class="px-1.5 py-0.5 text-xs bg-[#2d3352] text-gray-400 rounded">{{ tag.strip() }}</span>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if customer.notes %}
+            <p class="text-xs text-gray-600 mt-2 pt-2 border-t border-[#2d3352] line-clamp-2">{{ customer.notes }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="col-span-full bg-[#1a1f36] border border-[#2d3352] rounded-xl p-12 text-center">
+            <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
+            </svg>
+            <p class="text-sm text-gray-500">No customers yet</p>
+            <p class="text-xs text-gray-600 mt-1">Customers are added automatically from WhatsApp messages and POS sales</p>
+        </div>
+        {% endif %}
+    </div>
+</div>

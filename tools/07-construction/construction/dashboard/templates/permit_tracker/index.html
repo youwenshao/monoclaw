@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}PermitTracker{% endblock %}
+
+{% set active_tab = "permit-tracker" %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-gold-400">{{ total_submissions }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Total<br>Submissions</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-emerald-400">{{ active_count }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Active<br>Permits</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <span class="text-2xl font-bold text-red-400">{{ overdue_count }}</span>
+    <div class="text-xs text-gray-400 leading-tight">Overdue<br>Submissions</div>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg">
+    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+    </svg>
+    <div class="text-xs text-gray-400 leading-tight">Recent<br><span class="text-amber-400 font-semibold">{{ recent_alerts|length }} Alert{{ 's' if recent_alerts|length != 1 else '' }}</span></div>
+</div>
+<div class="ml-auto">
+    <button hx-post="/permit-tracker/refresh-status" hx-swap="none"
+            class="px-4 py-2 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+        Refresh BD Status
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'timeline' }">
+    <!-- Sub-tabs -->
+    <div class="flex gap-1 mb-6 border-b border-navy-700 pb-px">
+        <button @click="tab='timeline'"
+                :class="tab==='timeline' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Timeline
+        </button>
+        <button @click="tab='submissions'"
+                :class="tab==='submissions' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Submissions
+        </button>
+        <button @click="tab='alerts'"
+                :class="tab==='alerts' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Alerts
+        </button>
+        <button @click="tab='documents'"
+                :class="tab==='documents' ? 'text-gold-400 border-gold-400' : 'text-gray-400 border-transparent hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+            Documents
+        </button>
+    </div>
+
+    <!-- ── Timeline sub-tab ────────────────────────────────────── -->
+    <div x-show="tab==='timeline'" x-cloak>
+        <div class="flex items-center gap-4 mb-4">
+            <label class="text-xs text-gray-400">Filter by project:</label>
+            <select id="project-filter"
+                    class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-gold-500 focus:border-gold-500"
+                    @change="renderGantt($event.target.value)">
+                <option value="all">All Projects</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="gantt-chart" class="bg-navy-800 border border-navy-700 rounded-lg p-4" style="min-height:400px;">
+            <p class="text-sm text-gray-500 text-center py-12">Loading Gantt timeline…</p>
+        </div>
+    </div>
+
+    <!-- ── Submissions sub-tab ─────────────────────────────────── -->
+    <div x-show="tab==='submissions'" x-cloak>
+        <div id="submissions-table"
+             hx-get="/permit-tracker/submissions/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading submissions…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Alerts sub-tab ──────────────────────────────────────── -->
+    <div x-show="tab==='alerts'" x-cloak>
+        <div id="alert-history"
+             hx-get="/permit-tracker/alerts/partial"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-12">
+                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-500">Loading alerts…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Documents sub-tab ───────────────────────────────────── -->
+    <div x-show="tab==='documents'" x-cloak>
+        <div class="mb-4">
+            <label class="text-xs text-gray-400">Select submission:</label>
+            <select id="doc-submission-filter"
+                    hx-get="/permit-tracker/documents/partial"
+                    hx-target="#document-archive"
+                    hx-trigger="change"
+                    hx-include="this"
+                    name="submission_id"
+                    class="ml-2 bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                <option value="">— Choose —</option>
+                {% for s in submissions %}
+                <option value="{{ s.id }}">{{ s.bd_reference or s.submission_type }} — {{ s.project_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="document-archive">
+            <p class="text-sm text-gray-500 text-center py-12">Select a submission to view its documents.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const STATUS_COLORS = {
+        'Received':             '#3b82f6',
+        'Under Examination':    '#f59e0b',
+        'Amendments Required':  '#ef4444',
+        'Approved':             '#22c55e',
+        'Rejected':             '#ef4444',
+        'Withdrawn':            '#6b7280'
+    };
+
+    const allSubmissions = {{ submissions | tojson }};
+
+    function buildTraces(projectFilter) {
+        let data = allSubmissions;
+        if (projectFilter && projectFilter !== 'all') {
+            data = data.filter(s => String(s.project_id) === String(projectFilter));
+        }
+        if (!data.length) return [];
+
+        const tasks = data.map(s => s.project_name + ' — ' + (s.bd_reference || s.submission_type));
+        const starts = data.map(s => s.submitted_date);
+        const ends = data.map(s => s.expected_completion || s.submitted_date);
+        const colors = data.map(s => {
+            if (s.is_overdue) return STATUS_COLORS['Amendments Required'];
+            return STATUS_COLORS[s.current_status] || '#6b7280';
+        });
+        const hoverText = data.map(s =>
+            s.bd_reference + '<br>' + s.current_status + '<br>Days: ' + (s.days_elapsed || 0)
+        );
+
+        return [{
+            type: 'bar',
+            orientation: 'h',
+            y: tasks,
+            x: ends.map((e, i) => {
+                const ms = new Date(e) - new Date(starts[i]);
+                return Math.max(ms / 86400000, 1);
+            }),
+            base: starts,
+            marker: { color: colors },
+            text: hoverText,
+            hoverinfo: 'text',
+            textposition: 'none'
+        }];
+    }
+
+    const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#d1d5db', size: 11 },
+        xaxis: { type: 'date', gridcolor: '#1e293b', tickformat: '%d %b %Y' },
+        yaxis: { autorange: 'reversed', gridcolor: '#1e293b' },
+        margin: { l: 240, r: 20, t: 20, b: 40 },
+        height: Math.max(400, allSubmissions.length * 36),
+        bargap: 0.3
+    };
+
+    window.renderGantt = function (projectFilter) {
+        const traces = buildTraces(projectFilter);
+        if (!traces.length) {
+            document.getElementById('gantt-chart').innerHTML =
+                '<p class="text-sm text-gray-500 text-center py-12">No submissions to display.</p>';
+            return;
+        }
+        Plotly.newPlot('gantt-chart', traces, layout, { responsive: true, displayModeBar: false });
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (allSubmissions.length) renderGantt('all');
+    });
+})();
+</script>
+{% endblock %}

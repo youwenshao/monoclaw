@@ -1,0 +1,244 @@
+<div x-data="examWizard()" class="space-y-6">
+    <!-- Step indicators -->
+    <div class="flex items-center gap-4 mb-6">
+        <template x-for="(label, idx) in ['Source', 'Configure', 'Review']" :key="idx">
+            <div class="flex items-center gap-2">
+                <div :class="step > idx ? 'bg-gold-500 text-navy-900' : step === idx ? 'bg-gold-500/20 text-gold-400 ring-2 ring-gold-500' : 'bg-navy-700 text-gray-500'"
+                     class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                     x-text="idx + 1"></div>
+                <span class="text-sm" :class="step === idx ? 'text-gold-400 font-medium' : 'text-gray-400'" x-text="label"></span>
+                <svg x-show="idx < 2" class="w-4 h-4 text-navy-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+            </div>
+        </template>
+    </div>
+
+    <!-- Step 1: Source Selection -->
+    <div x-show="step === 0" class="bg-navy-800 rounded-lg p-6 space-y-4">
+        <h3 class="text-sm font-semibold text-gold-400">Step 1: Select Source</h3>
+
+        <div>
+            <label class="text-xs text-gray-400 block mb-1">Course</label>
+            <select x-model="form.course_id" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                <option value="">— Select course —</option>
+                {% for c in courses %}
+                <option value="{{ c.id }}">{{ c.course_code }} — {{ c.course_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 block mb-2">Generation Source</label>
+            <div class="grid grid-cols-2 gap-2">
+                <template x-for="src in [{v:'course_materials',l:'Course Materials'},{v:'past_paper',l:'Past Paper'},{v:'custom',l:'Custom Topic'},{v:'mixed',l:'Mixed'}]" :key="src.v">
+                    <button @click="form.generation_source = src.v"
+                            :class="form.generation_source === src.v ? 'bg-gold-500 text-navy-900 font-semibold' : 'bg-navy-700 text-gray-300 hover:bg-navy-600'"
+                            class="px-3 py-2 text-xs rounded-lg transition-colors text-center"
+                            x-text="src.l"></button>
+                </template>
+            </div>
+        </div>
+
+        <div x-show="form.generation_source === 'past_paper'" class="space-y-2">
+            <label class="text-xs text-gray-400 block">Past Paper</label>
+            {% if past_papers %}
+            <select x-model="form.past_paper_id" class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100">
+                <option value="">— Select paper —</option>
+                {% for pp in past_papers %}
+                <option value="{{ pp.id }}">{{ pp.filename }} ({{ pp.uploaded_at[:10] if pp.uploaded_at else 'N/A' }})</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <p class="text-xs text-gray-500">No past papers uploaded. Use the upload button below.</p>
+            {% endif %}
+            <form hx-post="/exam-generator/past-papers/upload" hx-encoding="multipart/form-data" hx-swap="none"
+                  class="flex gap-2 items-center">
+                <input type="file" name="file" accept=".pdf" class="text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-navy-700 file:text-gray-300 file:text-xs">
+                <button type="submit" class="px-3 py-1.5 bg-navy-700 text-gray-300 text-xs rounded-lg hover:bg-navy-600">Upload</button>
+            </form>
+        </div>
+
+        <div class="flex justify-end">
+            <button @click="step = 1" :disabled="!form.generation_source"
+                    class="px-4 py-2 bg-gold-500 text-navy-900 text-sm font-semibold rounded-lg hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                Next →
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 2: Configuration -->
+    <div x-show="step === 1" class="bg-navy-800 rounded-lg p-6 space-y-4">
+        <h3 class="text-sm font-semibold text-gold-400">Step 2: Configure Exam</h3>
+
+        <div>
+            <label class="text-xs text-gray-400 block mb-1">Exam Title</label>
+            <input x-model="form.title" type="text" placeholder="e.g. COMP3001 Midterm Practice"
+                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="text-xs text-gray-400 block mb-1">Questions: <span class="text-gold-400 font-medium" x-text="form.question_count"></span></label>
+                <input x-model.number="form.question_count" type="range" min="5" max="50" step="5"
+                       class="w-full accent-gold-500">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 block mb-1">Time Limit: <span class="text-gold-400 font-medium" x-text="form.time_limit_minutes + ' min'"></span></label>
+                <input x-model.number="form.time_limit_minutes" type="range" min="15" max="180" step="15"
+                       class="w-full accent-gold-500">
+            </div>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 block mb-2">Question Types</label>
+            <div class="flex flex-wrap gap-2">
+                <template x-for="qt in [{v:'mcq',l:'MCQ'},{v:'true_false',l:'True/False'},{v:'short_answer',l:'Short Answer'},{v:'long_answer',l:'Essay'},{v:'calculation',l:'Calculation'},{v:'multi_select',l:'Multi-Select'}]" :key="qt.v">
+                    <button @click="toggleType(qt.v)"
+                            :class="form.question_types.includes(qt.v) ? 'bg-gold-500 text-navy-900' : 'bg-navy-700 text-gray-300 hover:bg-navy-600'"
+                            class="px-3 py-1.5 text-xs rounded-lg transition-colors"
+                            x-text="qt.l"></button>
+                </template>
+            </div>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 block mb-2">Difficulty Distribution</label>
+            <div class="space-y-2">
+                <template x-for="d in ['easy', 'medium', 'hard']" :key="d">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-300 w-16 capitalize" x-text="d"></span>
+                        <input x-model.number="form.difficulty_distribution[d]" type="range" min="0" max="1" step="0.1"
+                               class="flex-1 accent-gold-500">
+                        <span class="text-xs text-gold-400 w-10 text-right" x-text="Math.round(form.difficulty_distribution[d] * 100) + '%'"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="flex justify-between">
+            <button @click="step = 0" class="px-4 py-2 bg-navy-700 text-gray-300 text-sm rounded-lg hover:bg-navy-600 transition-colors">← Back</button>
+            <button @click="step = 2" :disabled="!form.title"
+                    class="px-4 py-2 bg-gold-500 text-navy-900 text-sm font-semibold rounded-lg hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                Next →
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 3: Review & Generate -->
+    <div x-show="step === 2" class="bg-navy-800 rounded-lg p-6 space-y-4">
+        <h3 class="text-sm font-semibold text-gold-400">Step 3: Review & Generate</h3>
+
+        <div class="grid grid-cols-2 gap-3 text-sm">
+            <div class="bg-navy-900 rounded-lg p-3">
+                <p class="text-xs text-gray-400">Title</p>
+                <p class="text-white font-medium" x-text="form.title"></p>
+            </div>
+            <div class="bg-navy-900 rounded-lg p-3">
+                <p class="text-xs text-gray-400">Source</p>
+                <p class="text-white capitalize" x-text="form.generation_source.replace('_', ' ')"></p>
+            </div>
+            <div class="bg-navy-900 rounded-lg p-3">
+                <p class="text-xs text-gray-400">Questions</p>
+                <p class="text-white" x-text="form.question_count"></p>
+            </div>
+            <div class="bg-navy-900 rounded-lg p-3">
+                <p class="text-xs text-gray-400">Time Limit</p>
+                <p class="text-white" x-text="form.time_limit_minutes + ' minutes'"></p>
+            </div>
+            <div class="bg-navy-900 rounded-lg p-3 col-span-2">
+                <p class="text-xs text-gray-400">Types</p>
+                <p class="text-white" x-text="form.question_types.join(', ')"></p>
+            </div>
+        </div>
+
+        <div class="flex justify-between">
+            <button @click="step = 1" class="px-4 py-2 bg-navy-700 text-gray-300 text-sm rounded-lg hover:bg-navy-600 transition-colors">← Back</button>
+            <button @click="generateExam()" :disabled="generating"
+                    class="px-6 py-2.5 bg-gold-500 text-navy-900 text-sm font-semibold rounded-lg hover:bg-gold-400 disabled:opacity-40 transition-colors">
+                <span x-show="!generating">Generate Exam</span>
+                <span x-show="generating" class="flex items-center gap-2">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Generating…
+                </span>
+            </button>
+        </div>
+
+        <!-- Result banner -->
+        <div x-show="genResult" class="rounded-lg p-4" :class="genResult?.status === 'ready' ? 'bg-emerald-900/30 border border-emerald-700' : 'bg-red-900/30 border border-red-700'">
+            <template x-if="genResult?.status === 'ready'">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm text-emerald-400 font-medium">Exam generated successfully!</p>
+                        <p class="text-xs text-emerald-300/70" x-text="genResult.questions_generated + ' questions created'"></p>
+                    </div>
+                </div>
+            </template>
+            <template x-if="genResult && genResult.status !== 'ready'">
+                <p class="text-sm text-red-400">Generation failed. Please try again.</p>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function examWizard() {
+    return {
+        step: 0,
+        generating: false,
+        genResult: null,
+        form: {
+            course_id: '',
+            title: '',
+            generation_source: 'course_materials',
+            question_count: 10,
+            time_limit_minutes: 60,
+            question_types: ['mcq', 'short_answer'],
+            difficulty_distribution: { easy: 0.3, medium: 0.5, hard: 0.2 },
+            past_paper_id: '',
+        },
+
+        toggleType(t) {
+            const idx = this.form.question_types.indexOf(t);
+            if (idx >= 0) { this.form.question_types.splice(idx, 1); }
+            else { this.form.question_types.push(t); }
+        },
+
+        async generateExam() {
+            this.generating = true;
+            this.genResult = null;
+            try {
+                const createResp = await fetch('/exam-generator/exams', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course_id: parseInt(this.form.course_id) || 0,
+                        title: this.form.title,
+                        generation_source: this.form.generation_source,
+                        question_count: this.form.question_count,
+                        time_limit_minutes: this.form.time_limit_minutes,
+                        scope_config: {
+                            question_types: this.form.question_types,
+                            difficulty_distribution: this.form.difficulty_distribution,
+                        },
+                    }),
+                });
+                const created = await createResp.json();
+
+                const genResp = await fetch(`/exam-generator/exams/${created.exam_id}/generate`, { method: 'POST' });
+                this.genResult = await genResp.json();
+            } catch (e) {
+                this.genResult = { status: 'error', message: e.message };
+            } finally {
+                this.generating = false;
+            }
+        }
+    };
+}
+</script>

@@ -1,0 +1,92 @@
+tool_name: student
+version: "1.0.0"
+port: 8507
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/student"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Student profile (set during first-run wizard)
+  student_name: ""
+  university: ""
+  programme: ""
+  year_of_study: ""
+  expected_graduation: ""
+
+  # StudyBuddy settings
+  chroma_collection_prefix: "sb_"
+  chunk_size_tokens: 500
+  qa_top_k: 8
+  embedding_model: "paraphrase-multilingual-MiniLM-L12-v2"
+
+  # ExamGenerator settings
+  default_question_count: 20
+  default_time_limit_minutes: 60
+  auto_save_interval_seconds: 30
+  grading_scale:
+    "A+": 4.3
+    "A": 4.0
+    "A-": 3.7
+    "B+": 3.3
+    "B": 3.0
+    "B-": 2.7
+    "C+": 2.3
+    "C": 2.0
+    "C-": 1.7
+    "D": 1.0
+    "F": 0.0
+
+  # InterviewPrep settings
+  code_execution_timeout_seconds: 5
+  code_memory_limit_mb: 256
+  mock_interview_duration_minutes: 45
+  mock_interview_problems: 2
+  supported_languages: ["python", "javascript"]
+
+  # JobTracker settings
+  scraping_delay_seconds: 3
+  interview_reminder_hours_before: 24
+  kanban_stages: ["saved", "applied", "phone_screen", "assessment", "interview", "final_round", "offer", "accepted", "rejected", "withdrawn"]
+
+  # ThesisFormatter settings
+  supported_universities: ["HKU", "CUHK", "HKUST", "PolyU", "CityU", "HKBU", "LingU", "EdUHK"]
+  default_citation_style: "apa"
+
+  # HK public holidays 2026
+  public_holidays:
+    - "2026-01-01"
+    - "2026-01-29"
+    - "2026-01-30"
+    - "2026-01-31"
+    - "2026-04-03"
+    - "2026-04-04"
+    - "2026-04-06"
+    - "2026-05-01"
+    - "2026-05-24"
+    - "2026-06-19"
+    - "2026-07-01"
+    - "2026-09-26"
+    - "2026-10-01"
+    - "2026-10-19"
+    - "2026-10-20"
+    - "2026-12-25"
+    - "2026-12-26"

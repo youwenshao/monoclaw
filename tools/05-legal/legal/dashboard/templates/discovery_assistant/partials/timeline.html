@@ -1,0 +1,75 @@
+{% if documents %}
+<div class="card p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-semibold text-gold-400">Document Timeline</h3>
+        <span class="text-xs text-gray-500">{{ documents|length }} document{{ 's' if documents|length != 1 }}</span>
+    </div>
+
+    <div class="relative pl-8">
+        {% set ns = namespace(last_date='') %}
+        {% for doc in documents|sort(attribute='date_created') %}
+        {% set doc_date = doc.date_created[:10] if doc.date_created else 'Unknown' %}
+
+        {% if doc_date != ns.last_date %}
+        {% set ns.last_date = doc_date %}
+        <!-- Date Marker -->
+        <div class="relative mb-4 -ml-8">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-navy-700 text-sm font-medium text-gold-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+                </svg>
+                {{ doc_date }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Document Card -->
+        <div class="relative pb-6 {% if not loop.last %}{% endif %}">
+            {% if not loop.last %}
+            <div class="absolute left-[-20px] top-3 bottom-0 w-0.5 bg-navy-600"></div>
+            {% endif %}
+
+            <div class="absolute left-[-24px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-navy-800
+                {% if doc.privilege_status == 'privileged' %}bg-red-400
+                {% elif doc.privilege_status == 'needs_review' %}bg-amber-400
+                {% else %}bg-navy-500{% endif %}">
+            </div>
+
+            <div class="ml-2 p-3 rounded-lg bg-navy-800/50 hover:bg-navy-800 transition-colors cursor-pointer"
+                 hx-get="/discovery-assistant/document/{{ doc.id }}"
+                 hx-target="#document-preview-panel"
+                 hx-swap="innerHTML">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-200 truncate">
+                            {{ doc.subject or doc.source_file or 'Untitled' }}
+                        </p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            {{ doc.author or 'Unknown' }}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-gray-400">
+                            {{ doc.doc_type|replace('_', ' ')|title }}
+                        </span>
+                        {% if doc.privilege_status %}
+                        <span class="text-xs px-1.5 py-0.5 rounded-full privilege-{{ doc.privilege_status }}">
+                            {{ doc.privilege_status|replace('_', ' ')|title }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card p-12 text-center">
+    <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-sm text-gray-500">No documents to display on timeline</p>
+    <p class="text-xs text-gray-600 mt-1">Upload documents to build the chronology</p>
+</div>
+{% endif %}

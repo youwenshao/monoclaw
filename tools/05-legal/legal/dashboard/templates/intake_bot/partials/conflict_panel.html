@@ -1,0 +1,75 @@
+{% if matter %}
+<div class="card p-4 mb-4">
+    <h4 class="text-sm font-semibold text-gray-300 mb-1">Conflict Check — {{ matter.title or matter.reference }}</h4>
+    <p class="text-xs text-gray-500">{{ matter.client_name }}</p>
+</div>
+{% endif %}
+
+{% if conflicts %}
+<div class="space-y-3">
+    {% for conflict in conflicts %}
+    <div class="card p-4">
+        <div class="flex items-start gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-sm font-medium text-gray-200">{{ conflict.checked_against }}</span>
+                    <!-- Match Type Badge -->
+                    <span class="text-xs px-2 py-0.5 rounded-full
+                        {% if conflict.match_type == 'exact' %}bg-red-900/50 text-red-300
+                        {% elif conflict.match_type == 'fuzzy' %}bg-amber-900/50 text-amber-300
+                        {% elif conflict.match_type == 'phonetic' %}bg-blue-900/50 text-blue-300
+                        {% else %}bg-navy-700 text-gray-400{% endif %}">
+                        {{ conflict.match_type|title }}
+                    </span>
+                    <!-- Result Badge -->
+                    <span class="text-xs px-2 py-0.5 rounded-full conflict-{{ conflict.result }}">
+                        {{ conflict.result|replace('_', ' ')|title }}
+                    </span>
+                </div>
+
+                <!-- Match Score Bar -->
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 bg-navy-700 rounded-full h-2">
+                        <div class="h-2 rounded-full transition-all
+                            {% if conflict.match_score >= 0.8 %}bg-red-400
+                            {% elif conflict.match_score >= 0.5 %}bg-amber-400
+                            {% else %}bg-green-400{% endif %}"
+                             style="width: {{ (conflict.match_score * 100)|round|int }}%"></div>
+                    </div>
+                    <span class="text-sm font-mono font-medium w-12 text-right
+                        {% if conflict.match_score >= 0.8 %}text-red-400
+                        {% elif conflict.match_score >= 0.5 %}text-amber-400
+                        {% else %}text-green-400{% endif %}">
+                        {{ (conflict.match_score * 100)|round|int }}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col gap-1.5 shrink-0">
+                <button class="text-xs px-3 py-1.5 rounded-lg bg-green-900/40 text-green-300 hover:bg-green-900/60 transition-colors"
+                        hx-post="/intake-bot/conflict-resolve/{{ conflict.id }}?action=clear"
+                        hx-target="#conflict-section"
+                        hx-swap="innerHTML">
+                    Clear
+                </button>
+                <button class="text-xs px-3 py-1.5 rounded-lg bg-red-900/40 text-red-300 hover:bg-red-900/60 transition-colors"
+                        hx-post="/intake-bot/conflict-resolve/{{ conflict.id }}?action=flag"
+                        hx-target="#conflict-section"
+                        hx-swap="innerHTML">
+                    Flag Conflict
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card p-8 text-center">
+    <svg class="w-10 h-10 mx-auto text-green-500/50 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-sm text-green-400 font-medium">No Conflicts Found</p>
+    <p class="text-xs text-gray-500 mt-1">The conflict check completed with no matches</p>
+</div>
+{% endif %}

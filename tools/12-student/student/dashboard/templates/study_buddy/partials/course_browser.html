@@ -1,0 +1,30 @@
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for course in courses %}
+    <div class="card p-4 cursor-pointer hover:border-gold-500/50 transition-colors"
+         @click="selectCourse({{ course.id }}, '{{ course.course_code }} — {{ course.course_name }}')">
+        <div class="flex items-start justify-between mb-2">
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-navy-700 text-gold-400">{{ course.course_code }}</span>
+            <span class="text-xs text-gray-500">{{ course.semester or '' }}</span>
+        </div>
+        <h4 class="text-sm font-semibold text-gray-200 mb-1">{{ course.course_name }}</h4>
+        {% if course.instructor %}
+        <p class="text-xs text-gray-400 mb-2">{{ course.instructor }}</p>
+        {% endif %}
+        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-navy-700">
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+            </svg>
+            <span class="text-xs text-gray-400">{{ course.doc_count|default(0) }} document{{ 's' if course.doc_count != 1 else '' }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not courses %}
+<div class="text-center py-12">
+    <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+    </svg>
+    <p class="text-gray-500 text-sm">No courses yet. Add your first course to get started.</p>
+</div>
+{% endif %}

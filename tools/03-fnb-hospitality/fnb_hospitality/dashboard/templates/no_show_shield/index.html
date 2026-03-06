@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}NoShowShield{% endblock %}
+
+{% block status_cards %}
+<div class="grid grid-cols-4 gap-4 w-full">
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Pending Confirmations</p>
+        <p class="text-2xl font-bold text-white mt-1">{{ stats.pending | default(0) }}</p>
+        <p class="text-xs text-[#d4a843] mt-1">{{ stats.pending_pct | default('0%') }} of today</p>
+    </div>
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Confirmed Today</p>
+        <p class="text-2xl font-bold text-white mt-1">{{ stats.confirmed | default(0) }}</p>
+        <p class="text-xs text-emerald-400 mt-1">{{ stats.confirm_rate | default('0%') }} rate</p>
+    </div>
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">No-Show Rate</p>
+        <p class="text-2xl font-bold text-white mt-1">{{ stats.no_show_rate | default('0%') }}</p>
+        <p class="text-xs text-{{ 'emerald' if stats.no_show_trend == 'down' else 'red' }}-400 mt-1">{{ stats.no_show_trend_label | default('—') }}</p>
+    </div>
+    <div class="bg-[#242b4a] rounded-xl p-4 border border-[#2d3352]">
+        <p class="text-xs text-gray-400 uppercase tracking-wider">Waitlist Size</p>
+        <p class="text-2xl font-bold text-white mt-1">{{ stats.waitlist_size | default(0) }}</p>
+        <p class="text-xs text-gray-400 mt-1">{{ stats.waitlist_fill | default('0%') }} fill potential</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'pipeline' }">
+    <!-- Sub-tabs -->
+    <div class="flex items-center gap-1 mb-6 bg-[#1a1f36] rounded-lg p-1 w-fit">
+        <button @click="tab = 'pipeline'" :class="tab === 'pipeline' ? 'bg-[#242b4a] text-[#d4a843]' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">Pipeline</button>
+        <button @click="tab = 'reliability'" :class="tab === 'reliability' ? 'bg-[#242b4a] text-[#d4a843]' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">Guest Reliability</button>
+        <button @click="tab = 'waitlist'" :class="tab === 'waitlist' ? 'bg-[#242b4a] text-[#d4a843]' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">Waitlist</button>
+        <button @click="tab = 'predictions'" :class="tab === 'predictions' ? 'bg-[#242b4a] text-[#d4a843]' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">Predictions</button>
+        <button @click="tab = 'blacklist'" :class="tab === 'blacklist' ? 'bg-[#242b4a] text-[#d4a843]' : 'text-gray-400 hover:text-white'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors">Blacklist</button>
+    </div>
+
+    <!-- Pipeline Tab -->
+    <div x-show="tab === 'pipeline'">
+        <div id="pipeline-container"
+             hx-get="/no-show-shield/partials/pipeline"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-16 text-gray-500 text-sm">Loading pipeline...</div>
+        </div>
+    </div>
+
+    <!-- Guest Reliability Tab -->
+    <div x-show="tab === 'reliability'">
+        <div class="mb-4 flex items-center gap-3">
+            <input type="text" placeholder="Search guests..."
+                   class="bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm w-72 placeholder-gray-500 focus:border-[#d4a843] focus:outline-none"
+                   hx-get="/no-show-shield/partials/reliability-cards"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-target="#reliability-grid"
+                   name="search">
+            <select class="bg-[#242b4a] border border-[#3d4466] rounded-lg px-3 py-2 text-sm"
+                    hx-get="/no-show-shield/partials/reliability-cards"
+                    hx-trigger="change"
+                    hx-target="#reliability-grid"
+                    name="score_filter">
+                <option value="all">All Scores</option>
+                <option value="A">A — Excellent</option>
+                <option value="B">B — Good</option>
+                <option value="C">C — Fair</option>
+                <option value="D">D — Poor</option>
+            </select>
+        </div>
+        <div id="reliability-grid"
+             hx-get="/no-show-shield/partials/reliability-cards"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-16 text-gray-500 text-sm">Loading guest data...</div>
+        </div>
+    </div>
+
+    <!-- Waitlist Tab -->
+    <div x-show="tab === 'waitlist'">
+        <div id="waitlist-container"
+             hx-get="/no-show-shield/partials/waitlist"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center py-16 text-gray-500 text-sm">Loading waitlist...</div>
+        </div>
+    </div>
+
+    <!-- Predictions Tab -->
+    <div x-show="tab === 'predictions'">
+        <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+            <div class="p-4 border-b border-[#2d3352]">
+                <h3 class="text-sm font-semibold text-[#e0be6a]">Today's No-Show Risk Predictions</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Bookings ranked by predicted no-show probability</p>
+            </div>
+            <div class="divide-y divide-[#2d3352]"
+                 hx-get="/no-show-shield/partials/predictions"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="p-8 text-center text-gray-500 text-sm">Calculating risk scores...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blacklist Tab -->
+    <div x-show="tab === 'blacklist'">
+        <div class="bg-[#1a1f36] rounded-xl border border-[#2d3352]">
+            <div class="p-4 border-b border-[#2d3352] flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-[#e0be6a]">Blacklisted Guests</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Guests flagged for repeated no-shows</p>
+                </div>
+            </div>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-[#2d3352]">
+                        <th class="px-4 py-3">Guest</th>
+                        <th class="px-4 py-3">Phone</th>
+                        <th class="px-4 py-3">No-Shows</th>
+                        <th class="px-4 py-3">Last No-Show</th>
+                        <th class="px-4 py-3">Added</th>
+                        <th class="px-4 py-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody hx-get="/no-show-shield/partials/blacklist"
+                       hx-trigger="load"
+                       hx-swap="innerHTML">
+                    <tr><td colspan="6" class="text-center py-8 text-gray-500">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

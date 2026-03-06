@@ -1,0 +1,16 @@
+Dear {client_name},
+
+Your consultation appointment has been confirmed.
+
+Case Reference: {case_ref}
+Date & Time: {appointment_datetime}
+Duration: {duration_minutes} minutes
+Type: {appointment_type}
+
+Please arrive 5 minutes early with all relevant documents.
+
+Office hours: Mon-Fri 9am-6pm, Sat 9am-1pm HKT
+
+To reschedule, please reply to this message or contact the office at least 24 hours in advance.
+
+— Your Immigration Consultant Team

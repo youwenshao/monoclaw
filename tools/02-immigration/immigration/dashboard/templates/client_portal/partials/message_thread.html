@@ -1,0 +1,69 @@
+{% if messages %}
+<div class="space-y-3 p-4" style="max-height: 500px; overflow-y: auto;">
+    {% for msg in messages %}
+    {% set is_client = msg.sender == 'client' %}
+    <div class="max-w-[75%] {{ 'mr-auto' if is_client else 'ml-auto' }}">
+        <div class="rounded-xl px-4 py-2.5
+            {% if is_client %}bg-navy-800
+            {% elif msg.sender == 'bot' %}bg-indigo-900/40 border border-indigo-500/20
+            {% else %}bg-gold-500/20 border border-gold-500/30{% endif %}">
+            <p class="text-sm text-gray-200">{{ msg.message_text }}</p>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs text-gray-500">{{ msg.sender }}</span>
+                {% if msg.timestamp %}
+                <span class="text-xs text-gray-600">·</span>
+                <span class="text-xs text-gray-500">{{ msg.timestamp[:16].replace('T', ' ') }}</span>
+                {% endif %}
+                {% if msg.channel %}
+                <span class="text-xs text-gray-600">·</span>
+                <span class="text-xs text-gray-500">{{ msg.channel }}</span>
+                {% endif %}
+                {% if msg.intent %}
+                <span class="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-gray-400">{{ msg.intent }}</span>
+                {% endif %}
+                {% if msg.escalated %}
+                <span class="text-xs px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Escalated</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="flex items-center justify-center py-16">
+    <div class="text-center">
+        <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
+        </svg>
+        <p class="text-gray-500 text-sm">No messages yet</p>
+        <p class="text-gray-600 text-xs mt-1">Messages will appear here when the client sends a message</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Message input -->
+{% if case_id %}
+<div class="border-t border-navy-700 p-3">
+    <form hx-post="/client-portal/messages/send"
+          hx-target="#message-thread"
+          hx-swap="innerHTML"
+          hx-ext="json-enc"
+          class="flex gap-2">
+        <input type="hidden" name="case_id" value="{{ case_id }}">
+        <input type="text" name="message_text" placeholder="Type a reply..."
+               required autocomplete="off"
+               class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+        <select name="channel" class="bg-navy-800 border border-navy-600 rounded-lg px-2 py-2 text-xs">
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+            <option value="portal">Portal</option>
+        </select>
+        <button type="submit" class="btn btn-primary text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+            </svg>
+            Send
+        </button>
+    </form>
+</div>
+{% endif %}

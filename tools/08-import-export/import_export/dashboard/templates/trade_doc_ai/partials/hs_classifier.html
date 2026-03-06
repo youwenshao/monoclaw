@@ -1,0 +1,106 @@
+<div x-data="{ classifying: false, results: [], description: '' }">
+    <div class="max-w-3xl">
+        <h2 class="text-lg font-semibold text-gray-100 mb-1">HS Code Classifier</h2>
+        <p class="text-sm text-gray-400 mb-6">Enter a product description to find the matching Hong Kong HS tariff code.</p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Product Description</label>
+                <div class="flex gap-3">
+                    <input type="text"
+                           x-model="description"
+                           @keydown.enter="if(description.trim()) { classifying=true; $refs.classifyBtn.click() }"
+                           placeholder="e.g. Cotton t-shirts, knitted, men's, assorted sizes..."
+                           class="flex-1 bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-4 py-2.5 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                    <button x-ref="classifyBtn"
+                            @click="classifying = true"
+                            hx-post="/trade-doc-ai/api/classify"
+                            hx-ext="json-enc"
+                            :hx-vals="JSON.stringify({description: description})"
+                            hx-target="#classify-results"
+                            hx-swap="innerHTML"
+                            hx-indicator="#classify-spinner"
+                            hx-on::after-request="classifying = false"
+                            :disabled="!description.trim()"
+                            class="px-6 py-2.5 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-900 text-sm font-semibold rounded-lg transition-colors">
+                        Classify
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spinner -->
+            <div id="classify-spinner" class="htmx-indicator flex items-center gap-2 py-4">
+                <svg class="animate-spin h-5 w-5 text-gold-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="text-sm text-gray-400">Searching HS codes...</span>
+            </div>
+
+            <!-- Results -->
+            <div id="classify-results"></div>
+        </div>
+    </div>
+</div>
+
+<!-- htmx extension for JSON POST -->
+<script>
+htmx.defineExtension('json-enc', {
+    onEvent: function (name, evt) {
+        if (name === "htmx:configRequest") {
+            evt.detail.headers['Content-Type'] = 'application/json';
+        }
+    },
+    encodeParameters: function(xhr, parameters, elt) {
+        var vals = elt.getAttribute('hx-vals') || elt.getAttribute(':hx-vals');
+        if (vals) {
+            try { return vals; } catch(e) {}
+        }
+        xhr.overrideMimeType('text/json');
+        return JSON.stringify(parameters);
+    }
+});
+
+document.body.addEventListener('htmx:beforeSwap', function(evt) {
+    if (evt.detail.target.id === 'classify-results') {
+        try {
+            var data = JSON.parse(evt.detail.xhr.responseText);
+            if (Array.isArray(data)) {
+                var html = '';
+                if (data.length === 0) {
+                    html = '<div class="text-center py-8 text-gray-500 text-sm">No matching HS codes found. Try a more specific description.</div>';
+                } else {
+                    html = '<div class="space-y-3">';
+                    html += '<h3 class="text-sm font-semibold text-gray-300 mb-3">Classification Results</h3>';
+                    data.forEach(function(item, idx) {
+                        var pct = Math.round(item.confidence * 100);
+                        var barColor = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-gold-500' : 'bg-amber-500';
+                        var rank = idx === 0 ? 'border-gold-500/30 bg-gold-500/5' : 'border-navy-700 bg-navy-800';
+                        html += '<div class="border ' + rank + ' rounded-lg p-4">';
+                        html += '  <div class="flex items-start justify-between gap-4">';
+                        html += '    <div class="flex-1">';
+                        html += '      <div class="flex items-center gap-2 mb-1">';
+                        html += '        <span class="text-sm font-mono font-bold text-gold-400">' + item.code + '</span>';
+                        if (idx === 0) {
+                            html += '        <span class="text-[10px] px-1.5 py-0.5 bg-gold-500/20 text-gold-400 rounded font-semibold">BEST MATCH</span>';
+                        }
+                        html += '      </div>';
+                        html += '      <p class="text-sm text-gray-300">' + item.description + '</p>';
+                        html += '    </div>';
+                        html += '    <div class="text-right shrink-0 w-20">';
+                        html += '      <span class="text-sm font-bold ' + (pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-gold-400' : 'text-amber-400') + '">' + pct + '%</span>';
+                        html += '    </div>';
+                        html += '  </div>';
+                        html += '  <div class="mt-2 w-full bg-navy-700 rounded-full h-1.5">';
+                        html += '    <div class="' + barColor + ' h-1.5 rounded-full transition-all" style="width: ' + pct + '%"></div>';
+                        html += '  </div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                evt.detail.serverResponse = html;
+            }
+        } catch(e) {}
+    }
+});
+</script>

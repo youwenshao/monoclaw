@@ -1,0 +1,106 @@
+tool_name: medical-dental
+version: "1.0.0"
+port: 8006
+
+llm:
+  provider: mock
+  model_path: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  embedding_model_path: "BAAI/bge-base-zh-v1.5"
+
+messaging:
+  whatsapp_enabled: false
+  twilio_account_sid: ""
+  twilio_auth_token: ""
+  twilio_whatsapp_from: ""
+  telegram_enabled: false
+  telegram_bot_token: ""
+  default_language: en
+
+database:
+  workspace_path: "~/OpenClawWorkspace/medical-dental"
+  encryption_key: ""
+
+auth:
+  pin_hash: ""
+  session_ttl_hours: 24
+
+extra:
+  # Clinic profile (set during first-run wizard)
+  clinic_name: ""
+  hkma_registration: ""
+  clinic_address: ""
+  clinic_phone: ""
+
+  # Operating hours
+  morning_start: "09:00"
+  morning_end: "13:00"
+  afternoon_start: "14:30"
+  afternoon_end: "18:00"
+  evening_start: "18:30"
+  evening_end: "21:00"
+  evening_enabled: false
+  saturday_start: "09:00"
+  saturday_end: "13:00"
+
+  # Appointment durations (minutes)
+  appointment_durations:
+    gp: 15
+    specialist: 30
+    dental_cleaning: 45
+    dental_procedure: 60
+    follow_up: 15
+
+  # InsuranceAgent settings
+  supported_insurers:
+    - bupa
+    - axa
+    - cigna
+  insurer_credentials: {}
+  fee_schedule_path: ""
+  copay_cache_hours: 24
+  portal_rate_limit_seconds: 5
+
+  # HA public rates (HKD)
+  ha_rates:
+    gp: 50
+    specialist: 135
+    ae: 180
+
+  # ScribeAI settings
+  whisper_model: "small"
+  audio_chunk_seconds: 30
+  auto_delete_audio: true
+
+  # MedReminder settings
+  reminder_times:
+    morning: "08:00"
+    afternoon: "14:00"
+    evening: "20:00"
+    bedtime: "22:00"
+  compliance_window_hours: 2
+  escalation_threshold_pct: 60
+
+  # Data retention (days)
+  data_retention_days: 90
+  audio_retention_days: 0
+  photo_retention_days: 30
+
+  # HK public holidays 2026
+  public_holidays:
+    - "2026-01-01"
+    - "2026-01-29"
+    - "2026-01-30"
+    - "2026-01-31"
+    - "2026-04-03"
+    - "2026-04-04"
+    - "2026-04-06"
+    - "2026-05-01"
+    - "2026-05-24"
+    - "2026-06-19"
+    - "2026-07-01"
+    - "2026-09-26"
+    - "2026-10-01"
+    - "2026-10-19"
+    - "2026-10-20"
+    - "2026-12-25"
+    - "2026-12-26"

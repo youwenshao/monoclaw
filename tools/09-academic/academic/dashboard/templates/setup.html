@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Setup{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-[#d4a843] mb-2">Academic Dashboard Setup</h2>
+    <p class="text-gray-400 mb-8">Configure your researcher profile, integrations, and preferences.</p>
+
+    <form method="post" action="/setup/" class="space-y-8">
+
+        <!-- Researcher Profile -->
+        <section class="bg-[#1a1f36] rounded-xl p-6 border border-[#2d3352]">
+            <h3 class="text-lg font-semibold text-white mb-4">Researcher Profile</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Name (English)</label>
+                    <input type="text" name="researcher_name_en" value="{{ config.extra.get('researcher_name_en', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="Dr. Wong Tai Man">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Name (中文)</label>
+                    <input type="text" name="researcher_name_tc" value="{{ config.extra.get('researcher_name_tc', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="黃大文">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Institution</label>
+                    <select name="institution"
+                            class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                        <option value="">Select...</option>
+                        <option value="HKU" {% if config.extra.get('institution') == 'HKU' %}selected{% endif %}>The University of Hong Kong</option>
+                        <option value="CUHK" {% if config.extra.get('institution') == 'CUHK' %}selected{% endif %}>The Chinese University of Hong Kong</option>
+                        <option value="HKUST" {% if config.extra.get('institution') == 'HKUST' %}selected{% endif %}>HKUST</option>
+                        <option value="PolyU" {% if config.extra.get('institution') == 'PolyU' %}selected{% endif %}>The Hong Kong Polytechnic University</option>
+                        <option value="CityU" {% if config.extra.get('institution') == 'CityU' %}selected{% endif %}>City University of Hong Kong</option>
+                        <option value="HKBU" {% if config.extra.get('institution') == 'HKBU' %}selected{% endif %}>Hong Kong Baptist University</option>
+                        <option value="LingU" {% if config.extra.get('institution') == 'LingU' %}selected{% endif %}>Lingnan University</option>
+                        <option value="EdUHK" {% if config.extra.get('institution') == 'EdUHK' %}selected{% endif %}>The Education University of Hong Kong</option>
+                        <option value="Other" {% if config.extra.get('institution') == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Department</label>
+                    <input type="text" name="department" value="{{ config.extra.get('department', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="Department of Computer Science">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-300 mb-1">Research Areas</label>
+                    <input type="text" name="research_areas" value="{{ config.extra.get('research_areas', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="NLP, Machine Learning, Computational Linguistics">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">ORCID</label>
+                    <input type="text" name="orcid" value="{{ config.extra.get('orcid', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="0000-0000-0000-0000">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Appointment Date</label>
+                    <input type="date" name="appointment_date" value="{{ config.extra.get('appointment_date', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                </div>
+            </div>
+        </section>
+
+        <!-- Messaging -->
+        <section class="bg-[#1a1f36] rounded-xl p-6 border border-[#2d3352]">
+            <h3 class="text-lg font-semibold text-white mb-4">Messaging</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Twilio Account SID</label>
+                    <input type="text" name="twilio_sid" value="{{ config.messaging.twilio_account_sid }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Twilio Auth Token</label>
+                    <input type="password" name="twilio_token" value="{{ config.messaging.twilio_auth_token }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">WhatsApp From Number</label>
+                    <input type="text" name="whatsapp_from" value="{{ config.messaging.twilio_whatsapp_from }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="whatsapp:+852...">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Telegram Bot Token</label>
+                    <input type="text" name="telegram_token" value="{{ config.messaging.telegram_bot_token }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                </div>
+            </div>
+        </section>
+
+        <!-- Preferences -->
+        <section class="bg-[#1a1f36] rounded-xl p-6 border border-[#2d3352]">
+            <h3 class="text-lg font-semibold text-white mb-4">Preferences</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Default Citation Style</label>
+                    <select name="default_citation_style"
+                            class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                        {% set cs = config.extra.get('default_citation_style', 'apa7') %}
+                        <option value="apa7" {% if cs == 'apa7' %}selected{% endif %}>APA 7th Edition</option>
+                        <option value="harvard" {% if cs == 'harvard' %}selected{% endif %}>Harvard</option>
+                        <option value="ieee" {% if cs == 'ieee' %}selected{% endif %}>IEEE</option>
+                        <option value="vancouver" {% if cs == 'vancouver' %}selected{% endif %}>Vancouver</option>
+                        <option value="chicago" {% if cs == 'chicago' %}selected{% endif %}>Chicago</option>
+                        <option value="mla9" {% if cs == 'mla9' %}selected{% endif %}>MLA 9th</option>
+                        <option value="gbt7714" {% if cs == 'gbt7714' %}selected{% endif %}>GB/T 7714</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Default Language</label>
+                    <select name="default_language"
+                            class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                        <option value="en" {% if config.messaging.default_language == 'en' %}selected{% endif %}>English</option>
+                        <option value="zh" {% if config.messaging.default_language == 'zh' %}selected{% endif %}>繁體中文</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Translation: Source Language</label>
+                    <select name="default_source_language"
+                            class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                        {% set sl = config.extra.get('default_source_language', 'tc') %}
+                        <option value="en" {% if sl == 'en' %}selected{% endif %}>English</option>
+                        <option value="tc" {% if sl == 'tc' %}selected{% endif %}>Traditional Chinese</option>
+                        <option value="sc" {% if sl == 'sc' %}selected{% endif %}>Simplified Chinese</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Translation: Target Language</label>
+                    <select name="default_target_language"
+                            class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none">
+                        {% set tl = config.extra.get('default_target_language', 'en') %}
+                        <option value="en" {% if tl == 'en' %}selected{% endif %}>English</option>
+                        <option value="tc" {% if tl == 'tc' %}selected{% endif %}>Traditional Chinese</option>
+                        <option value="sc" {% if tl == 'sc' %}selected{% endif %}>Simplified Chinese</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-300 mb-1">CrossRef Email (for polite API access)</label>
+                    <input type="email" name="crossref_email" value="{{ config.extra.get('crossref_email', '') }}"
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-white focus:border-[#d4a843] focus:outline-none"
+                           placeholder="your@university.edu.hk">
+                </div>
+            </div>
+        </section>
+
+        <!-- Seed & Submit -->
+        <section class="bg-[#1a1f36] rounded-xl p-6 border border-[#2d3352]">
+            <div class="flex items-center gap-3 mb-6">
+                <input type="checkbox" name="seed_demo" id="seed_demo" value="1"
+                       class="rounded border-[#2d3352] bg-[#0f1225] text-[#d4a843] focus:ring-[#d4a843]">
+                <label for="seed_demo" class="text-sm text-gray-300">Seed demo data (sample papers, citations, grants)</label>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button type="submit"
+                        class="px-6 py-2.5 bg-[#d4a843] text-[#1a1f36] font-semibold rounded-lg hover:bg-[#e0b84d] transition-colors">
+                    Save Configuration
+                </button>
+                <button type="button"
+                        hx-get="/api/connection-test" hx-target="#connection-results" hx-swap="innerHTML"
+                        class="px-6 py-2.5 border border-[#2d3352] text-gray-300 rounded-lg hover:bg-[#242b4a] transition-colors">
+                    Test Connections
+                </button>
+            </div>
+
+            <div id="connection-results" class="mt-4 space-y-2"></div>
+        </section>
+    </form>
+</div>
+{% endblock %}

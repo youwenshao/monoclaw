@@ -1,0 +1,100 @@
+<div class="space-y-6">
+    <!-- Recent talks table -->
+    <div class="card overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-navy-700 text-left text-gray-400">
+                    <th class="px-4 py-3 font-medium">Date</th>
+                    <th class="px-4 py-3 font-medium">Topic</th>
+                    <th class="px-4 py-3 font-medium">Site</th>
+                    <th class="px-4 py-3 font-medium">Conductor</th>
+                    <th class="px-4 py-3 font-medium">Attendees</th>
+                    <th class="px-4 py-3 font-medium">Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for talk in talks %}
+                <tr class="border-b border-navy-800 hover:bg-navy-800/50 transition-colors">
+                    <td class="px-4 py-3 text-gray-300">{{ talk.date.strftime('%Y-%m-%d') if talk.date else '—' }}</td>
+                    <td class="px-4 py-3 text-gray-200 font-medium">{{ talk.topic }}</td>
+                    <td class="px-4 py-3 text-gray-300">{{ talk.site_name }}</td>
+                    <td class="px-4 py-3 text-gray-300">{{ talk.conductor }}</td>
+                    <td class="px-4 py-3">
+                        <span class="inline-flex items-center gap-1 text-gray-300">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                            </svg>
+                            {{ talk.attendee_count }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-300">{{ talk.duration_minutes }} min</td>
+                </tr>
+                {% endfor %}
+                {% if not talks %}
+                <tr>
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                        No toolbox talks recorded yet.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- New talk form -->
+    <div class="card p-6">
+        <h4 class="text-sm font-semibold text-gold-400 mb-4">Record New Toolbox Talk</h4>
+        <form hx-post="/safety-form/toolbox-talks"
+              hx-target="#toolbox-talks-container"
+              hx-swap="innerHTML"
+              class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Topic</label>
+                <input type="text" name="topic" required placeholder="e.g. Working at Height Safety"
+                       class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Language</label>
+                <select name="language"
+                        class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="en">English</option>
+                    <option value="zh">繁體中文</option>
+                    <option value="both">Both / Bilingual</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Conductor</label>
+                <input type="text" name="conductor" required placeholder="Safety officer name"
+                       class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Attendee Count</label>
+                <input type="number" name="attendee_count" required min="1" placeholder="0"
+                       class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Duration (minutes)</label>
+                <input type="number" name="duration_minutes" min="5" value="30"
+                       class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Site</label>
+                <select name="site_id" required
+                        class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select site...</option>
+                    {% for site in sites %}
+                    <option value="{{ site.id }}">{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <button type="submit" class="btn btn-primary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Record Talk
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

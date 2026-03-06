@@ -1,0 +1,53 @@
+{% for clause in clauses %}
+<div class="mb-3 rounded-lg bg-navy-800 border border-navy-700 overflow-hidden
+            {% if clause.anomaly_score >= 0.7 %}anomaly-flagged{% elif clause.anomaly_score >= 0.4 %}anomaly-unusual{% else %}anomaly-standard{% endif %}">
+    <div class="px-4 py-3">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-gray-300">Clause {{ clause.clause_number }}</span>
+                <span class="px-2 py-0.5 rounded text-xs font-medium bg-navy-600 text-gray-300">
+                    {{ clause.clause_type|replace('_', ' ')|title }}
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-mono
+                       {% if clause.anomaly_score >= 0.7 %}text-red-400{% elif clause.anomaly_score >= 0.4 %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                    {{ "%.2f"|format(clause.anomaly_score) }}
+                </span>
+                {% if clause.anomaly_score >= 0.7 %}
+                <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Clause text -->
+        <p class="text-sm text-gray-300 leading-relaxed mb-2">{{ clause.text_content }}</p>
+
+        <!-- Flag reason -->
+        {% if clause.flag_reason %}
+        <div class="mt-2 px-3 py-2 rounded-md
+                    {% if clause.anomaly_score >= 0.7 %}bg-red-500/10 border border-red-500/20{% else %}bg-amber-500/10 border border-amber-500/20{% endif %}">
+            <div class="flex items-start gap-2">
+                <svg class="w-4 h-4 mt-0.5 shrink-0
+                            {% if clause.anomaly_score >= 0.7 %}text-red-400{% else %}text-amber-400{% endif %}"
+                     fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-xs {% if clause.anomaly_score >= 0.7 %}text-red-300{% else %}text-amber-300{% endif %}">
+                    {{ clause.flag_reason }}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% if not clauses %}
+<div class="text-center py-8">
+    <p class="text-sm text-gray-500">No clauses extracted yet. Run analysis to parse clauses.</p>
+</div>
+{% endif %}

@@ -1,0 +1,72 @@
+{% for e in entries %}
+<tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+    <td class="px-4 py-3 text-gray-200 font-medium">{{ e.person_name }}</td>
+    <td class="px-4 py-3 text-gray-300">{{ e.company }}</td>
+    <td class="px-4 py-3 text-gray-300">{{ e.site_name }}</td>
+    <td class="px-4 py-3">
+        {% if e.sign_in_time %}
+        <span class="text-sm text-green-400">{{ e.sign_in_time }}</span>
+        {% else %}
+        <span class="text-gray-500">—</span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3">
+        {% if e.sign_out_time %}
+        <span class="text-sm text-amber-400">{{ e.sign_out_time }}</span>
+        {% else %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-green-900/60 text-green-300">On site</span>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if not entries %}
+<tr>
+    <td colspan="5" class="px-4 py-12 text-center text-gray-500">
+        No access entries recorded today. Use the form below to log site access.
+    </td>
+</tr>
+{% endif %}
+
+<!-- Sign-in/out form (always rendered below the table rows) -->
+<tr class="border-t border-navy-700">
+    <td colspan="5" class="px-4 py-4">
+        <form hx-post="/site-coordinator/access-log/entry"
+              hx-target="#access-log"
+              hx-swap="innerHTML"
+              class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Person Name</label>
+                <input type="text" name="person_name" required placeholder="Full name"
+                       class="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm w-44">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Company</label>
+                <input type="text" name="company" required placeholder="Company name"
+                       class="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm w-40">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Site</label>
+                <select name="site_id" required
+                        class="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm w-40">
+                    <option value="">Select site...</option>
+                    {% for s in sites %}
+                    <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Action</label>
+                <select name="action" required
+                        class="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm w-32">
+                    <option value="sign_in">Sign In</option>
+                    <option value="sign_out">Sign Out</option>
+                </select>
+            </div>
+            <button type="submit"
+                    class="px-4 py-2 rounded-lg bg-gold-500 text-navy-900 text-sm font-semibold hover:bg-gold-400 transition-colors">
+                Record
+            </button>
+        </form>
+    </td>
+</tr>

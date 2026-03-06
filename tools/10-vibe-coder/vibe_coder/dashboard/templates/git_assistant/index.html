@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+{% block title %}GitAssistant{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-gold-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">PRs Generated</p>
+        <p class="text-lg font-bold text-white">{{ stats.prs_generated|default(0) }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Release Notes</p>
+        <p class="text-lg font-bold text-white">{{ stats.release_notes|default(0) }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-purple-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Issues Labeled</p>
+        <p class="text-lg font-bold text-white">{{ stats.issues_labeled|default(0) }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Repos Tracked</p>
+        <p class="text-lg font-bold text-white">{{ stats.repos_tracked|default(0) }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="gitAssistant()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <button @click="tab = 'pr'"
+                :class="tab === 'pr'
+                    ? 'text-gold-400 border-gold-400 border-b-2'
+                    : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium transition-colors">
+            PR Description
+        </button>
+        <button @click="tab = 'release'"
+                :class="tab === 'release'
+                    ? 'text-gold-400 border-gold-400 border-b-2'
+                    : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium transition-colors">
+            Release Notes
+        </button>
+        <button @click="tab = 'labels'"
+                :class="tab === 'labels'
+                    ? 'text-gold-400 border-gold-400 border-b-2'
+                    : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium transition-colors">
+            Issue Labels
+        </button>
+        <button @click="tab = 'commit'"
+                :class="tab === 'commit'
+                    ? 'text-gold-400 border-gold-400 border-b-2'
+                    : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                class="px-4 py-2 text-sm font-medium transition-colors">
+            Commit Helper
+        </button>
+    </div>
+
+    <!-- ════════════════ PR Description sub-tab ════════════════ -->
+    <div x-show="tab === 'pr'" x-cloak>
+        <div class="grid grid-cols-3 gap-6">
+
+            <!-- Left: controls -->
+            <div class="col-span-1 space-y-4">
+                <div class="bg-navy-800 rounded-xl p-4 space-y-4">
+                    <h3 class="text-sm font-semibold text-gold-400">Generate PR Description</h3>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Repository</label>
+                        <select x-model="pr.repoPath"
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                            <option value="">— Select repo —</option>
+                            <template x-for="repo in repos" :key="repo.path">
+                                <option :value="repo.path" x-text="repo.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Base Branch</label>
+                            <input type="text" x-model="pr.baseBranch" placeholder="main"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Head Branch</label>
+                            <input type="text" x-model="pr.headBranch" placeholder="feature/xyz"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                    </div>
+
+                    <button @click="generatePR()"
+                            :disabled="!pr.repoPath || !pr.baseBranch || !pr.headBranch || pr.loading"
+                            class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                                   bg-gold-500 text-navy-900 hover:bg-gold-400
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!pr.loading">Generate</span>
+                        <span x-show="pr.loading" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Generating…
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Suggested reviewers -->
+                <div x-show="pr.reviewers.length > 0" class="bg-navy-800 rounded-xl p-4 space-y-3">
+                    <h3 class="text-sm font-semibold text-gold-400">Suggested Reviewers</h3>
+                    <div class="space-y-2">
+                        <template x-for="r in pr.reviewers" :key="r.login">
+                            <div class="flex items-center gap-2 px-3 py-2 bg-navy-900 rounded-lg">
+                                <img :src="r.avatar_url || 'https://github.com/identicons/' + r.login + '.png'"
+                                     class="w-6 h-6 rounded-full" :alt="r.login">
+                                <span class="text-sm text-gray-200" x-text="r.login"></span>
+                                <span class="ml-auto text-xs text-gray-500" x-text="r.reason"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: result -->
+            <div class="col-span-2">
+                <div id="pr-result-slot"
+                     class="bg-navy-800 rounded-xl p-4 min-h-[300px]">
+                    <template x-if="!pr.result">
+                        <p class="text-sm text-gray-500 py-16 text-center">Select a repository and branches to generate a PR description.</p>
+                    </template>
+                    <template x-if="pr.result">
+                        <div class="space-y-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="space-y-1 flex-1">
+                                    <label class="text-xs text-gray-400">Title</label>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-lg font-semibold text-white" x-text="pr.result.title"></p>
+                                        <button @click="copyToClipboard(pr.result.title)"
+                                                class="shrink-0 p-1 text-gray-400 hover:text-gold-400 transition-colors" title="Copy title">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs text-gray-400">Body</label>
+                                    <button @click="copyToClipboard(pr.result.body)"
+                                            class="text-xs text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                                        </svg>
+                                        Copy body
+                                    </button>
+                                </div>
+                                <div class="bg-navy-900 rounded-lg p-4 prose prose-invert prose-sm max-w-none overflow-auto max-h-[500px] border border-navy-700"
+                                     x-html="renderMarkdown(pr.result.body)">
+                                </div>
+                            </div>
+
+                            <div x-show="pr.result.diff_stats" class="flex gap-3 text-xs">
+                                <span class="text-emerald-400">+<span x-text="pr.result.diff_stats?.additions || 0"></span></span>
+                                <span class="text-red-400">-<span x-text="pr.result.diff_stats?.deletions || 0"></span></span>
+                                <span class="text-gray-400"><span x-text="pr.result.diff_stats?.files_changed || 0"></span> files</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Release Notes sub-tab ════════════════ -->
+    <div x-show="tab === 'release'" x-cloak>
+        <div class="grid grid-cols-3 gap-6">
+
+            <!-- Left: controls -->
+            <div class="col-span-1 space-y-4">
+                <div class="bg-navy-800 rounded-xl p-4 space-y-4">
+                    <h3 class="text-sm font-semibold text-gold-400">Generate Release Notes</h3>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Repository</label>
+                        <select x-model="release.repoPath"
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                            <option value="">— Select repo —</option>
+                            <template x-for="repo in repos" :key="repo.path">
+                                <option :value="repo.path" x-text="repo.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">From Tag</label>
+                        <input type="text" x-model="release.fromTag" placeholder="v1.0.0"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">To Tag</label>
+                        <input type="text" x-model="release.toTag" placeholder="v1.1.0"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                    </div>
+
+                    <button @click="generateRelease()"
+                            :disabled="!release.repoPath || !release.fromTag || !release.toTag || release.loading"
+                            class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                                   bg-gold-500 text-navy-900 hover:bg-gold-400
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!release.loading">Generate</span>
+                        <span x-show="release.loading" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Generating…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: result -->
+            <div class="col-span-2">
+                <div id="release-result-slot"
+                     class="bg-navy-800 rounded-xl p-4 min-h-[300px]">
+                    <template x-if="!release.result">
+                        <p class="text-sm text-gray-500 py-16 text-center">Select a repository and tag range to generate release notes.</p>
+                    </template>
+                    <template x-if="release.result">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-white" x-text="release.result.version || (release.fromTag + ' → ' + release.toTag)"></h3>
+                                <button @click="copyToClipboard(release.result.markdown)"
+                                        class="text-xs text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                                    </svg>
+                                    Copy markdown
+                                </button>
+                            </div>
+
+                            <div x-show="release.result.summary" class="flex flex-wrap gap-3 text-xs">
+                                <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-md">
+                                    <span x-text="release.result.summary?.features || 0"></span> features
+                                </span>
+                                <span class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-md">
+                                    <span x-text="release.result.summary?.fixes || 0"></span> fixes
+                                </span>
+                                <span class="px-2 py-1 bg-amber-500/10 text-amber-400 rounded-md">
+                                    <span x-text="release.result.summary?.breaking || 0"></span> breaking
+                                </span>
+                                <span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-md">
+                                    <span x-text="release.result.summary?.commits || 0"></span> commits
+                                </span>
+                            </div>
+
+                            <div class="bg-navy-900 rounded-lg p-4 prose prose-invert prose-sm max-w-none overflow-auto max-h-[500px] border border-navy-700"
+                                 x-html="renderMarkdown(release.result.markdown)">
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Issue Labels sub-tab ════════════════ -->
+    <div x-show="tab === 'labels'" x-cloak>
+        <div class="space-y-4">
+
+            <!-- Fetch controls -->
+            <div class="bg-navy-800 rounded-xl p-4">
+                <div class="flex items-end gap-4">
+                    <div class="flex-1 grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">GitHub Owner</label>
+                            <input type="text" x-model="labels.owner" placeholder="octocat"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Repository</label>
+                            <input type="text" x-model="labels.repo" placeholder="my-project"
+                                   class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500">
+                        </div>
+                    </div>
+                    <button @click="fetchIssues()"
+                            :disabled="!labels.owner || !labels.repo || labels.loading"
+                            class="px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors
+                                   bg-gold-500 text-navy-900 hover:bg-gold-400
+                                   disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+                        <span x-show="!labels.loading">Fetch Issues</span>
+                        <span x-show="labels.loading" class="flex items-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Fetching…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Issues list -->
+            <div id="issues-list-slot">
+                <template x-if="labels.issues.length === 0 && !labels.loading">
+                    <div class="bg-navy-800 rounded-xl p-8 text-center">
+                        <p class="text-sm text-gray-500">Enter an owner/repo and fetch open issues to suggest labels.</p>
+                    </div>
+                </template>
+                <template x-if="labels.issues.length > 0">
+                    <div class="bg-navy-800 rounded-xl overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead class="bg-navy-900 text-gray-400 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3 text-left w-16">#</th>
+                                    <th class="px-4 py-3 text-left">Title</th>
+                                    <th class="px-4 py-3 text-left">Current Labels</th>
+                                    <th class="px-4 py-3 text-left">AI Suggested</th>
+                                    <th class="px-4 py-3 text-right w-28">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-navy-700">
+                                <template x-for="issue in labels.issues" :key="issue.number">
+                                    <tr class="hover:bg-navy-700/50 transition-colors">
+                                        <td class="px-4 py-3 text-gray-400" x-text="'#' + issue.number"></td>
+                                        <td class="px-4 py-3">
+                                            <a :href="issue.html_url" target="_blank" class="text-gray-200 hover:text-gold-400 transition-colors" x-text="issue.title"></a>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                <template x-for="lbl in issue.current_labels" :key="lbl">
+                                                    <span class="px-2 py-0.5 text-xs rounded-full bg-navy-600 text-gray-300" x-text="lbl"></span>
+                                                </template>
+                                                <span x-show="!issue.current_labels || issue.current_labels.length === 0" class="text-xs text-gray-600">none</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                <template x-for="lbl in issue.suggested_labels" :key="lbl.name">
+                                                    <span class="px-2 py-0.5 text-xs rounded-full font-medium"
+                                                          :class="{
+                                                              'bg-emerald-500/20 text-emerald-400': lbl.category === 'type',
+                                                              'bg-blue-500/20 text-blue-400': lbl.category === 'scope',
+                                                              'bg-amber-500/20 text-amber-400': lbl.category === 'priority',
+                                                              'bg-purple-500/20 text-purple-400': lbl.category === 'status',
+                                                              'bg-red-500/20 text-red-400': lbl.category === 'critical',
+                                                              'bg-gray-500/20 text-gray-400': !lbl.category
+                                                          }"
+                                                          x-text="lbl.name"></span>
+                                                </template>
+                                                <span x-show="!issue.suggested_labels || issue.suggested_labels.length === 0">
+                                                    <svg class="animate-spin w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                    </svg>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button @click="applyLabels(issue)"
+                                                    :disabled="!issue.suggested_labels || issue.suggested_labels.length === 0 || issue.applied"
+                                                    class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                                                    :class="issue.applied
+                                                        ? 'bg-emerald-500/20 text-emerald-400 cursor-default'
+                                                        : 'bg-gold-500 text-navy-900 hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed'">
+                                                <span x-text="issue.applied ? 'Applied' : 'Apply'"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Commit Helper sub-tab ════════════════ -->
+    <div x-show="tab === 'commit'" x-cloak>
+        <div class="grid grid-cols-2 gap-6">
+
+            <!-- Left: input -->
+            <div class="space-y-4">
+                <div class="bg-navy-800 rounded-xl p-4 space-y-4">
+                    <h3 class="text-sm font-semibold text-gold-400">Commit Message Input</h3>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Repository (optional)</label>
+                        <select x-model="commit.repoPath"
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 focus:ring-gold-500 focus:border-gold-500">
+                            <option value="">— Select repo for staged changes —</option>
+                            <template x-for="repo in repos" :key="repo.path">
+                                <option :value="repo.path" x-text="repo.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Commit Message</label>
+                        <textarea x-model="commit.message" rows="6"
+                                  placeholder="Paste your commit message here, or leave blank to analyze staged changes…"
+                                  class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:ring-gold-500 focus:border-gold-500 font-mono resize-y"></textarea>
+                    </div>
+
+                    <button @click="improveCommit()"
+                            :disabled="(!commit.message && !commit.repoPath) || commit.loading"
+                            class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                                   bg-gold-500 text-navy-900 hover:bg-gold-400
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!commit.loading">Improve</span>
+                        <span x-show="commit.loading" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Improving…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: result -->
+            <div>
+                <div id="commit-result-slot"
+                     class="bg-navy-800 rounded-xl p-4 min-h-[300px]">
+                    <template x-if="!commit.result">
+                        <p class="text-sm text-gray-500 py-16 text-center">Enter a commit message or select a repo to improve your commit.</p>
+                    </template>
+                    <template x-if="commit.result">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-gold-400">Improved Commit</h3>
+                                <button @click="copyToClipboard(commit.result.improved)"
+                                        class="text-xs text-gold-400 hover:text-gold-300 transition-colors flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+
+                            <div class="bg-navy-900 border border-navy-700 rounded-lg p-4 font-mono text-sm text-gray-100 whitespace-pre-wrap"
+                                 x-text="commit.result.improved"></div>
+
+                            <div x-show="commit.result.type" class="flex flex-wrap gap-2">
+                                <span class="badge-blue text-xs" x-text="commit.result.type"></span>
+                                <span x-show="commit.result.scope" class="badge-purple text-xs" x-text="commit.result.scope"></span>
+                                <span x-show="commit.result.breaking" class="badge-red text-xs">BREAKING</span>
+                            </div>
+
+                            <div x-show="commit.result.explanation" class="text-xs text-gray-400 bg-navy-900 rounded-lg p-3 border border-navy-700">
+                                <p class="font-medium text-gray-300 mb-1">Why this format?</p>
+                                <p x-text="commit.result.explanation"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script>
+function gitAssistant() {
+    return {
+        tab: 'pr',
+        repos: [],
+
+        pr: {
+            repoPath: '',
+            baseBranch: 'main',
+            headBranch: '',
+            loading: false,
+            result: null,
+            reviewers: [],
+        },
+
+        release: {
+            repoPath: '',
+            fromTag: '',
+            toTag: '',
+            loading: false,
+            result: null,
+        },
+
+        labels: {
+            owner: '',
+            repo: '',
+            loading: false,
+            issues: [],
+        },
+
+        commit: {
+            repoPath: '',
+            message: '',
+            loading: false,
+            result: null,
+        },
+
+        async init() {
+            await this.loadRepos();
+        },
+
+        async loadRepos() {
+            try {
+                const resp = await fetch('/api/git-assistant/repos');
+                if (resp.ok) this.repos = await resp.json();
+            } catch (_) {}
+        },
+
+        async generatePR() {
+            this.pr.loading = true;
+            this.pr.result = null;
+            this.pr.reviewers = [];
+            try {
+                const resp = await fetch('/api/git-assistant/pr-description', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        repo_path: this.pr.repoPath,
+                        base_branch: this.pr.baseBranch,
+                        head_branch: this.pr.headBranch,
+                    }),
+                });
+                this.pr.result = await resp.json();
+
+                this.fetchReviewers();
+            } catch (e) {
+                this.pr.result = { title: 'Error', body: e.message };
+            } finally {
+                this.pr.loading = false;
+            }
+        },
+
+        async fetchReviewers() {
+            try {
+                const resp = await fetch('/api/git-assistant/reviewers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        repo_path: this.pr.repoPath,
+                        changed_files: this.pr.result?.changed_files || [],
+                    }),
+                });
+                if (resp.ok) this.pr.reviewers = await resp.json();
+            } catch (_) {}
+        },
+
+        async generateRelease() {
+            this.release.loading = true;
+            this.release.result = null;
+            try {
+                const resp = await fetch('/api/git-assistant/release-notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        repo_path: this.release.repoPath,
+                        from_tag: this.release.fromTag,
+                        to_tag: this.release.toTag,
+                    }),
+                });
+                this.release.result = await resp.json();
+            } catch (e) {
+                this.release.result = { version: 'Error', markdown: e.message };
+            } finally {
+                this.release.loading = false;
+            }
+        },
+
+        async fetchIssues() {
+            this.labels.loading = true;
+            this.labels.issues = [];
+            try {
+                const resp = await fetch(`https://api.github.com/repos/${this.labels.owner}/${this.labels.repo}/issues?state=open&per_page=25`, {
+                    headers: { Accept: 'application/vnd.github.v3+json' },
+                });
+                const raw = await resp.json();
+                this.labels.issues = raw.filter(i => !i.pull_request).map(i => ({
+                    number: i.number,
+                    title: i.title,
+                    html_url: i.html_url,
+                    current_labels: i.labels.map(l => l.name),
+                    suggested_labels: [],
+                    applied: false,
+                }));
+                for (const issue of this.labels.issues) {
+                    this.suggestLabels(issue);
+                }
+            } catch (e) {
+                console.error('Failed to fetch issues:', e);
+            } finally {
+                this.labels.loading = false;
+            }
+        },
+
+        async suggestLabels(issue) {
+            try {
+                const resp = await fetch('/api/git-assistant/label-issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner: this.labels.owner,
+                        repo: this.labels.repo,
+                        issue_number: issue.number,
+                    }),
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    issue.suggested_labels = data.labels || [];
+                }
+            } catch (_) {}
+        },
+
+        async applyLabels(issue) {
+            try {
+                const resp = await fetch('/api/git-assistant/label-issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner: this.labels.owner,
+                        repo: this.labels.repo,
+                        issue_number: issue.number,
+                        apply: true,
+                    }),
+                });
+                if (resp.ok) issue.applied = true;
+            } catch (_) {}
+        },
+
+        async improveCommit() {
+            this.commit.loading = true;
+            this.commit.result = null;
+            try {
+                const resp = await fetch('/api/git-assistant/improve-commit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: this.commit.message,
+                        repo_path: this.commit.repoPath,
+                    }),
+                });
+                this.commit.result = await resp.json();
+            } catch (e) {
+                this.commit.result = { improved: 'Error: ' + e.message };
+            } finally {
+                this.commit.loading = false;
+            }
+        },
+
+        renderMarkdown(md) {
+            if (!md) return '';
+            if (typeof marked !== 'undefined') return marked.parse(md);
+            return md.replace(/\n/g, '<br>');
+        },
+
+        async copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (_) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+        },
+    };
+}
+</script>
+{% endblock %}

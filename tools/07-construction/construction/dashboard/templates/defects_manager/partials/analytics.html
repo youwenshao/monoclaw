@@ -1,0 +1,178 @@
+<div class="space-y-6">
+    <h3 class="text-lg font-semibold text-gold-400">Defect Analytics</h3>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Defects by Category (Doughnut) -->
+        <div class="card p-5">
+            <h4 class="text-sm font-semibold text-gray-300 mb-4">By Category</h4>
+            <div class="relative" style="height: 280px;">
+                <canvas id="chart-by-category"></canvas>
+            </div>
+        </div>
+
+        <!-- Defects by Status (Horizontal Bar) -->
+        <div class="card p-5">
+            <h4 class="text-sm font-semibold text-gray-300 mb-4">By Status</h4>
+            <div class="relative" style="height: 280px;">
+                <canvas id="chart-by-status"></canvas>
+            </div>
+        </div>
+
+        <!-- Defects by Priority (Pie) -->
+        <div class="card p-5">
+            <h4 class="text-sm font-semibold text-gray-300 mb-4">By Priority</h4>
+            <div class="relative" style="height: 280px;">
+                <canvas id="chart-by-priority"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const COLORS = {
+        gold:    '#D4A843',
+        navy:    '#1E293B',
+        red:     '#EF4444',
+        amber:   '#F59E0B',
+        blue:    '#3B82F6',
+        cyan:    '#06B6D4',
+        emerald: '#10B981',
+        purple:  '#8B5CF6',
+        orange:  '#F97316',
+        teal:    '#14B8A6',
+        yellow:  '#EAB308',
+        indigo:  '#6366F1',
+        pink:    '#EC4899',
+        gray:    '#6B7280'
+    };
+
+    const CATEGORY_COLORS = {
+        plumbing:       COLORS.blue,
+        electrical:     COLORS.yellow,
+        structural:     COLORS.red,
+        waterproofing:  COLORS.cyan,
+        fire_safety:    COLORS.orange,
+        hvac:           COLORS.indigo,
+        finishing:       COLORS.purple,
+        common_area:    COLORS.teal,
+        other:          COLORS.gray
+    };
+
+    const STATUS_COLORS = {
+        open:            COLORS.red,
+        in_progress:     COLORS.amber,
+        pending_review:  COLORS.blue,
+        resolved:        COLORS.emerald,
+        closed:          COLORS.gray
+    };
+
+    const PRIORITY_COLORS = {
+        emergency: COLORS.red,
+        urgent:    COLORS.amber,
+        normal:    COLORS.blue,
+        low:       COLORS.gray
+    };
+
+    const chartDefaults = {
+        color: '#94A3B8',
+        font: { family: 'system-ui, sans-serif' }
+    };
+
+    Chart.defaults.color = chartDefaults.color;
+    Chart.defaults.font.family = chartDefaults.font.family;
+
+    const byCategory = {{ by_category | tojson }};
+    const byCategoryLabels = byCategory.map(d => d.category.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
+    const byCategoryData   = byCategory.map(d => d.count);
+    const byCategoryBg     = byCategory.map(d => CATEGORY_COLORS[d.category] || COLORS.gray);
+
+    new Chart(document.getElementById('chart-by-category'), {
+        type: 'doughnut',
+        data: {
+            labels: byCategoryLabels,
+            datasets: [{
+                data: byCategoryData,
+                backgroundColor: byCategoryBg,
+                borderColor: '#0F172A',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '55%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 11 } }
+                }
+            }
+        }
+    });
+
+    const byStatus = {{ by_status | tojson }};
+    const byStatusLabels = byStatus.map(d => d.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
+    const byStatusData   = byStatus.map(d => d.count);
+    const byStatusBg     = byStatus.map(d => STATUS_COLORS[d.status] || COLORS.gray);
+
+    new Chart(document.getElementById('chart-by-status'), {
+        type: 'bar',
+        data: {
+            labels: byStatusLabels,
+            datasets: [{
+                data: byStatusData,
+                backgroundColor: byStatusBg,
+                borderRadius: 4,
+                barThickness: 22
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 },
+                    grid: { color: 'rgba(148, 163, 184, 0.08)' }
+                },
+                y: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    const byPriority = {{ by_priority | tojson }};
+    const byPriorityLabels = byPriority.map(d => d.priority.replace(/\b\w/g, c => c.toUpperCase()));
+    const byPriorityData   = byPriority.map(d => d.count);
+    const byPriorityBg     = byPriority.map(d => PRIORITY_COLORS[d.priority] || COLORS.gray);
+
+    new Chart(document.getElementById('chart-by-priority'), {
+        type: 'pie',
+        data: {
+            labels: byPriorityLabels,
+            datasets: [{
+                data: byPriorityData,
+                backgroundColor: byPriorityBg,
+                borderColor: '#0F172A',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 11 } }
+                }
+            }
+        }
+    });
+})();
+</script>

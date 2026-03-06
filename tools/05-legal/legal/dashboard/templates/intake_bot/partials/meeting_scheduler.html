@@ -1,0 +1,70 @@
+<div class="card p-6" x-data="{ selectedSolicitor: '', selectedSlot: null }">
+    <h3 class="text-lg font-semibold text-gold-400 mb-4">Schedule Consultation</h3>
+
+    <!-- Solicitor Selection -->
+    <div class="mb-4">
+        <label class="block text-sm text-gray-400 mb-1">Solicitor</label>
+        <select x-model="selectedSolicitor"
+                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+            <option value="">Select solicitor...</option>
+            {% for solicitor in solicitors %}
+            <option value="{{ solicitor }}">{{ solicitor }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Available Time Slots -->
+    <div class="mb-4">
+        <label class="block text-sm text-gray-400 mb-2">Available Slots</label>
+        {% if available_slots %}
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {% for slot in available_slots %}
+            <button type="button"
+                    class="p-3 rounded-lg border text-center transition-colors text-sm"
+                    :class="selectedSlot === '{{ slot.datetime }}' ?
+                        'bg-gold-500 text-navy-900 border-gold-500 font-semibold' :
+                        'bg-navy-800 text-gray-300 border-navy-600 hover:border-gold-500/50 hover:bg-navy-800/80'"
+                    @click="selectedSlot = '{{ slot.datetime }}'">
+                <div class="font-medium">
+                    {{ slot.datetime[11:16] if slot.datetime|length > 16 else slot.datetime }}
+                </div>
+                <div class="text-xs mt-0.5"
+                     :class="selectedSlot === '{{ slot.datetime }}' ? 'text-navy-700' : 'text-gray-500'">
+                    {{ slot.duration }} min
+                </div>
+            </button>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-6 text-center rounded-lg bg-navy-800/50 border border-navy-700">
+            <p class="text-sm text-gray-500">No available slots</p>
+            <p class="text-xs text-gray-600 mt-1">Try selecting a different solicitor or date</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Book Button -->
+    <button class="btn btn-primary w-full"
+            :disabled="!selectedSolicitor || !selectedSlot"
+            hx-post="/intake-bot/schedule/{{ client_id if client_id is defined else '' }}"
+            hx-include="[name='solicitor'], [name='slot']"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            @click="
+                const form = $el.closest('div[x-data]');
+                $el.setAttribute('hx-vals', JSON.stringify({
+                    solicitor: selectedSolicitor,
+                    slot: selectedSlot
+                }));
+                htmx.trigger($el, 'htmx:configRequest');
+            ">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+        </svg>
+        Book Appointment
+    </button>
+
+    <!-- Hidden form inputs for htmx -->
+    <input type="hidden" name="solicitor" :value="selectedSolicitor">
+    <input type="hidden" name="slot" :value="selectedSlot">
+</div>

@@ -1,0 +1,20 @@
+<div class="space-y-2">
+    {% for profile in profiles %}
+    <button hx-get="/thesis-formatter/format-preview/partial?project_id=0&profile_id={{ profile.id }}"
+            hx-target="#format-preview-slot"
+            hx-swap="innerHTML"
+            class="w-full text-left px-3 py-3 rounded-lg bg-navy-900 hover:bg-navy-700 transition-colors group">
+        <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-white group-hover:text-gold-400">{{ profile.university }}</span>
+            <span class="text-xs text-gray-400">{{ profile.degree_level or 'All levels' }}</span>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+            {{ profile.font_name }} {{ profile.font_size }}pt · {{ profile.line_spacing }}× spacing
+        </div>
+    </button>
+    {% endfor %}
+
+    {% if not profiles %}
+    <p class="text-sm text-gray-500 text-center py-4">No profiles found. Run setup to seed data.</p>
+    {% endif %}
+</div>

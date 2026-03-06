@@ -1,0 +1,77 @@
+<div x-data="{ expanded: null }" class="space-y-4">
+    {% if photos %}
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {% for photo in photos %}
+        <div class="group relative cursor-pointer" @click="expanded = {{ photo.id }}">
+            <div class="aspect-square rounded-lg overflow-hidden bg-navy-800 border border-navy-700 hover:border-gold-500/50 transition-colors">
+                <img src="{{ photo.thumbnail_url or photo.url }}"
+                     alt="{{ photo.category }} — {{ photo.site_name }}"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                     loading="lazy">
+            </div>
+            <!-- Overlay labels -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy-950/90 to-transparent p-2 rounded-b-lg">
+                <span class="text-xs px-1.5 py-0.5 rounded-full
+                    {% if photo.category == 'deficiency' %}bg-red-900/70 text-red-400
+                    {% elif photo.category == 'incident' %}bg-amber-900/70 text-amber-400
+                    {% elif photo.category == 'inspection' %}bg-blue-900/70 text-blue-400
+                    {% elif photo.category == 'rectification' %}bg-green-900/70 text-green-400
+                    {% else %}bg-navy-700 text-gray-400{% endif %}">
+                    {{ photo.category|title }}
+                </span>
+                <p class="text-xs text-gray-300 mt-1 truncate">{{ photo.site_name }}</p>
+                <p class="text-xs text-gray-500">{{ photo.created_at.strftime('%d %b %Y') if photo.created_at else '' }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card p-12 text-center text-gray-500">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M2.25 18V6a2.25 2.25 0 012.25-2.25h15A2.25 2.25 0 0121.75 6v12A2.25 2.25 0 0119.5 20.25H4.5A2.25 2.25 0 012.25 18z"/>
+        </svg>
+        <p class="text-sm">No photos found. Photos are captured during safety inspections.</p>
+    </div>
+    {% endif %}
+
+    <!-- Expanded photo modal -->
+    <div x-show="expanded !== null" x-transition
+         class="flex items-center justify-center p-4"
+         style="position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.85);"
+         @click.self="expanded = null"
+         @keydown.escape.window="expanded = null">
+        <div class="relative max-w-4xl w-full">
+            <button @click="expanded = null"
+                    class="absolute -top-10 right-0 text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            {% for photo in photos %}
+            <div x-show="expanded === {{ photo.id }}" x-transition class="space-y-3">
+                <img src="{{ photo.url }}"
+                     alt="{{ photo.category }} — {{ photo.site_name }}"
+                     class="w-full max-h-[70vh] object-contain rounded-lg">
+                <div class="flex items-center justify-between text-sm">
+                    <div>
+                        <span class="px-2 py-0.5 rounded-full text-xs
+                            {% if photo.category == 'deficiency' %}bg-red-900/70 text-red-400
+                            {% elif photo.category == 'incident' %}bg-amber-900/70 text-amber-400
+                            {% elif photo.category == 'inspection' %}bg-blue-900/70 text-blue-400
+                            {% elif photo.category == 'rectification' %}bg-green-900/70 text-green-400
+                            {% else %}bg-navy-700 text-gray-400{% endif %}">
+                            {{ photo.category|title }}
+                        </span>
+                        <span class="text-gray-300 ml-2">{{ photo.site_name }}</span>
+                    </div>
+                    <span class="text-gray-500">{{ photo.created_at.strftime('%d %b %Y %H:%M') if photo.created_at else '' }}</span>
+                </div>
+                {% if photo.notes %}
+                <p class="text-sm text-gray-400">{{ photo.notes }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% block title %}SupplierLedger{% endblock %}
+
+{% block status_cards %}
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl px-5 py-3 shrink-0 min-w-[160px]">
+    <div class="text-xs text-gray-400 mb-1">Payables Outstanding</div>
+    <div class="text-xl font-bold text-red-400">HK${{ "{:,.0f}".format(payables_total|default(0)) }}</div>
+</div>
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl px-5 py-3 shrink-0 min-w-[160px]">
+    <div class="text-xs text-gray-400 mb-1">Receivables Outstanding</div>
+    <div class="text-xl font-bold text-green-400">HK${{ "{:,.0f}".format(receivables_total|default(0)) }}</div>
+</div>
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl px-5 py-3 shrink-0 min-w-[160px]">
+    <div class="text-xs text-gray-400 mb-1">Overdue</div>
+    <div class="text-xl font-bold text-amber-400">{{ overdue_count|default(0) }}</div>
+</div>
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-xl px-5 py-3 shrink-0 min-w-[160px]">
+    <div class="text-xs text-gray-400 mb-1">Cash Flow (30d)</div>
+    <div class="text-xl font-bold {% if cash_flow_30d|default(0) >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+        HK${{ "{:,.0f}".format(cash_flow_30d|default(0)) }}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="supplierLedgerApp()" class="space-y-6">
+
+    <!-- Tab navigation -->
+    <div class="flex gap-2 border-b border-[#2d3352] pb-2">
+        <template x-for="tab in tabs" :key="tab.id">
+            <button @click="activeTab = tab.id"
+                    :class="activeTab === tab.id ? 'bg-[#2d3352] text-[#d4a843]' : 'text-gray-300 hover:bg-[#242b4a]'"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    x-text="tab.label">
+            </button>
+        </template>
+    </div>
+
+    <!-- Directory Tab -->
+    <div x-show="activeTab === 'directory'" x-transition>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-[#d4a843]">Supplier &amp; Customer Directory</h3>
+            <div class="flex items-center gap-3">
+                <input type="text" placeholder="Search contacts..."
+                       class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder-gray-500"
+                       hx-get="/supplier-ledger/partials/supplier-directory"
+                       hx-trigger="input changed delay:300ms"
+                       hx-target="#directory-body"
+                       hx-swap="innerHTML"
+                       name="q">
+                <select name="contact_type"
+                        class="bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-1.5 text-sm text-gray-200"
+                        hx-get="/supplier-ledger/partials/supplier-directory"
+                        hx-trigger="change"
+                        hx-target="#directory-body"
+                        hx-include="[name='q']"
+                        hx-swap="innerHTML">
+                    <option value="">All Types</option>
+                    <option value="supplier">Suppliers</option>
+                    <option value="customer">Customers</option>
+                </select>
+                <button @click="contactModal = true" class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0b84f] transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    Add Contact
+                </button>
+            </div>
+        </div>
+        <div id="directory-body"
+             hx-get="/supplier-ledger/partials/supplier-directory"
+             hx-trigger="load, contactAdded from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading directory...</p>
+        </div>
+    </div>
+
+    <!-- Aging Tab -->
+    <div x-show="activeTab === 'aging'" x-transition>
+        <h3 class="text-lg font-semibold text-[#d4a843] mb-4">Aging Report</h3>
+        <div id="aging-body"
+             hx-get="/supplier-ledger/partials/aging-report"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading aging report...</p>
+        </div>
+    </div>
+
+    <!-- Receivables Tab -->
+    <div x-show="activeTab === 'receivables'" x-transition>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-[#d4a843]">Receivables Tracker</h3>
+            <button @click="invoiceModal = true; invoiceForm.invoice_type = 'receivable'"
+                    class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0b84f] transition-colors flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                New Invoice
+            </button>
+        </div>
+        <div id="receivables-body"
+             hx-get="/supplier-ledger/partials/receivables-tracker"
+             hx-trigger="load, invoiceAdded from:body, paymentAdded from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading receivables...</p>
+        </div>
+    </div>
+
+    <!-- Cash Flow Tab -->
+    <div x-show="activeTab === 'cashflow'" x-transition>
+        <h3 class="text-lg font-semibold text-[#d4a843] mb-4">Cash Flow Forecast</h3>
+        <div id="cashflow-body"
+             hx-get="/supplier-ledger/partials/cash-flow-forecast"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading forecast...</p>
+        </div>
+    </div>
+
+    <!-- Transactions Tab -->
+    <div x-show="activeTab === 'transactions'" x-transition>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-[#d4a843]">Transaction Log</h3>
+            <div class="flex items-center gap-2">
+                <button @click="paymentModal = true"
+                        class="bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors">
+                    Record Payment
+                </button>
+                <button @click="bankImportModal = true"
+                        class="bg-[#2d3352] text-gray-200 px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#3d4562] transition-colors">
+                    Import Bank CSV
+                </button>
+            </div>
+        </div>
+        <div id="transactions-body"
+             hx-get="/supplier-ledger/partials/transaction-log"
+             hx-trigger="load, paymentAdded from:body"
+             hx-swap="innerHTML">
+            <p class="text-center text-gray-500 py-12">Loading transactions...</p>
+        </div>
+    </div>
+
+    <!-- ═══════ Add Contact Modal ═══════ -->
+    <div x-show="contactModal" x-transition
+         class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="contactModal = false">
+        <div @click.outside="contactModal = false"
+             class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-semibold text-[#d4a843] mb-4">New Contact</h3>
+            <form @submit.prevent="submitContact()" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Type *</label>
+                    <select x-model="contactForm.contact_type" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                        <option value="supplier">Supplier</option>
+                        <option value="customer">Customer</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Company Name (EN) *</label>
+                        <input type="text" x-model="contactForm.company_name" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Company Name (繁中)</label>
+                        <input type="text" x-model="contactForm.company_name_tc" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Contact Person</label>
+                        <input type="text" x-model="contactForm.contact_person" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">BR Number</label>
+                        <input type="text" x-model="contactForm.br_number" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Phone</label>
+                        <input type="tel" x-model="contactForm.phone" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">WhatsApp</label>
+                        <input type="tel" x-model="contactForm.whatsapp" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Email</label>
+                        <input type="email" x-model="contactForm.email" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Payment Terms (days)</label>
+                        <input type="number" x-model.number="contactForm.payment_terms_days" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Credit Limit (HKD)</label>
+                        <input type="number" x-model.number="contactForm.credit_limit" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0b84f] transition-colors">Save Contact</button>
+                    <button type="button" @click="contactModal = false" class="bg-[#2d3352] text-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-[#3d4562] transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════ New Invoice Modal ═══════ -->
+    <div x-show="invoiceModal" x-transition
+         class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="invoiceModal = false">
+        <div @click.outside="invoiceModal = false"
+             class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-semibold text-[#d4a843] mb-4">New Invoice</h3>
+            <form @submit.prevent="submitInvoice()" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Type *</label>
+                        <select x-model="invoiceForm.invoice_type" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                            <option value="receivable">Receivable</option>
+                            <option value="payable">Payable</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Contact ID *</label>
+                        <input type="number" x-model.number="invoiceForm.contact_id" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Invoice Number</label>
+                        <input type="text" x-model="invoiceForm.invoice_number" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Amount (HKD) *</label>
+                        <input type="number" step="0.01" x-model.number="invoiceForm.total_amount" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Invoice Date</label>
+                        <input type="date" x-model="invoiceForm.invoice_date" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Due Date</label>
+                        <input type="date" x-model="invoiceForm.due_date" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Notes</label>
+                    <textarea x-model="invoiceForm.notes" rows="2" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200"></textarea>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0b84f] transition-colors">Create Invoice</button>
+                    <button type="button" @click="invoiceModal = false" class="bg-[#2d3352] text-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-[#3d4562] transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════ Record Payment Modal ═══════ -->
+    <div x-show="paymentModal" x-transition
+         class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="paymentModal = false">
+        <div @click.outside="paymentModal = false"
+             class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-lg">
+            <h3 class="text-xl font-semibold text-[#d4a843] mb-4">Record Payment</h3>
+            <form @submit.prevent="submitPayment()" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Invoice ID *</label>
+                        <input type="number" x-model.number="paymentForm.invoice_id" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Amount (HKD) *</label>
+                        <input type="number" step="0.01" x-model.number="paymentForm.amount" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Payment Method *</label>
+                        <select x-model="paymentForm.payment_method" required class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="fps">FPS</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="cash">Cash</option>
+                            <option value="octopus">Octopus</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Reference / Cheque No.</label>
+                        <input type="text" x-model="paymentForm.bank_reference" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                    </div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">Record Payment</button>
+                    <button type="button" @click="paymentModal = false" class="bg-[#2d3352] text-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-[#3d4562] transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════ Bank Import Modal ═══════ -->
+    <div x-show="bankImportModal" x-transition
+         class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6);"
+         @keydown.escape.window="bankImportModal = false">
+        <div @click.outside="bankImportModal = false"
+             class="bg-[#1a1f36] border border-[#2d3352] rounded-xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-semibold text-[#d4a843] mb-4">Import Bank Statement</h3>
+            <form action="/supplier-ledger/bank-import" method="POST" enctype="multipart/form-data" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Bank</label>
+                    <select name="bank_name" class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200">
+                        <option value="HSBC">HSBC</option>
+                        <option value="Hang Seng">Hang Seng</option>
+                        <option value="Bank of China">Bank of China</option>
+                        <option value="Standard Chartered">Standard Chartered</option>
+                        <option value="DBS">DBS</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">CSV File</label>
+                    <input type="file" name="file" accept=".csv" required
+                           class="w-full bg-[#0f1225] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-200 file:mr-3 file:bg-[#2d3352] file:border-0 file:px-3 file:py-1 file:rounded file:text-sm file:text-gray-200">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="bg-[#d4a843] text-[#0f1225] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0b84f] transition-colors">Upload &amp; Reconcile</button>
+                    <button type="button" @click="bankImportModal = false" class="bg-[#2d3352] text-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-[#3d4562] transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('supplierLedgerApp', () => ({
+        activeTab: 'directory',
+        tabs: [
+            { id: 'directory', label: 'Directory' },
+            { id: 'aging', label: 'Aging' },
+            { id: 'receivables', label: 'Receivables' },
+            { id: 'cashflow', label: 'Cash Flow' },
+            { id: 'transactions', label: 'Transactions' },
+        ],
+
+        contactModal: false,
+        invoiceModal: false,
+        paymentModal: false,
+        bankImportModal: false,
+
+        contactForm: {
+            contact_type: 'supplier',
+            company_name: '',
+            company_name_tc: '',
+            contact_person: '',
+            phone: '',
+            whatsapp: '',
+            email: '',
+            payment_terms_days: 30,
+            credit_limit: null,
+            br_number: '',
+        },
+
+        invoiceForm: {
+            contact_id: null,
+            invoice_type: 'receivable',
+            invoice_number: '',
+            total_amount: null,
+            invoice_date: new Date().toISOString().slice(0, 10),
+            due_date: '',
+            notes: '',
+        },
+
+        paymentForm: {
+            invoice_id: null,
+            amount: null,
+            payment_method: 'bank_transfer',
+            bank_reference: '',
+        },
+
+        async submitContact() {
+            const resp = await fetch('/supplier-ledger/contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.contactForm),
+            });
+            const data = await resp.json();
+            if (data.contact_id) {
+                this.contactModal = false;
+                this.contactForm = { contact_type: 'supplier', company_name: '', company_name_tc: '', contact_person: '', phone: '', whatsapp: '', email: '', payment_terms_days: 30, credit_limit: null, br_number: '' };
+                htmx.trigger(document.body, 'contactAdded');
+            }
+        },
+
+        async submitInvoice() {
+            const resp = await fetch('/supplier-ledger/invoices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.invoiceForm),
+            });
+            const data = await resp.json();
+            if (data.id) {
+                this.invoiceModal = false;
+                this.invoiceForm = { contact_id: null, invoice_type: 'receivable', invoice_number: '', total_amount: null, invoice_date: new Date().toISOString().slice(0, 10), due_date: '', notes: '' };
+                htmx.trigger(document.body, 'invoiceAdded');
+            }
+        },
+
+        async submitPayment() {
+            const resp = await fetch('/supplier-ledger/payments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.paymentForm),
+            });
+            const data = await resp.json();
+            if (data.id) {
+                this.paymentModal = false;
+                this.paymentForm = { invoice_id: null, amount: null, payment_method: 'bank_transfer', bank_reference: '' };
+                htmx.trigger(document.body, 'paymentAdded');
+            }
+        },
+    }));
+});
+</script>
+{% endblock %}

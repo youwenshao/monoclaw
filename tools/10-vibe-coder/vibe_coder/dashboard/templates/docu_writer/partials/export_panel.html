@@ -1,0 +1,142 @@
+<!-- Export Panel Partial — export generated docs as Markdown with copy/download -->
+<div x-data="{
+    exportFormat: 'markdown',
+    copied: false,
+    copyToClipboard() {
+        const content = this.getExportContent();
+        navigator.clipboard.writeText(content).then(() => {
+            this.copied = true;
+            setTimeout(() => this.copied = false, 2000);
+        });
+    },
+    getExportContent() {
+        return generatedDoc || '';
+    },
+    downloadFile() {
+        const content = this.getExportContent();
+        const ext = this.exportFormat === 'markdown' ? '.md' : '.txt';
+        const mime = this.exportFormat === 'markdown' ? 'text/markdown' : 'text/plain';
+        const blob = new Blob([content], {type: mime + ';charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (selectedProject || 'documentation') + '-' + docType + ext;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}" class="space-y-6">
+
+    <!-- Export Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-sm font-semibold text-gray-200">Export Documentation</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Download or copy your generated documentation.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">Format:</span>
+            <select x-model="exportFormat"
+                    class="bg-navy-800 border border-navy-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-gold-500 focus:border-gold-500">
+                <option value="markdown">Markdown (.md)</option>
+                <option value="text">Plain Text (.txt)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-3">
+        <button @click="copyToClipboard()"
+                class="flex items-center gap-2 px-5 py-2.5 bg-navy-700 hover:bg-navy-600 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-navy-600">
+            <template x-if="!copied">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                    </svg>
+                    Copy to Clipboard
+                </span>
+            </template>
+            <template x-if="copied">
+                <span class="flex items-center gap-2 text-emerald-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                    </svg>
+                    Copied!
+                </span>
+            </template>
+        </button>
+
+        <button @click="downloadFile()"
+                class="flex items-center gap-2 px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-navy-900 text-sm font-bold rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+            Download File
+        </button>
+    </div>
+
+    <!-- Preview -->
+    <div class="card overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-navy-700 bg-navy-900/50">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-xs font-medium text-gray-400">Preview</span>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-gray-500">
+                <span x-text="getExportContent().length + ' characters'"></span>
+                <span>·</span>
+                <span x-text="getExportContent().split('\\n').length + ' lines'"></span>
+            </div>
+        </div>
+        <div class="max-h-[28rem] overflow-auto">
+            <pre class="p-4 text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono bg-navy-900"
+                 x-text="getExportContent()"></pre>
+        </div>
+    </div>
+
+    <!-- Batch Export (multi-doc) -->
+    <div class="border-t border-navy-700 pt-6">
+        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Batch Export</h4>
+        <p class="text-xs text-gray-500 mb-4">Generate and export multiple document types at once.</p>
+        <div class="grid grid-cols-2 gap-3">
+            <label class="flex items-center gap-3 p-3 bg-navy-800 rounded-lg border border-navy-700 hover:border-navy-600 transition-colors cursor-pointer">
+                <input type="checkbox" value="readme" checked
+                       class="rounded bg-navy-700 border-navy-600 text-gold-500 focus:ring-gold-500">
+                <div>
+                    <span class="text-sm text-gray-200">README</span>
+                    <p class="text-xs text-gray-500">Project overview and setup guide</p>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 p-3 bg-navy-800 rounded-lg border border-navy-700 hover:border-navy-600 transition-colors cursor-pointer">
+                <input type="checkbox" value="api_docs"
+                       class="rounded bg-navy-700 border-navy-600 text-gold-500 focus:ring-gold-500">
+                <div>
+                    <span class="text-sm text-gray-200">API Reference</span>
+                    <p class="text-xs text-gray-500">Endpoint and function documentation</p>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 p-3 bg-navy-800 rounded-lg border border-navy-700 hover:border-navy-600 transition-colors cursor-pointer">
+                <input type="checkbox" value="architecture"
+                       class="rounded bg-navy-700 border-navy-600 text-gold-500 focus:ring-gold-500">
+                <div>
+                    <span class="text-sm text-gray-200">Architecture</span>
+                    <p class="text-xs text-gray-500">System design and component overview</p>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 p-3 bg-navy-800 rounded-lg border border-navy-700 hover:border-navy-600 transition-colors cursor-pointer">
+                <input type="checkbox" value="changelog"
+                       class="rounded bg-navy-700 border-navy-600 text-gold-500 focus:ring-gold-500">
+                <div>
+                    <span class="text-sm text-gray-200">Changelog</span>
+                    <p class="text-xs text-gray-500">Version history from git tags</p>
+                </div>
+            </label>
+        </div>
+        <button hx-post="/api/docu-writer/batch-export"
+                hx-include="[type=checkbox]"
+                hx-swap="none"
+                class="mt-4 px-5 py-2.5 bg-navy-700 hover:bg-navy-600 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-navy-600">
+            Export Selected as ZIP
+        </button>
+    </div>
+</div>

@@ -1,0 +1,71 @@
+<!-- Resource summary cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="card p-4">
+        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Active Contractor Teams</div>
+        <div class="text-2xl font-bold text-gold-400">
+            {{ sites | sum(attribute='active_teams') if sites else 0 }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">across {{ sites|length }} site{{ 's' if sites|length != 1 }}</div>
+    </div>
+    <div class="card p-4">
+        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Workers On Site</div>
+        <div class="text-2xl font-bold text-blue-400">
+            {{ sites | sum(attribute='worker_count') if sites else 0 }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">signed in today</div>
+    </div>
+    <div class="card p-4">
+        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Equipment On Site</div>
+        <div class="text-2xl font-bold text-amber-400">
+            {{ sites | sum(attribute='equipment_count') if sites else 0 }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">active pieces</div>
+    </div>
+</div>
+
+<!-- Sites list -->
+<div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-navy-700">
+        <h4 class="text-sm font-semibold text-gold-400">Active Sites</h4>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-navy-700 text-left text-gray-400">
+                <th class="px-4 py-3 font-medium">Site</th>
+                <th class="px-4 py-3 font-medium">Address</th>
+                <th class="px-4 py-3 font-medium">District</th>
+                <th class="px-4 py-3 font-medium">Teams</th>
+                <th class="px-4 py-3 font-medium">Workers</th>
+                <th class="px-4 py-3 font-medium">Coordinates</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sites %}
+            <tr class="border-b border-navy-700/50 hover:bg-navy-800/50 transition-colors">
+                <td class="px-4 py-3 text-gray-200 font-medium">{{ s.name }}</td>
+                <td class="px-4 py-3 text-gray-300 text-xs">{{ s.address or '—' }}</td>
+                <td class="px-4 py-3 text-gray-300">{{ s.district or '—' }}</td>
+                <td class="px-4 py-3 text-gold-400 font-medium">{{ s.active_teams|default(0) }}</td>
+                <td class="px-4 py-3 text-blue-400 font-medium">{{ s.worker_count|default(0) }}</td>
+                <td class="px-4 py-3">
+                    {% if s.latitude and s.longitude %}
+                    <span class="text-xs font-mono text-gray-400" data-lat="{{ s.latitude }}" data-lng="{{ s.longitude }}">
+                        {{ '%.4f'|format(s.latitude) }}, {{ '%.4f'|format(s.longitude) }}
+                    </span>
+                    {% else %}
+                    <span class="text-gray-500">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+
+            {% if not sites %}
+            <tr>
+                <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                    No active sites. Add sites via Settings to see resource allocation.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

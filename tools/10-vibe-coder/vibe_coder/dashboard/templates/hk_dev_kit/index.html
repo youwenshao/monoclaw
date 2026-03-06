@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+{% block title %}HKDevKit{% endblock %}
+
+{% block status_cards %}
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-gold-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">API Connectors</p>
+        <p class="text-lg font-bold text-white">{{ connector_count|default(4) }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Snippets</p>
+        <p class="text-lg font-bold text-white">{{ snippet_count|default(0) }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-green-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Projects Generated</p>
+        <p class="text-lg font-bold text-white">{{ projects_generated|default(0) }}</p>
+    </div>
+</div>
+
+<div class="flex items-center gap-2 px-4 py-2 bg-navy-800 rounded-lg min-w-36">
+    <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+    </svg>
+    <div>
+        <p class="text-xs text-gray-400">Active APIs</p>
+        <p class="text-lg font-bold text-white">{{ active_apis|default(0) }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="hkDevKit()" class="space-y-6">
+
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-1 border-b border-navy-700 pb-px">
+        <template x-for="t in tabs" :key="t.key">
+            <button @click="tab = t.key"
+                    :class="tab === t.key
+                        ? 'text-gold-400 border-gold-500 border-b-2'
+                        : 'text-gray-400 border-transparent border-b-2 hover:text-gray-200'"
+                    class="px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="t.label"></button>
+        </template>
+    </div>
+
+    <!-- ════════════════ Connectors tab ════════════════ -->
+    <div x-show="tab === 'connectors'" x-cloak>
+        <div class="space-y-6">
+
+            <!-- Connector gallery (loaded via htmx) -->
+            <div id="connector-gallery"
+                 hx-get="/api/hk-dev-kit/connectors"
+                 hx-trigger="load"
+                 hx-target="#connector-gallery"
+                 hx-swap="innerHTML">
+                <div class="grid grid-cols-4 gap-4">
+                    <template x-for="i in 4">
+                        <div class="card animate-pulse">
+                            <div class="h-10 bg-navy-700 rounded mb-3"></div>
+                            <div class="h-4 bg-navy-700 rounded w-2/3"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- HK-specific tools -->
+            <div class="grid grid-cols-3 gap-6">
+
+                <!-- HKID Validator -->
+                <div class="card space-y-3">
+                    <h3 class="text-sm font-semibold text-gold-400 flex items-center gap-2">
+                        <span class="text-lg">🪪</span> HKID Validator
+                    </h3>
+                    <div class="flex gap-2">
+                        <input x-model="hkidInput" type="text"
+                               placeholder="e.g. A123456(7)"
+                               class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <button @click="validateHkid()"
+                                :disabled="!hkidInput || hkidValidating"
+                                class="btn btn-primary btn-sm whitespace-nowrap disabled:opacity-40">
+                            <span x-show="!hkidValidating">Validate</span>
+                            <span x-show="hkidValidating" class="flex items-center gap-1">
+                                <svg class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                ...
+                            </span>
+                        </button>
+                    </div>
+                    <div x-show="hkidResult !== null" class="text-xs p-2 rounded-lg"
+                         :class="hkidResult?.valid ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+                        <span x-show="hkidResult?.valid">&#10003; Valid HKID</span>
+                        <span x-show="!hkidResult?.valid" x-text="hkidResult?.message || 'Invalid HKID'"></span>
+                    </div>
+                </div>
+
+                <!-- Phone Formatter -->
+                <div class="card space-y-3">
+                    <h3 class="text-sm font-semibold text-gold-400 flex items-center gap-2">
+                        <span class="text-lg">📱</span> Phone Formatter
+                    </h3>
+                    <div class="flex gap-2">
+                        <input x-model="phoneInput" type="text"
+                               placeholder="e.g. 91234567"
+                               class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <button @click="formatPhone()"
+                                :disabled="!phoneInput || phoneFormatting"
+                                class="btn btn-secondary btn-sm whitespace-nowrap disabled:opacity-40">
+                            Format
+                        </button>
+                    </div>
+                    <div x-show="phoneResult !== null" class="text-xs p-2 rounded-lg bg-blue-500/20 text-blue-400">
+                        <span x-text="phoneResult?.formatted || phoneResult?.message"></span>
+                    </div>
+                </div>
+
+                <!-- FPS QR Generator -->
+                <div class="card space-y-3">
+                    <h3 class="text-sm font-semibold text-gold-400 flex items-center gap-2">
+                        <span class="text-lg">💳</span> FPS QR Generator
+                    </h3>
+                    <div class="space-y-2">
+                        <input x-model="fpsProxyId" type="text"
+                               placeholder="Proxy ID (phone/FPS ID/email)"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                        <div class="flex gap-2">
+                            <input x-model="fpsAmount" type="number" step="0.01" min="0"
+                                   placeholder="Amount (HKD)"
+                                   class="flex-1 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <button @click="generateFpsQr()"
+                                    :disabled="!fpsProxyId || !fpsAmount || fpsGenerating"
+                                    class="btn btn-primary btn-sm whitespace-nowrap disabled:opacity-40">
+                                <span x-show="!fpsGenerating">Generate</span>
+                                <span x-show="fpsGenerating" class="flex items-center gap-1">
+                                    <svg class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                    ...
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                    <div x-show="fpsQrImage" class="flex justify-center p-3 bg-white rounded-lg">
+                        <img :src="fpsQrImage" alt="FPS QR Code" class="w-40 h-40">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ Boilerplate tab ════════════════ -->
+    <div x-show="tab === 'boilerplate'" x-cloak>
+        <div class="grid grid-cols-3 gap-6">
+
+            <!-- Left: Project config -->
+            <div class="col-span-1 space-y-4">
+                <div class="card space-y-4">
+                    <h3 class="text-sm font-semibold text-gold-400">New Project</h3>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Project Name</label>
+                        <input x-model="projectName" type="text"
+                               placeholder="my-hk-app"
+                               class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Framework</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <template x-for="fw in frameworks" :key="fw.value">
+                                <button @click="selectedFramework = fw.value"
+                                        :class="selectedFramework === fw.value
+                                            ? 'bg-gold-500 text-navy-900 font-semibold'
+                                            : 'bg-navy-700 text-gray-300 hover:bg-navy-600'"
+                                        class="px-3 py-2 text-xs rounded-lg transition-colors text-center"
+                                        x-text="fw.label"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Integrations</label>
+                        <div class="space-y-2">
+                            <template x-for="intg in integrations" :key="intg.value">
+                                <label class="flex items-center gap-2 p-2 bg-navy-900 rounded-lg cursor-pointer">
+                                    <input type="checkbox" :value="intg.value"
+                                           x-model="selectedIntegrations"
+                                           class="w-4 h-4 rounded border-navy-600 bg-navy-900 text-gold-500">
+                                    <span class="text-sm" x-text="intg.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <button @click="generateProject()"
+                            :disabled="!projectName || !selectedFramework || generating"
+                            class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                                   bg-gold-500 text-navy-900 hover:bg-gold-400
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!generating">Generate Project</span>
+                        <span x-show="generating" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Scaffolding…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Generated summary -->
+            <div class="col-span-2">
+                <div id="boilerplate-result"
+                     class="card min-h-[400px]">
+                    <template x-if="!genProjectResult">
+                        <div class="flex flex-col items-center justify-center py-16 text-gray-500">
+                            <svg class="w-12 h-12 mb-3 text-navy-700" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/>
+                            </svg>
+                            <p class="text-sm">Configure your project and click Generate</p>
+                        </div>
+                    </template>
+                    <template x-if="genProjectResult">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-gold-400">Generated Project</h3>
+                                <span class="badge badge-green">Ready</span>
+                            </div>
+                            <div id="boilerplate-summary"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ════════════════ API Tester tab ════════════════ -->
+    <div x-show="tab === 'api-tester'" x-cloak>
+        <div class="grid grid-cols-2 gap-6">
+
+            <!-- Left: Request builder -->
+            <div class="space-y-4">
+                <div class="card space-y-4">
+                    <h3 class="text-sm font-semibold text-gold-400">Request Builder</h3>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">API Endpoint</label>
+                        <select x-model="selectedApi"
+                                @change="populateApiParams()"
+                                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            <option value="">— Select API —</option>
+                            <template x-for="api in apiEndpoints" :key="api.path">
+                                <option :value="api.path" x-text="api.method + ' ' + api.path"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div x-show="selectedApi">
+                        <label class="block text-xs text-gray-400 mb-1">Method</label>
+                        <p class="text-sm font-medium text-white" x-text="currentApiMethod"></p>
+                    </div>
+
+                    <div x-show="currentApiParams.length > 0" class="space-y-3">
+                        <label class="block text-xs text-gray-400">Parameters</label>
+                        <template x-for="(param, idx) in currentApiParams" :key="param.name">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1" x-text="param.name"></label>
+                                <input :type="param.type || 'text'"
+                                       x-model="param.value"
+                                       :placeholder="param.placeholder"
+                                       class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                        </template>
+                    </div>
+
+                    <button @click="sendApiRequest()"
+                            :disabled="!selectedApi || apiSending"
+                            class="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors
+                                   bg-gold-500 text-navy-900 hover:bg-gold-400
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!apiSending">Send Request</span>
+                        <span x-show="apiSending" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Sending…
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Response viewer -->
+            <div class="space-y-4">
+                <div id="api-tester-response" class="card min-h-[400px]">
+                    <template x-if="!apiResponse">
+                        <div class="flex flex-col items-center justify-center py-16 text-gray-500">
+                            <svg class="w-12 h-12 mb-3 text-navy-700" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+                            </svg>
+                            <p class="text-sm">Select an API and send a request</p>
+                        </div>
+                    </template>
+                    <template x-if="apiResponse">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Response</h4>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs" :class="apiResponse.status < 400 ? 'text-green-400' : 'text-red-400'"
+                                          x-text="apiResponse.status + ' ' + apiResponse.statusText"></span>
+                                    <span class="text-xs text-gray-500" x-text="apiResponse.elapsed + 'ms'"></span>
+                                </div>
+                            </div>
+                            <div class="bg-navy-900 rounded-lg p-4 overflow-auto max-h-[500px]">
+                                <pre class="text-xs text-gray-200 whitespace-pre-wrap" style="font-family: var(--font-mono);"
+                                     x-text="JSON.stringify(apiResponse.body, null, 2)"></pre>
+                            </div>
+                            <button @click="copyToClipboard(JSON.stringify(apiResponse.body, null, 2), $el)"
+                                    class="btn btn-secondary btn-sm">
+                                Copy JSON
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ════════════════ Snippets tab ════════════════ -->
+    <div x-show="tab === 'snippets'" x-cloak>
+        <div class="space-y-4">
+
+            <!-- Search + filter bar -->
+            <div class="flex gap-3">
+                <div class="flex-1 relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                    </svg>
+                    <input x-model.debounce.300ms="snippetQuery"
+                           @input="searchSnippets()"
+                           type="text"
+                           placeholder="Search snippets…"
+                           class="w-full bg-navy-800 border border-navy-600 rounded-lg pl-10 pr-3 py-2 text-sm">
+                </div>
+                <div class="flex gap-1">
+                    <template x-for="cat in snippetCategories" :key="cat">
+                        <button @click="snippetCategory = (snippetCategory === cat ? '' : cat); searchSnippets()"
+                                :class="snippetCategory === cat
+                                    ? 'bg-gold-500 text-navy-900 font-semibold'
+                                    : 'bg-navy-700 text-gray-300 hover:bg-navy-600'"
+                                class="px-3 py-2 text-xs rounded-lg transition-colors whitespace-nowrap"
+                                x-text="cat"></button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Snippet results (htmx partial) -->
+            <div id="snippet-results"
+                 hx-get="/api/hk-dev-kit/snippets"
+                 hx-trigger="load"
+                 hx-target="#snippet-results"
+                 hx-swap="innerHTML">
+                <div class="grid grid-cols-2 gap-4">
+                    <template x-for="i in 4">
+                        <div class="card animate-pulse">
+                            <div class="h-4 bg-navy-700 rounded w-1/2 mb-3"></div>
+                            <div class="h-20 bg-navy-700 rounded"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function hkDevKit() {
+    return {
+        tab: 'connectors',
+        tabs: [
+            { key: 'connectors', label: 'Connectors' },
+            { key: 'boilerplate', label: 'Boilerplate' },
+            { key: 'api-tester', label: 'API Tester' },
+            { key: 'snippets', label: 'Snippets' },
+        ],
+
+        // ── Connectors ──
+        hkidInput: '',
+        hkidValidating: false,
+        hkidResult: null,
+        phoneInput: '',
+        phoneFormatting: false,
+        phoneResult: null,
+        fpsProxyId: '',
+        fpsAmount: '',
+        fpsGenerating: false,
+        fpsQrImage: null,
+
+        async validateHkid() {
+            this.hkidValidating = true;
+            this.hkidResult = null;
+            try {
+                const resp = await fetch('/api/hk-dev-kit/validate/hkid', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hkid: this.hkidInput }),
+                });
+                this.hkidResult = await resp.json();
+            } catch (e) {
+                this.hkidResult = { valid: false, message: e.message };
+            } finally {
+                this.hkidValidating = false;
+            }
+        },
+
+        async formatPhone() {
+            this.phoneFormatting = true;
+            this.phoneResult = null;
+            try {
+                const resp = await fetch('/api/hk-dev-kit/validate/phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: this.phoneInput }),
+                });
+                this.phoneResult = await resp.json();
+            } catch (e) {
+                this.phoneResult = { message: e.message };
+            } finally {
+                this.phoneFormatting = false;
+            }
+        },
+
+        async generateFpsQr() {
+            this.fpsGenerating = true;
+            this.fpsQrImage = null;
+            try {
+                const resp = await fetch('/api/hk-dev-kit/fps/qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        proxy_id: this.fpsProxyId,
+                        amount: parseFloat(this.fpsAmount),
+                        proxy_type: 'mobile',
+                        currency: 'HKD',
+                    }),
+                });
+                const data = await resp.json();
+                if (data.qr_image) {
+                    this.fpsQrImage = 'data:image/png;base64,' + data.qr_image;
+                } else if (data.qr_data_url) {
+                    this.fpsQrImage = data.qr_data_url;
+                }
+            } catch (e) {
+                console.error('FPS QR generation failed:', e);
+            } finally {
+                this.fpsGenerating = false;
+            }
+        },
+
+        // ── Boilerplate ──
+        projectName: '',
+        selectedFramework: '',
+        selectedIntegrations: [],
+        generating: false,
+        genProjectResult: null,
+
+        frameworks: [
+            { label: 'FastAPI', value: 'fastapi' },
+            { label: 'Flask', value: 'flask' },
+            { label: 'Express', value: 'express' },
+            { label: 'Next.js', value: 'nextjs' },
+        ],
+        integrations: [
+            { label: 'FPS Payments', value: 'fps' },
+            { label: 'Octopus Pay', value: 'octopus' },
+            { label: 'GovHK Weather', value: 'govhk_weather' },
+            { label: 'GovHK Transport', value: 'govhk_transport' },
+            { label: 'HKID Validation', value: 'hkid_validator' },
+            { label: 'Phone Formatter', value: 'phone_formatter' },
+        ],
+
+        async generateProject() {
+            if (!this.projectName || !this.selectedFramework) return;
+            this.generating = true;
+            this.genProjectResult = null;
+            try {
+                const resp = await fetch('/api/hk-dev-kit/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_name: this.projectName,
+                        framework: this.selectedFramework,
+                        integrations: this.selectedIntegrations,
+                    }),
+                });
+                this.genProjectResult = await resp.json();
+                htmx.ajax('GET',
+                    '/api/hk-dev-kit/generate/summary?project=' + encodeURIComponent(this.projectName),
+                    { target: '#boilerplate-summary', swap: 'innerHTML' });
+            } catch (e) {
+                this.genProjectResult = { error: e.message };
+            } finally {
+                this.generating = false;
+            }
+        },
+
+        // ── API Tester ──
+        selectedApi: '',
+        currentApiMethod: '',
+        currentApiParams: [],
+        apiSending: false,
+        apiResponse: null,
+
+        apiEndpoints: [
+            { method: 'POST', path: '/api/hk-dev-kit/fps/qr',
+              params: [
+                  { name: 'proxy_id', placeholder: 'Phone / FPS ID', type: 'text', value: '' },
+                  { name: 'amount', placeholder: '100.00', type: 'number', value: '' },
+                  { name: 'proxy_type', placeholder: 'mobile', type: 'text', value: 'mobile' },
+                  { name: 'currency', placeholder: 'HKD', type: 'text', value: 'HKD' },
+              ] },
+            { method: 'POST', path: '/api/hk-dev-kit/fps/payment',
+              params: [
+                  { name: 'proxy_id', placeholder: 'Phone / FPS ID', type: 'text', value: '' },
+                  { name: 'amount', placeholder: '100.00', type: 'number', value: '' },
+              ] },
+            { method: 'POST', path: '/api/hk-dev-kit/octopus/payment',
+              params: [
+                  { name: 'merchant_id', placeholder: 'Merchant ID', type: 'text', value: '' },
+                  { name: 'amount', placeholder: '50.00', type: 'number', value: '' },
+                  { name: 'reference', placeholder: 'Order reference', type: 'text', value: '' },
+              ] },
+            { method: 'GET', path: '/api/hk-dev-kit/govhk/weather', params: [] },
+            { method: 'GET', path: '/api/hk-dev-kit/govhk/transport', params: [] },
+            { method: 'POST', path: '/api/hk-dev-kit/validate/hkid',
+              params: [
+                  { name: 'hkid', placeholder: 'A123456(7)', type: 'text', value: '' },
+              ] },
+            { method: 'POST', path: '/api/hk-dev-kit/validate/phone',
+              params: [
+                  { name: 'phone', placeholder: '91234567', type: 'text', value: '' },
+              ] },
+        ],
+
+        populateApiParams() {
+            const api = this.apiEndpoints.find(a => a.path === this.selectedApi);
+            if (api) {
+                this.currentApiMethod = api.method;
+                this.currentApiParams = JSON.parse(JSON.stringify(api.params));
+            } else {
+                this.currentApiMethod = '';
+                this.currentApiParams = [];
+            }
+            this.apiResponse = null;
+        },
+
+        async sendApiRequest() {
+            if (!this.selectedApi) return;
+            this.apiSending = true;
+            this.apiResponse = null;
+            const start = performance.now();
+            try {
+                const api = this.apiEndpoints.find(a => a.path === this.selectedApi);
+                const opts = { method: api.method, headers: {} };
+                if (api.method === 'POST') {
+                    opts.headers['Content-Type'] = 'application/json';
+                    const body = {};
+                    for (const p of this.currentApiParams) {
+                        body[p.name] = p.type === 'number' ? parseFloat(p.value) : p.value;
+                    }
+                    opts.body = JSON.stringify(body);
+                }
+                const resp = await fetch(this.selectedApi, opts);
+                const elapsed = Math.round(performance.now() - start);
+                const body = await resp.json();
+                this.apiResponse = { status: resp.status, statusText: resp.statusText, elapsed, body };
+                htmx.ajax('GET',
+                    '/api/hk-dev-kit/tester/history',
+                    { target: '#api-tester-response', swap: 'beforeend' });
+            } catch (e) {
+                const elapsed = Math.round(performance.now() - start);
+                this.apiResponse = { status: 0, statusText: 'Error', elapsed, body: { error: e.message } };
+            } finally {
+                this.apiSending = false;
+            }
+        },
+
+        // ── Snippets ──
+        snippetQuery: '',
+        snippetCategory: '',
+        snippetCategories: ['payment', 'validation', 'formatting', 'api', 'utility'],
+
+        searchSnippets() {
+            const params = new URLSearchParams();
+            if (this.snippetQuery) params.set('q', this.snippetQuery);
+            if (this.snippetCategory) params.set('category', this.snippetCategory);
+            htmx.ajax('GET',
+                '/api/hk-dev-kit/snippets?' + params.toString(),
+                { target: '#snippet-results', swap: 'innerHTML' });
+        },
+    };
+}
+</script>
+{% endblock %}

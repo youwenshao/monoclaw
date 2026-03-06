@@ -1,0 +1,36 @@
+{% if results %}
+<div class="space-y-3">
+    <p class="text-xs text-gray-500">{{ results|length }} result{{ 's' if results|length != 1 else '' }} for "{{ query }}"</p>
+    {% for result in results %}
+    <div class="card p-4 hover:border-navy-500 transition-colors">
+        <div class="flex items-start justify-between mb-2">
+            <h4 class="text-sm font-semibold text-gray-200">{{ result.document_title }}</h4>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-navy-700 text-gray-400 shrink-0 ml-2">
+                p.{{ result.page_number }}
+            </span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">{{ result.chunk_text[:300] }}{% if result.chunk_text|length > 300 %}...{% endif %}</p>
+        <div class="mt-2 flex items-center gap-2">
+            <div class="flex-1 h-1 bg-navy-700 rounded-full overflow-hidden">
+                <div class="h-full rounded-full
+                    {% if result.score >= 0.8 %}bg-green-500{% elif result.score >= 0.5 %}bg-yellow-500{% else %}bg-red-500{% endif %}"
+                     style="width: {{ (result.score * 100)|int }}%"></div>
+            </div>
+            <span class="text-xs text-gray-500">{{ '%.0f'|format(result.score * 100) }}% match</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif query %}
+<div class="text-center py-12">
+    <p class="text-gray-500 text-sm">No results found for "{{ query }}"</p>
+    <p class="text-gray-600 text-xs mt-1">Try different keywords or upload more materials.</p>
+</div>
+{% else %}
+<div class="text-center py-12">
+    <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+    </svg>
+    <p class="text-gray-500 text-sm">Enter a query to search across your materials.</p>
+</div>
+{% endif %}

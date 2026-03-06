@@ -1,0 +1,83 @@
+<div class="bg-[#1a1f36] border border-[#2d3352] rounded-lg p-5 mb-4">
+    <div class="flex items-center justify-between mb-4">
+        <h4 class="text-sm font-semibold text-[#d4a843]">New Appointment 新預約</h4>
+        <button onclick="this.closest('.bg-\\[\\#1a1f36\\]').remove()"
+                class="text-gray-500 hover:text-gray-300 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    <form hx-post="/clinic-scheduler/api/booking" hx-target="#schedule-grid" hx-swap="innerHTML"
+          class="grid grid-cols-3 gap-4">
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Doctor 醫生</label>
+            <select name="doctor_id" required
+                    class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                <option value="">Select doctor…</option>
+                {% for doc in doctors | default([]) %}
+                <option value="{{ doc.id }}" {% if prefill_doctor == doc.id %}selected{% endif %}>{{ doc.name }} ({{ doc.specialty }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Service Type 服務類別</label>
+            <select name="service_type" required
+                    class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                <option value="consultation">Consultation 診症</option>
+                <option value="follow_up">Follow-up 覆診</option>
+                <option value="dental_cleaning">Dental Cleaning 洗牙</option>
+                <option value="dental_filling">Dental Filling 補牙</option>
+                <option value="dental_extraction">Extraction 脫牙</option>
+                <option value="root_canal">Root Canal 根管治療</option>
+                <option value="checkup">Check-up 身體檢查</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Date 日期</label>
+            <input type="date" name="date" required value="{{ prefill_date | default('') }}"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Time 時間</label>
+            <select name="time" required
+                    class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-[#d4a843]">
+                <option value="">Select time…</option>
+                {% for slot in available_slots | default(['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30']) %}
+                <option value="{{ slot }}" {% if prefill_time == slot %}selected{% endif %}>{{ slot }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Patient Name 病人姓名</label>
+            <input type="text" name="patient_name" required placeholder="Full name"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Phone 電話</label>
+            <input type="tel" name="patient_phone" placeholder="+852 XXXX XXXX"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div class="col-span-3">
+            <label class="block text-xs text-gray-400 mb-1">Notes 備註</label>
+            <input type="text" name="notes" placeholder="Special requirements…"
+                   class="w-full bg-[#242b4a] border border-[#2d3352] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#d4a843]">
+        </div>
+
+        <div class="col-span-3 flex gap-3 justify-end">
+            <button type="button" onclick="this.closest('.bg-\\[\\#1a1f36\\]').remove()"
+                    class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">Cancel 取消</button>
+            <button type="submit"
+                    class="bg-[#d4a843] text-[#0f1225] px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#e0be6a] transition-colors">
+                Book Appointment 預約
+            </button>
+        </div>
+    </form>
+</div>
