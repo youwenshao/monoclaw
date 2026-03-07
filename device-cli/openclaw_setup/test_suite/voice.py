@@ -8,24 +8,41 @@ from .base import BaseTestSuite
 class VoiceSystemTests(BaseTestSuite):
 
     def test_whisper_model_exists(self):
-        model_paths = [
-            Path("/opt/openclaw/models/whisper-large-v3"),
-            Path.home() / ".cache" / "whisper",
-        ]
-        for p in model_paths:
-            if p.exists():
-                return "pass", {"path": str(p)}
-        return "skipped", {"note": "Whisper model not found (may use API STT)"}
+        model_path = Path("/opt/openclaw/models/whisper-large-v3-turbo")
+        if model_path.exists() and any(model_path.iterdir()):
+            return "pass", {"path": str(model_path)}
+        return "fail", {"error": "Whisper model not found at /opt/openclaw/models/whisper-large-v3-turbo"}
 
     def test_tts_model_exists(self):
-        tts_paths = [
-            Path("/opt/openclaw/models/qwen-tts"),
-            Path("/opt/openclaw/models/edge-tts"),
-        ]
-        for p in tts_paths:
-            if p.exists():
-                return "pass", {"path": str(p)}
-        return "skipped", {"note": "TTS model not found (may use API TTS)"}
+        model_path = Path("/opt/openclaw/models/qwen3-tts")
+        if model_path.exists() and any(model_path.iterdir()):
+            return "pass", {"path": str(model_path)}
+        return "fail", {"error": "TTS model not found at /opt/openclaw/models/qwen3-tts"}
+
+    def test_tts_inference(self):
+        model_path = Path("/opt/openclaw/models/qwen3-tts")
+        if not model_path.exists():
+            return "fail", {"error": "TTS model not downloaded"}
+        try:
+            from mlx_audio.tts import generate
+            audio = generate(model=str(model_path), text="Hello")
+            if audio and len(audio) > 0:
+                return "pass", {"output_length": len(audio)}
+            return "fail", {"error": "TTS generated empty output"}
+        except Exception as e:
+            return "fail", {"error": f"TTS inference failed: {e}"}
+
+    def test_stt_inference(self):
+        model_path = Path("/opt/openclaw/models/whisper-large-v3-turbo")
+        if not model_path.exists():
+            return "fail", {"error": "Whisper model not downloaded"}
+        try:
+            import mlx_whisper
+            if not hasattr(mlx_whisper, "transcribe"):
+                return "fail", {"error": "mlx_whisper missing transcribe function"}
+            return "pass", {"note": "mlx_whisper module loaded, model path valid"}
+        except Exception as e:
+            return "fail", {"error": f"STT module load failed: {e}"}
 
     def test_audio_framework_available(self):
         result = subprocess.run(

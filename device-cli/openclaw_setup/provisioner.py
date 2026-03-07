@@ -58,9 +58,14 @@ class Provisioner:
             self._write_core_configs()
             self._set_permissions()
             self._download_models()
+            self._download_voice_models()
             self._install_industry_skills()
+            self._install_clawhub_skills()
             self._setup_auto_routing()
             self._write_active_work_json()
+            self._setup_messaging_config()
+            self._write_llm_provider_config()
+            self._write_openclaw_config()
             self._setup_heartbeat_daemon()
             self._setup_log_rotation()
             self._store_setup_credentials()
@@ -102,7 +107,9 @@ class Provisioner:
             "/etc/openclaw/core",
             "/opt/openclaw/models",
             "/opt/openclaw/skills/local",
+            "/opt/openclaw/skills/clawhub",
             "/opt/openclaw/state",
+            "/opt/openclaw/config/messaging",
             "/var/log/openclaw",
         ]
         user = _real_user()
@@ -224,7 +231,7 @@ class Provisioner:
             # Use the current python interpreter (which should be the venv one)
             import sys
             subprocess.run(
-                [sys.executable, "-m", "pip", "install", "mlx-lm", "qwen-agent", "psutil", "schedule", "huggingface-hub"],
+                [sys.executable, "-m", "pip", "install", "mlx-lm", "qwen-agent", "psutil", "schedule", "huggingface-hub", "mlx-whisper", "mlx-audio"],
                 capture_output=True, check=True,
             )
             progress.update(task, description="Python packages installed")
@@ -448,7 +455,171 @@ class Provisioner:
 
     def _setup_log_rotation(self):
         console.print("\n[bold]Configuring log rotation...[/bold]")
-        console.print("  Log rotation configured")
+        newsyslog_conf = "/etc/newsyslog.d/openclaw.conf"
+        content = "# logfilename          [owner:group]    mode count size when  flags\n"
+        content += "/var/log/openclaw/*.log              644  5     1024 *     J\n"
+        try:
+            Path(newsyslog_conf).write_text(content)
+            console.print(f"  Wrote: {newsyslog_conf}")
+        except Exception as e:
+            console.print(f"  [yellow]Warning: Could not write log rotation config: {e}[/yellow]")
+
+    def _download_voice_models(self):
+        """Download local TTS and STT models for fully offline voice."""
+        console.print("\n[bold]Downloading voice models...[/bold]")
+
+        model_dir = Path("/opt/openclaw/models")
+        subprocess.run(["sudo", "chmod", "755", str(model_dir)], check=True)
+
+        voice_models = [
+            ("whisper-large-v3-turbo", "mlx-community/whisper-large-v3-turbo", "STT"),
+            ("qwen3-tts", "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit", "TTS"),
+        ]
+
+        for i, (local_name, hf_repo, purpose) in enumerate(voice_models, 1):
+            dest = model_dir / local_name
+            if dest.exists() and any(dest.iterdir()):
+                console.print(f"  [{i}/{len(voice_models)}] {local_name} ({purpose}) already downloaded")
+                continue
+
+            console.print(f"  [{i}/{len(voice_models)}] Downloading {local_name} ({purpose}) <- {hf_repo}")
+            try:
+                from huggingface_hub import snapshot_download
+                snapshot_download(
+                    repo_id=hf_repo,
+                    local_dir=str(dest),
+                    local_dir_use_symlinks=False,
+                )
+                console.print(f"  [green]  {local_name} downloaded successfully[/green]")
+            except Exception as e:
+                console.print(f"  [red]  Failed to download {local_name}: {e}[/red]")
+
+    def _install_clawhub_skills(self):
+        """Install ClawHub CLI and popular community skills."""
+        console.print("\n[bold]Installing ClawHub skills...[/bold]")
+        user = _real_user()
+
+        try:
+            subprocess.run(["sudo", "-u", user, "npm", "i", "-g", "clawhub"],
+                           capture_output=True, check=True)
+            console.print("  ClawHub CLI installed globally")
+        except subprocess.CalledProcessError as e:
+            console.print(f"  [yellow]Warning: Failed to install clawhub CLI: {e}[/yellow]")
+            return
+
+        skills = [
+            "self-improving-agent",
+            "proactive-agent",
+            "gog",
+            "clawdbot-documentation-expert",
+            "caldav-calendar",
+            "agent-browser",
+            "wacli",
+            "byterover",
+            "capability-evolver",
+            "auto-updater-skill",
+            "summarize",
+            "humanize-ai-text",
+            "find-skills",
+            "github",
+            "tavily-web-search",
+            "obsidian",
+        ]
+
+        installed_count = 0
+        for i, skill in enumerate(skills, 1):
+            console.print(f"  [{i}/{len(skills)}] Installing {skill}...")
+            result = subprocess.run(
+                ["sudo", "-u", user, "npx", "clawhub@latest", "install", skill],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                installed_count += 1
+            else:
+                console.print(f"  [yellow]  Warning: {skill} installation failed[/yellow]")
+
+        console.print(f"  [green]Installed {installed_count}/{len(skills)} ClawHub skills[/green]")
+
+    def _setup_messaging_config(self):
+        """Create messaging platform configuration stubs."""
+        console.print("\n[bold]Setting up messaging configuration...[/bold]")
+        user = _real_user()
+
+        msg_dir = Path("/opt/openclaw/config/messaging")
+        msg_dir.mkdir(parents=True, exist_ok=True)
+
+        configs = {
+            "whatsapp": {
+                "enabled": False, "provider": "twilio",
+                "account_sid": "", "auth_token": "",
+                "phone_number": "",
+            },
+            "telegram": {
+                "enabled": False, "bot_token": "", "bot_username": "",
+            },
+            "discord": {
+                "enabled": False, "bot_token": "", "guild_id": "",
+                "application_id": "",
+            },
+            "email": {
+                "enabled": False, "smtp_host": "", "smtp_port": 587,
+                "email": "", "password": "",
+            },
+        }
+
+        for platform, config in configs.items():
+            path = msg_dir / f"{platform}.json"
+            if not path.exists():
+                path.write_text(json.dumps(config, indent=2))
+                console.print(f"  Created: {path}")
+
+        subprocess.run(["chown", "-R", f"{user}:", str(msg_dir)], check=True)
+        console.print("  Messaging config stubs created")
+
+    def _write_llm_provider_config(self):
+        """Write LLM provider configuration based on order plan type."""
+        console.print("\n[bold]Writing LLM provider configuration...[/bold]")
+
+        plan_type = "local_only"
+        if self.order_spec:
+            if self.order_spec.llm_plan.plan_type == "api_only":
+                plan_type = "api_only"
+            elif self.order_spec.llm_plan.bundle_id == "max_bundle":
+                plan_type = "hybrid"
+
+        config = {
+            "offline_mode": plan_type,
+            "max_tokens": 4096,
+            "default_provider": "mlx" if plan_type != "api_only" else "deepseek",
+            "api_keys": {},
+            "local_models_path": "/opt/openclaw/models",
+        }
+
+        provider_path = Path("/opt/openclaw/state/llm-provider.json")
+        provider_path.write_text(json.dumps(config, indent=2))
+        console.print(f"  Wrote: {provider_path} (mode: {plan_type})")
+
+    def _write_openclaw_config(self):
+        """Write global OpenClaw configuration file."""
+        console.print("\n[bold]Writing OpenClaw configuration...[/bold]")
+        user_home = _real_user_home()
+
+        config = {
+            "skills_dir": "/opt/openclaw/skills",
+            "clawhub_skills_dir": "/opt/openclaw/skills/clawhub",
+            "models_dir": "/opt/openclaw/models",
+            "state_dir": "/opt/openclaw/state",
+            "workspace": str(user_home / "OpenClawWorkspace"),
+            "messaging_config_dir": "/opt/openclaw/config/messaging",
+        }
+
+        config_path = user_home / ".openclaw" / "config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(json.dumps(config, indent=2))
+
+        user = _real_user()
+        subprocess.run(["chown", f"{user}:", str(config_path)], check=True)
+        console.print(f"  Wrote: {config_path}")
 
     def _store_setup_credentials(self):
         console.print("\n[bold]Storing setup credentials...[/bold]")
@@ -527,6 +698,8 @@ class Provisioner:
 ## Available Tool Categories
 ### Communication Tools
 - send_whatsapp: Business API (Twilio/WhatsApp Business)
+- send_telegram: Telegram Bot API (direct messaging)
+- send_discord: Discord Bot API (channel and DM messaging)
 - send_email: SMTP integration (credentials in Keychain)
 - schedule_meeting: Calendar integration
 

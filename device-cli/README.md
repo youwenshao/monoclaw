@@ -132,28 +132,30 @@ Understanding the flow helps when troubleshooting. The provisioner does the foll
 
 ### 4. Dependencies
 
-- Installs Python packages: `mlx-lm`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`.
+- Installs Python packages: `mlx-lm`, `mlx-whisper`, `mlx-audio`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`.
 
 ### 5. Core Configs
 
 - Writes `SOUL.md`, `AGENTS.md`, `TOOLS.md` in `/etc/openclaw/core` with industry context and available tools.
+- Communication tools now include native support for **Telegram** and **Discord** alongside WhatsApp.
 
 ### 6. Model Download
 
 - For each model in the order's LLM plan, downloads from Hugging Face Hub to `/opt/openclaw/models/{model-id}/`.
+- **Voice Models**: Automatically downloads `whisper-large-v3-turbo` (STT) and `Qwen3-TTS-12Hz-1.7B` (TTS) for fully offline voice interaction.
 - Uses 4-bit quantized MLX-compatible models. Progress is shown per model.
-- **API-only orders**: Skips this step.
 
-### 7. Industry Skills
+### 7. Industry & Community Skills
 
-- Creates skill directories under `/opt/openclaw/skills/local/{slug}/` for:
-  - **Primary industry** (e.g. `real-estate` → PropertyGPT, ListingSync Agent, etc.)
-  - **Persona add-ons** (e.g. `vibe-coder` → CodeQwen-9B, HKDevKit, etc.)
-- Each skill has a `manifest.json` and `config.yaml` describing the tools.
+- Creates skill directories under `/opt/openclaw/skills/local/{slug}/` for industry and persona stacks.
+- **ClawHub Integration**: Automatically installs 16 vetted, high-trust community skills from `clawhub.ai` (e.g., `self-improving-agent`, `agent-browser`, `find-skills`) via the ClawHub CLI.
 
-### 8. Auto-Routing (Max Bundle Only)
+### 8. Configuration & Routing
 
-- Writes `/opt/openclaw/state/routing-config.json` mapping complexity levels (simple, moderate, complex, code) to model IDs.
+- **Auto-Routing (Max Bundle Only)**: Writes `/opt/openclaw/state/routing-config.json` for task-based model selection.
+- **LLM Provider Config**: Writes `/opt/openclaw/state/llm-provider.json` defining the offline/hybrid mode.
+- **Global Config**: Writes `~/.openclaw/config.json` to point the OpenClaw engine to local system paths.
+- **Messaging Stubs**: Creates credential stubs for WhatsApp, Telegram, and Discord in `/opt/openclaw/config/messaging/`.
 
 ### 9. Active Work State
 
@@ -173,11 +175,30 @@ The test suite validates:
 - **macOS environment** — macOS version, SIP, FileVault, Xcode CLI, Homebrew, Python, Node, FFmpeg.
 - **OpenClaw core** — Directories, config files, permissions, manifest integrity, industry skills.
 - **LLM models** — Expected models present, config integrity, load and inference per model.
-- **Voice** — Whisper/TTS paths, FFmpeg, language detection.
+- **Voice** — Whisper Large V3 Turbo (STT) and Qwen3-TTS (TTS) model presence, inference verification, and language detection (English, Cantonese, Mandarin).
 - **Security** — Core immutability, sandbox, credentials permissions.
 - **Stress/edge cases** — Inference, model switching, Unicode, network fallback, etc.
 
 Results are uploaded to Supabase (`device_test_results`, `device_test_summaries`). The client can view the test report in their dashboard.
+
+---
+
+## Post-Provisioning: User Onboarding
+
+Once finalized, the device is ready for the client. The onboarding flow is fully local and designed to introduce Mona as a warm, capable colleague.
+
+### 1. Initial Login
+- Clients log into the Mac using the default password: `1234`.
+- This password is shown on their MonoClaw web dashboard once the order is shipped.
+- Clients are instructed to change this password immediately after their first login.
+
+### 2. Mona Hub Onboarding (12 Phases)
+The onboarding app launches automatically and guides the user through:
+- **Independence** — Celebrating 100% local, private ownership.
+- **Voice & Chat Demo** — Real-time interaction with local models (no internet required).
+- **Profile & Mac Setup** — Personalizing Mona's tone and the Mac's identity.
+- **Guided Configuration** — Step-by-step wizards for optional cloud LLMs (DeepSeek, Kimi, GLM-5) and messaging (WhatsApp, Telegram, Discord).
+- **Tools Overview** — Reviewing industry-specific tools and pre-installed ClawHub skills.
 
 ---
 

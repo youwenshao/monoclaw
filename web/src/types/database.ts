@@ -53,12 +53,17 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface OrderHardwareConfig {
+  confirmation_code?: string;
+  [key: string]: unknown;
+}
+
 export interface Order {
   id: string;
   client_id: string;
   status: OrderStatus;
   hardware_type: HardwareType;
-  hardware_config: Record<string, unknown>;
+  hardware_config: OrderHardwareConfig;
   software_package: string;
   total_price_hkd: number;
   stripe_payment_intent_id: string | null;
