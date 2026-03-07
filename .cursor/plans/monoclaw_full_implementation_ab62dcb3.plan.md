@@ -166,11 +166,13 @@ monoclaw/
 
 Python CLI tool (packaged with `pyproject.toml`, installable via `pip install -e .`). Run by internal technician on each Mac.
 
+**One-click pendrive flow**: Technicians can prepare a USB drive with a standard layout (device-cli copy, `.env.provision`, optional `job.txt`), then on each Mac double-click `Run OpenClaw Setup.command`. The script installs the CLI, runs provision and test (results upload to Supabase), and **auto-finalizes (self-destruct)** when all tests pass. See [device-cli/README.md](device-cli/README.md) for pendrive layout and steps.
+
 ### CLI Commands
 
 ```
-openclaw-setup provision --order-id <ORDER_ID> --serial <SERIAL>
-  -> Creates directory structure, sets permissions, installs dependencies,
+openclaw-setup provision [--order-id <ORDER_ID>] [--serial <SERIAL>]
+  -> Order/serial from args or OPENCLAW_ORDER_ID / OPENCLAW_SERIAL. Creates directory structure, sets permissions, installs dependencies,
      downloads purchased LLM models, installs industry skills,
      configures heartbeat daemon, writes core config files
 
@@ -182,9 +184,8 @@ openclaw-setup test --device-id <DEVICE_ID>
 openclaw-setup status
   -> Shows current provisioning/test status
 
-openclaw-setup finalize --device-id <DEVICE_ID>
-  -> Technician confirms everything is good.
-     Marks device as "passed" in Supabase.
+openclaw-setup finalize --device-id <DEVICE_ID> [--yes]
+  -> Technician confirms (or --yes for one-click script). Marks device as "passed" in Supabase.
      Triggers self-destruct: removes CLI tool, Supabase service key,
      all setup logs, pip package, and this script itself.
 ```

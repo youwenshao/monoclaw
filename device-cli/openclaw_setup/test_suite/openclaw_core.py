@@ -2,10 +2,18 @@
 
 import json
 import hashlib
-import os
-import subprocess
 from pathlib import Path
 from .base import BaseTestSuite
+
+
+def _load_active_work() -> dict | None:
+    aw_path = Path("/opt/openclaw/state/active-work.json")
+    if aw_path.exists():
+        try:
+            return json.loads(aw_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    return None
 
 
 class OpenClawCoreTests(BaseTestSuite):
@@ -70,22 +78,61 @@ class OpenClawCoreTests(BaseTestSuite):
 
         for filepath, expected_hash in manifest.get("baseline_hashes", {}).items():
             if Path(filepath).exists():
-                with open(filepath, "rb") as f:
-                    actual = hashlib.sha256(f.read()).hexdigest()
+                with open(filepath, "rb") as fh:
+                    actual = hashlib.sha256(fh.read()).hexdigest()
                 if actual != expected_hash:
                     return "fail", {"file": filepath, "expected": expected_hash[:16], "actual": actual[:16]}
         return "pass", {}
 
-    def test_llm_config_valid_json(self):
-        config_path = Path("/opt/openclaw/state/active-work.json")
-        if config_path.exists():
-            try:
-                with open(config_path) as f:
-                    json.load(f)
-                return "pass", {}
-            except json.JSONDecodeError as e:
-                return "fail", {"error": str(e)}
-        return "skipped", {"note": "Config not yet created"}
+    def test_active_work_json_valid(self):
+        aw_path = Path("/opt/openclaw/state/active-work.json")
+        if not aw_path.exists():
+            return "skipped", {"note": "active-work.json not yet created"}
+        try:
+            data = json.loads(aw_path.read_text())
+            required_keys = ["order_id", "device_id", "llm_plan"]
+            missing = [k for k in required_keys if k not in data]
+            if missing:
+                return "warning", {"missing_keys": missing}
+            return "pass", {"keys": list(data.keys())}
+        except json.JSONDecodeError as e:
+            return "fail", {"error": str(e)}
+
+    def test_industry_skills_installed(self):
+        """Verify industry skill directories match active-work.json configuration."""
+        aw = _load_active_work()
+        if not aw:
+            return "skipped", {"note": "No active-work.json"}
+
+        skills_dir = Path("/opt/openclaw/skills/local")
+        industry = aw.get("industry")
+        personas = aw.get("personas", [])
+        expected_slugs = []
+        if industry:
+            expected_slugs.append(industry)
+        expected_slugs.extend(personas)
+
+        if not expected_slugs:
+            return "pass", {"note": "No industry or persona skills expected"}
+
+        missing = []
+        valid = []
+        for slug in expected_slugs:
+            slug_dir = skills_dir / slug
+            manifest_file = slug_dir / "manifest.json"
+            if not slug_dir.exists() or not manifest_file.exists():
+                missing.append(slug)
+            else:
+                try:
+                    manifest = json.loads(manifest_file.read_text())
+                    tools = manifest.get("tools", [])
+                    valid.append({"slug": slug, "tools": len(tools)})
+                except (json.JSONDecodeError, OSError):
+                    missing.append(slug)
+
+        if missing:
+            return "fail", {"missing": missing, "valid": len(valid)}
+        return "pass", {"skills": valid}
 
     def test_log_directory_exists(self):
         if Path("/var/log/openclaw").exists():

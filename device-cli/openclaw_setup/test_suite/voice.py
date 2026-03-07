@@ -37,12 +37,24 @@ class VoiceSystemTests(BaseTestSuite):
         return "warning", {"note": "AVFoundation not directly importable (expected for non-PyObjC env)"}
 
     def test_ffmpeg_audio_support(self):
-        result = subprocess.run(
-            ["ffmpeg", "-formats"],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0 and "wav" in result.stdout:
-            return "pass", {"formats": "wav, mp3, etc. supported"}
+        import platform
+        ffmpeg_cmd = "ffmpeg"
+        if subprocess.run(["which", "ffmpeg"], capture_output=True).returncode != 0:
+            if platform.mac_ver()[0]:
+                if platform.machine() == "arm64" and Path("/opt/homebrew/bin/ffmpeg").exists():
+                    ffmpeg_cmd = "/opt/homebrew/bin/ffmpeg"
+                elif Path("/usr/local/bin/ffmpeg").exists():
+                    ffmpeg_cmd = "/usr/local/bin/ffmpeg"
+
+        try:
+            result = subprocess.run(
+                [ffmpeg_cmd, "-formats"],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0 and "wav" in result.stdout:
+                return "pass", {"formats": "wav, mp3, etc. supported"}
+        except FileNotFoundError:
+            pass
         return "fail", {"error": "FFmpeg missing audio format support"}
 
     def test_language_detection_cantonese(self):

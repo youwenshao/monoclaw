@@ -78,8 +78,13 @@ class SelfDestruct:
     def _remove_credentials(self):
         cred_path = Path("/opt/openclaw/.setup-credentials")
         if cred_path.exists():
-            cred_path.unlink()
-            console.print("  [green]Removed setup credentials[/green]")
+            try:
+                cred_path.unlink()
+                console.print("  [green]Removed setup credentials[/green]")
+            except PermissionError:
+                # Fallback to sudo rm if the directory is root-owned
+                subprocess.run(["sudo", "rm", "-f", str(cred_path)], check=True)
+                console.print("  [green]Removed setup credentials (via sudo)[/green]")
 
     def _remove_setup_logs(self):
         log_dir = Path("/tmp/openclaw-setup")

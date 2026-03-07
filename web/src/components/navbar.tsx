@@ -1,15 +1,29 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { LocaleSwitcher } from "./locale-switcher";
+import { Button } from "./ui/button";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export function Navbar() {
   const t = useTranslations("nav");
+  const locale = useLocale();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
+    return () => subscription.unsubscribe();
+  }, []);
 
   const navLinks = [
     { href: "/pricing" as const, label: t("pricing") },
@@ -43,12 +57,34 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <LocaleSwitcher />
-          <Link
-            href={"/dashboard" as never}
-            className="hidden rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
-          >
-            {t("signIn")}
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href={"/dashboard" as never}
+                className="hidden rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+              >
+                {t("dashboard")}
+              </Link>
+              <Link
+                href={"/admin" as never}
+                className="hidden rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+              >
+                {t("admin")}
+              </Link>
+              <form action={`/${locale}/auth/sign-out`} method="POST" className="inline-block">
+                <Button type="submit" variant="outline" size="sm" className="hidden md:inline-flex">
+                  {t("signOut")}
+                </Button>
+              </form>
+            </>
+          ) : (
+            <Link
+              href={"/dashboard" as never}
+              className="hidden rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+            >
+              {t("signIn")}
+            </Link>
+          )}
           <Link
             href={"/order" as never}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -82,13 +118,43 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href={"/dashboard" as never}
-              onClick={() => setMobileOpen(false)}
-              className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              {t("signIn")}
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href={"/dashboard" as never}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {t("dashboard")}
+                </Link>
+                <Link
+                  href={"/admin" as never}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {t("admin")}
+                </Link>
+                <form action={`/${locale}/auth/sign-out`} method="POST" className="block">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {t("signOut")}
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <Link
+                href={"/dashboard" as never}
+                onClick={() => setMobileOpen(false)}
+                className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                {t("signIn")}
+              </Link>
+            )}
           </nav>
         </div>
       )}

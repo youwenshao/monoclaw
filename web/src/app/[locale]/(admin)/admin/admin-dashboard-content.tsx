@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Order, Device } from "@/types/database";
 import { formatHKD } from "@/lib/stripe";
-import { ORDER_STATUS_FLOW } from "@/lib/constants";
+import { ORDER_STATUS_FLOW, INDUSTRY_VERTICALS, BUNDLES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,14 +17,28 @@ import {
 } from "@/components/ui/table";
 import { DollarSign, Package, Cpu, Activity } from "lucide-react";
 
+function getLlmPlanLabel(addons: { addon_type: string; addon_name: string; category: string }[] | undefined): string {
+  if (!addons || addons.length === 0) return "API only";
+  const bundle = addons.find((a) => a.addon_type === "bundle");
+  if (bundle) {
+    const b = BUNDLES.find((x) => x.id === bundle.addon_name);
+    return b?.name || bundle.addon_name;
+  }
+  return `${addons.length} model${addons.length > 1 ? "s" : ""} (a la carte)`;
+}
+
 export function AdminDashboardContent({
   orders,
+  profileMap,
+  addonsByOrder,
   totalRevenue,
   devicesInProgress,
   avgPassRate,
   recentDevices,
 }: {
   orders: Order[];
+  profileMap: Record<string, { contact_name: string | null; company_name: string | null }>;
+  addonsByOrder: Record<string, { addon_type: string; addon_name: string; category: string }[]>;
   totalRevenue: number;
   devicesInProgress: number;
   avgPassRate: number;
@@ -84,7 +98,10 @@ export function AdminDashboardContent({
             <TableHeader>
               <TableRow>
                 <TableHead>Order ID</TableHead>
+                <TableHead>Client</TableHead>
                 <TableHead>Hardware</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>LLM Plan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Date</TableHead>
@@ -93,13 +110,16 @@ export function AdminDashboardContent({
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No orders yet
                   </TableCell>
                 </TableRow>
               ) : (
-                orders.slice(0, 20).map((order) => {
+                orders.slice(0, 30).map((order) => {
                   const statusConfig = ORDER_STATUS_FLOW.find((s) => s.status === order.status);
+                  const clientProfile = profileMap[order.client_id];
+                  const industryInfo = INDUSTRY_VERTICALS.find((v) => v.slug === order.industry);
+                  const llmPlan = getLlmPlanLabel(addonsByOrder[order.id]);
                   return (
                     <TableRow key={order.id}>
                       <TableCell>
@@ -110,7 +130,18 @@ export function AdminDashboardContent({
                           {order.id.slice(0, 8)}...
                         </Link>
                       </TableCell>
-                      <TableCell>{order.hardware_type}</TableCell>
+                      <TableCell className="max-w-[140px] truncate">
+                        {clientProfile?.contact_name || clientProfile?.company_name || order.client_id.slice(0, 8)}
+                      </TableCell>
+                      <TableCell>{order.hardware_type === "mac_mini_m4" ? "Mac mini" : "iMac"}</TableCell>
+                      <TableCell>
+                        {industryInfo ? (
+                          <Badge variant="outline" className="text-xs">{industryInfo.name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{llmPlan}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">
                           {statusConfig?.label || order.status}

@@ -49,7 +49,7 @@ monoclaw/
 - **Framework**: Next.js 14 (App Router)
 - **Styling**: Tailwind CSS v4, shadcn/ui, Framer Motion
 - **Internationalization**: `next-intl` (English, 繁體中文, 简体中文)
-- **Backend/Auth**: Supabase (PostgreSQL, Auth, RLS)
+- **Backend/Auth**: Supabase (PostgreSQL, Auth, RLS). Google SSO setup and troubleshooting: [web/docs/AUTH_GOOGLE_SSO.md](web/docs/AUTH_GOOGLE_SSO.md)
 - **Payments**: Stripe (HKD, Apple Pay, Credit Cards)
 
 ### Device Provisioning

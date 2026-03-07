@@ -50,7 +50,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       total_price_hkd: Math.round((session.amount_total || 0) / 100),
       stripe_payment_intent_id: session.payment_intent as string,
       stripe_checkout_session_id: session.id,
-      notes: `Industry: ${metadata.industry}, Personas: ${personas.join(", ")}`,
+      industry: metadata.industry || null,
+      personas: personas.length > 0 ? personas : [],
     })
     .select()
     .single();

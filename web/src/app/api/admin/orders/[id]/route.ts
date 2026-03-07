@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
-export async function POST(request: NextRequest) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: orderId } = await params;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -22,24 +26,27 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { orderId, fromStatus, toStatus } = body;
+  const updates: Record<string, unknown> = {};
 
-  const { error: updateError } = await supabase
-    .from("orders")
-    .update({ status: toStatus })
-    .eq("id", orderId);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  if ("apple_order_number" in body) {
+    updates.apple_order_number = body.apple_order_number;
+  }
+  if ("notes" in body) {
+    updates.notes = body.notes;
   }
 
-  await supabase.from("order_status_history").insert({
-    order_id: orderId,
-    from_status: fromStatus,
-    to_status: toStatus,
-    updated_by: user.id,
-    notes: `Status updated by ${role}`,
-  });
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  const { error } = await service
+    .from("orders")
+    .update(updates)
+    .eq("id", orderId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }

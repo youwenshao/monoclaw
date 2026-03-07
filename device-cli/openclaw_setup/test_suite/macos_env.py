@@ -61,12 +61,24 @@ class MacOSEnvironmentTests(BaseTestSuite):
         return "fail", {"error": "Xcode CLI tools not installed"}
 
     def test_homebrew_installed(self):
-        result = subprocess.run(
-            ["brew", "--version"],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            return "pass", {"version": result.stdout.strip().split("\n")[0]}
+        # Try to find brew in typical paths if not in default PATH
+        brew_cmd = "brew"
+        if subprocess.run(["which", "brew"], capture_output=True).returncode != 0:
+            if platform.mac_ver()[0]:
+                if platform.machine() == "arm64" and Path("/opt/homebrew/bin/brew").exists():
+                    brew_cmd = "/opt/homebrew/bin/brew"
+                elif Path("/usr/local/bin/brew").exists():
+                    brew_cmd = "/usr/local/bin/brew"
+
+        try:
+            result = subprocess.run(
+                [brew_cmd, "--version"],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                return "pass", {"version": result.stdout.strip().split("\n")[0]}
+        except FileNotFoundError:
+            pass
         return "fail", {"error": "Homebrew not installed"}
 
     def test_python_version(self):
@@ -83,19 +95,43 @@ class MacOSEnvironmentTests(BaseTestSuite):
         return "fail", {"error": "Python 3 not found"}
 
     def test_node_installed(self):
-        result = subprocess.run(
-            ["node", "--version"],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            return "pass", {"version": result.stdout.strip()}
+        # Try to find node in typical paths if not in default PATH
+        node_cmd = "node"
+        if subprocess.run(["which", "node"], capture_output=True).returncode != 0:
+            if platform.mac_ver()[0]:
+                if platform.machine() == "arm64" and Path("/opt/homebrew/bin/node").exists():
+                    node_cmd = "/opt/homebrew/bin/node"
+                elif Path("/usr/local/bin/node").exists():
+                    node_cmd = "/usr/local/bin/node"
+
+        try:
+            result = subprocess.run(
+                [node_cmd, "--version"],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                return "pass", {"version": result.stdout.strip()}
+        except FileNotFoundError:
+            pass
         return "fail", {"error": "Node.js not installed"}
 
     def test_ffmpeg_installed(self):
-        result = subprocess.run(
-            ["ffmpeg", "-version"],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            return "pass", {"version": result.stdout.strip().split("\n")[0]}
+        # Try to find ffmpeg in typical Homebrew paths if not in default PATH
+        ffmpeg_cmd = "ffmpeg"
+        if subprocess.run(["which", "ffmpeg"], capture_output=True).returncode != 0:
+            if platform.mac_ver()[0]:
+                if platform.machine() == "arm64" and Path("/opt/homebrew/bin/ffmpeg").exists():
+                    ffmpeg_cmd = "/opt/homebrew/bin/ffmpeg"
+                elif Path("/usr/local/bin/ffmpeg").exists():
+                    ffmpeg_cmd = "/usr/local/bin/ffmpeg"
+
+        try:
+            result = subprocess.run(
+                [ffmpeg_cmd, "-version"],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                return "pass", {"version": result.stdout.strip().split("\n")[0]}
+        except FileNotFoundError:
+            pass
         return "fail", {"error": "FFmpeg not installed"}

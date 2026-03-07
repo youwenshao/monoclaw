@@ -2,7 +2,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Environment
+
+Copy `.env.local.example` to `.env.local` and fill in Supabase and Stripe keys. For **Google SSO** (sign-in with Google), configure the Google provider in the Supabase Dashboard and in Google Cloud Console — see **[docs/AUTH_GOOGLE_SSO.md](docs/AUTH_GOOGLE_SSO.md)** for full setup and troubleshooting.
+
+### Run the dev server
 
 ```bash
 npm run dev

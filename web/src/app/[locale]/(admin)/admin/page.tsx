@@ -1,7 +1,9 @@
 import { setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AdminDashboardContent } from "./admin-dashboard-content";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminPage({
   params,
@@ -15,40 +17,50 @@ export default async function AdminPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/sign-in`);
 
-  const { data: profile } = await supabase
+  const service = await createServiceClient();
+  const { data: profile } = await service
     .from("profiles")
-    .select("*")
+    .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (profile?.role !== "admin" && profile?.role !== "technician") {
+  const role = profile?.role?.toString?.().trim().toLowerCase();
+  if (role !== "admin" && role !== "technician") {
     redirect(`/${locale}/dashboard`);
   }
 
-  const { data: orders } = await supabase
-    .from("orders")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [ordersRes, devicesRes, summariesRes, addonsRes, profilesRes] = await Promise.all([
+    service.from("orders").select("*").order("created_at", { ascending: false }),
+    service.from("devices").select("*"),
+    service.from("device_test_summaries").select("*"),
+    service.from("order_addons").select("*"),
+    service.from("profiles").select("id, contact_name, company_name, role"),
+  ]);
 
-  const { data: devices } = await supabase
-    .from("devices")
-    .select("*");
+  const allOrders = ordersRes.data || [];
+  const allDevices = devicesRes.data || [];
+  const allSummaries = summariesRes.data || [];
+  const allAddons = addonsRes.data || [];
+  const allProfiles = profilesRes.data || [];
 
-  const { data: testSummaries } = await supabase
-    .from("device_test_summaries")
-    .select("*");
+  const profileMap: Record<string, { contact_name: string | null; company_name: string | null }> = {};
+  for (const p of allProfiles) {
+    profileMap[p.id] = { contact_name: p.contact_name, company_name: p.company_name };
+  }
 
-  const allOrders = orders || [];
-  const allDevices = devices || [];
-  const allSummaries = testSummaries || [];
+  const addonsByOrder: Record<string, { addon_type: string; addon_name: string; category: string }[]> = {};
+  for (const a of allAddons) {
+    if (!addonsByOrder[a.order_id]) addonsByOrder[a.order_id] = [];
+    addonsByOrder[a.order_id].push(a);
+  }
 
-  const totalRevenue = allOrders.reduce((sum, o) => sum + o.total_price_hkd, 0);
+  const totalRevenue = allOrders.reduce((sum: number, o: { total_price_hkd: number }) => sum + o.total_price_hkd, 0);
   const devicesInProgress = allDevices.filter(
-    (d) => d.setup_status === "provisioning" || d.setup_status === "testing"
+    (d: { setup_status: string }) => d.setup_status === "provisioning" || d.setup_status === "testing"
   ).length;
   const avgPassRate = allSummaries.length > 0
     ? Math.round(
-        allSummaries.reduce((sum, s) => sum + (s.total_tests > 0 ? (s.passed / s.total_tests) * 100 : 0), 0) /
+        allSummaries.reduce((sum: number, s: { total_tests: number; passed: number }) => sum + (s.total_tests > 0 ? (s.passed / s.total_tests) * 100 : 0), 0) /
           allSummaries.length
       )
     : 0;
@@ -56,6 +68,8 @@ export default async function AdminPage({
   return (
     <AdminDashboardContent
       orders={allOrders}
+      profileMap={profileMap}
+      addonsByOrder={addonsByOrder}
       totalRevenue={totalRevenue}
       devicesInProgress={devicesInProgress}
       avgPassRate={avgPassRate}
