@@ -21,11 +21,11 @@ export default function App() {
           <Route index element={<Welcome />} />
           <Route path="independence" element={<Independence />} />
           <Route path="meet" element={<Introduction />} />
-          <Route path="voice" element={<VoiceDemo />} />
-          <Route path="chat" element={<ChatDemo />} />
           <Route path="profile" element={<Profile />} />
           <Route path="mac-setup" element={<MacSetup />} />
           <Route path="api-keys" element={<ApiKeys />} />
+          <Route path="voice" element={<VoiceDemo />} />
+          <Route path="chat" element={<ChatDemo />} />
           <Route path="tools" element={<ToolsOverview />} />
           <Route path="first-task" element={<GuidedFirstTask />} />
           <Route path="summary" element={<Summary />} />

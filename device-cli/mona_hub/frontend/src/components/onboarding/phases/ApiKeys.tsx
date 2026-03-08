@@ -162,7 +162,7 @@ function ChevronIcon({ open }: { open: boolean }) {
 
 const expandVariants = {
   collapsed: { height: 0, opacity: 0 },
-  expanded: { height: "auto", opacity: 1, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] } },
+  expanded: { height: "auto", opacity: 1, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
 };
 
 export function ApiKeys() {
@@ -342,10 +342,10 @@ export function ApiKeys() {
         animate="enter"
         className="mt-10 flex flex-col items-center gap-3"
       >
-        <NeuButton onClick={() => navigate("/welcome/tools")}>
+        <NeuButton onClick={() => navigate("/welcome/voice")}>
           Continue
         </NeuButton>
-        <NeuButton variant="ghost" size="sm" onClick={() => navigate("/welcome/tools")}>
+        <NeuButton variant="ghost" size="sm" onClick={() => navigate("/welcome/voice")}>
           Skip all
         </NeuButton>
       </motion.div>

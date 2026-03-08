@@ -1,0 +1,14 @@
+.neu-raised {
+  background: var(--surface-raised);
+  box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+}
+
+.neu-inset {
+  background: var(--surface-inset);
+  box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+}
+
+.neu-flat {
+  background: var(--surface-raised);
+  box-shadow: none;
+}

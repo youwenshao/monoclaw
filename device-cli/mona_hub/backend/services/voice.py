@@ -1,20 +1,24 @@
 """Voice service with real local TTS and STT inference."""
 import io
+import os
 import struct
 import logging
 from pathlib import Path
+
+# Suppress misleading transformers warnings about Mistral regex when loading Qwen3-TTS
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
 logger = logging.getLogger(__name__)
 
 WHISPER_MODEL = "mlx-community/whisper-large-v3-turbo"
 TTS_MODEL = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
 WHISPER_LOCAL = Path("/opt/openclaw/models/whisper-large-v3-turbo")
-TTS_LOCAL = Path("/opt/openclaw/models/qwen3-tts")
+TTS_LOCAL = Path("/opt/openclaw/models/qwen3_tts")
 
 LANGUAGE_MAP = {
-    "en": {"lang": "en"},
-    "yue": {"lang": "zh"},
-    "cmn": {"lang": "zh"},
+    "en": {"lang_code": "en"},
+    "yue": {"lang_code": "zh"},
+    "cmn": {"lang_code": "zh"},
 }
 
 _tts_model = None
@@ -25,7 +29,12 @@ def _get_tts_model():
     if _tts_model is None:
         try:
             from mlx_audio.tts.utils import load_model
-            model_id = str(TTS_LOCAL) if TTS_LOCAL.exists() else TTS_MODEL
+            # Prefer local path if it has valid weights, otherwise use HF repo ID
+            # which mlx-audio resolves via its own cache and knows the correct architecture.
+            if TTS_LOCAL.exists() and any(TTS_LOCAL.glob("*.safetensors")):
+                model_id = str(TTS_LOCAL)
+            else:
+                model_id = TTS_MODEL
             _tts_model = load_model(model_id)
             logger.info("TTS model loaded: %s", model_id)
         except ImportError:

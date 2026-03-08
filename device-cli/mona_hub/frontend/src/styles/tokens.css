@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-inset: var(--surface-inset);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent: var(--accent);
+  --color-accent-warm: var(--accent-warm);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --font-sans: "Inter", "Noto Sans CJK TC", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root {
+  --surface: #F2EFEB;
+  --surface-raised: #F7F5F2;
+  --surface-inset: #E8E4DE;
+  --text-primary: #2C2825;
+  --text-secondary: #8A8279;
+  --text-tertiary: #B0A99F;
+  --accent: #7C9A8E;
+  --accent-warm: #C4A882;
+  --accent-subtle: rgba(124, 154, 142, 0.15);
+  --success: #8BA888;
+  --warning: #C9A96E;
+  --error: #B87070;
+  --shadow-light: rgba(255, 255, 255, 0.7);
+  --shadow-dark: rgba(174, 168, 158, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1C1B19;
+    --surface-raised: #242320;
+    --surface-inset: #151412;
+    --text-primary: #E8E4DE;
+    --text-secondary: #7A7470;
+    --text-tertiary: #4A4642;
+    --accent: #8FB5A6;
+    --accent-warm: #D4BC9A;
+    --accent-subtle: rgba(143, 181, 166, 0.15);
+    --success: #9DBF99;
+    --warning: #D9BC82;
+    --error: #CC8888;
+    --shadow-light: rgba(255, 255, 255, 0.03);
+    --shadow-dark: rgba(0, 0, 0, 0.5);
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-text-primary font-sans antialiased;
+  }
+}

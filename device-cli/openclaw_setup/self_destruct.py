@@ -30,9 +30,12 @@ class SelfDestruct:
         self._update_device_status("shipped")
         self._update_order_status()
 
+        self._build_and_launch_mona()
+
         console.print("\n[bold]Beginning self-destruct sequence...[/bold]")
 
         self._remove_credentials()
+        # We purposely do NOT remove the HuggingFace token so Mona Hub can download models later
         self._remove_setup_logs()
         self._print_shipping_checklist()
         self._uninstall_self()
@@ -75,6 +78,13 @@ class SelfDestruct:
                 "notes": "Device passed all tests, ready for shipping",
             }).execute()
 
+    def _build_and_launch_mona(self):
+        """Build Mona.app, register the LaunchAgent, and start the Hub server."""
+        from .app_builder import MonaAppBuilder
+
+        builder = MonaAppBuilder()
+        builder.build_and_launch()
+
     def _remove_credentials(self):
         cred_path = Path("/opt/openclaw/.setup-credentials")
         if cred_path.exists():
@@ -86,6 +96,32 @@ class SelfDestruct:
                 subprocess.run(["sudo", "rm", "-f", str(cred_path)], check=True)
                 console.print("  [green]Removed setup credentials (via sudo)[/green]")
 
+    def _remove_huggingface_token(self):
+        console.print("  Removing HuggingFace token...")
+        try:
+            from huggingface_hub import logout
+            logout()
+            console.print("  [green]Removed HuggingFace token via API[/green]")
+        except Exception as e:
+            console.print(f"  [yellow]Failed to remove via API: {e}[/yellow]")
+            
+        # Manually ensure token files are deleted from both root and user home dirs
+        users_to_check = [Path.home()]
+        sudo_user = os.environ.get("SUDO_USER")
+        if sudo_user:
+            users_to_check.append(Path(os.path.expanduser(f"~{sudo_user}")))
+            
+        for home_dir in set(users_to_check):
+            hf_cache = home_dir / ".cache" / "huggingface"
+            for token_file in ["token", "stored_tokens"]:
+                path = hf_cache / token_file
+                if path.exists():
+                    try:
+                        path.unlink()
+                        console.print(f"  [green]Removed {token_file} from {home_dir}[/green]")
+                    except Exception as err:
+                        console.print(f"  [red]Failed to remove {path}: {err}[/red]")
+
     def _remove_setup_logs(self):
         log_dir = Path("/tmp/openclaw-setup")
         if log_dir.exists():
@@ -94,6 +130,10 @@ class SelfDestruct:
 
     def _print_shipping_checklist(self):
         console.print("\n[bold yellow]Technician Shipping Checklist:[/bold yellow]")
+        console.print("  [green][✓][/green] Mona Hub running — onboarding page open in browser")
+        console.print("  [green][✓][/green] Mona.app installed in /Applications")
+        console.print("  [green][✓][/green] LaunchAgent registered — Hub will auto-start on login")
+        console.print("  [ ] Verify onboarding page is visible in browser")
         console.print("  [ ] Power cable included")
         console.print("  [ ] Device exterior cleaned")
         console.print("  [ ] Packaging secure")

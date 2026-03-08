@@ -72,7 +72,7 @@ export function Summary() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    updateProgress(10, "summary", true).catch(() => {});
+    updateProgress(10, 10, true).catch(() => {});
 
     Promise.allSettled([
       getSystemInfo(),

@@ -236,7 +236,7 @@ export function ChatDemo() {
                 animate="enter"
                 className="flex justify-center pt-6"
               >
-                <NeuButton onClick={() => navigate("/welcome/profile")}>
+                <NeuButton onClick={() => navigate("/welcome/tools")}>
                   Let's go
                 </NeuButton>
               </motion.div>

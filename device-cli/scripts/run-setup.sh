@@ -124,10 +124,41 @@ if [[ -n "$ORDER_ID" ]]; then
 else
   PROV_CMD="openclaw-setup provision --email $EMAIL --serial $SERIAL"
 fi
-if ! sudo env PATH="$PATH" SUPABASE_URL="$SUPABASE_URL" SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" OPENCLAW_ORDER_ID="${ORDER_ID:-}" OPENCLAW_EMAIL="${EMAIL:-}" OPENCLAW_SERIAL="$SERIAL" $PROV_CMD; then
+if ! sudo env PATH="$PATH" SUPABASE_URL="$SUPABASE_URL" SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" HF_TOKEN="${HF_TOKEN:-}" CLAWHUB_TOKEN="${CLAWHUB_TOKEN:-}" OPENCLAW_ORDER_ID="${ORDER_ID:-}" OPENCLAW_EMAIL="${EMAIL:-}" OPENCLAW_SERIAL="$SERIAL" $PROV_CMD; then
   echo "Provision failed. Exiting."
   exit 1
 fi
+
+# Deploy Mona Hub to /opt/openclaw/mona_hub from the setup source
+echo ""
+echo "Deploying Mona Hub..."
+REAL_USER="${SUDO_USER:-$(whoami)}"
+sudo mkdir -p /opt/openclaw/mona_hub
+sudo cp -R "$DEVICE_CLI_SRC/mona_hub/"* /opt/openclaw/mona_hub/
+sudo chown -R "$REAL_USER:" /opt/openclaw/mona_hub
+echo "Mona Hub deployed to /opt/openclaw/mona_hub"
+
+# Ensure Homebrew bin is in PATH (Node.js/npm were installed via brew in provision step)
+if [[ -d "/opt/homebrew/bin" ]]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+elif [[ -d "/usr/local/bin" ]]; then
+  # Homebrew on Intel often links to /usr/local/bin
+  export PATH="/usr/local/bin:$PATH"
+fi
+
+# Build the frontend so the server can serve the production SPA
+echo ""
+echo "Building Mona Hub frontend..."
+sudo -u "$REAL_USER" env PATH="$PATH" bash -c "cd /opt/openclaw/mona_hub/frontend && npm install --production=false 2>&1 && npm run build 2>&1"
+if [[ ! -d /opt/openclaw/mona_hub/frontend/dist ]]; then
+  echo "Error: Frontend build failed — /opt/openclaw/mona_hub/frontend/dist not found."
+  exit 1
+fi
+echo "Frontend built successfully"
+
+# Install openclaw-setup into the permanent venv so we can run tests from it
+echo "Installing setup CLI into permanent environment..."
+sudo -u "$REAL_USER" /opt/openclaw/venv/bin/pip install "$DEVICE_CLI_SRC" -q
 
 # Device ID from credentials (file is root-owned after provision)
 CRED_PATH="/opt/openclaw/.setup-credentials"
@@ -135,7 +166,7 @@ if [[ ! -f "$CRED_PATH" ]]; then
   echo "Error: $CRED_PATH not found after provision."
   exit 1
 fi
-DEVICE_ID=$(sudo "$PYTHON" -c "import json; print(json.load(open('/opt/openclaw/.setup-credentials'))['device_id'])")
+DEVICE_ID=$(sudo /opt/openclaw/venv/bin/python3 -c "import json; print(json.load(open('/opt/openclaw/.setup-credentials'))['device_id'])")
 if [[ -z "$DEVICE_ID" ]]; then
   echo "Error: Could not read device_id from $CRED_PATH."
   exit 1
@@ -145,25 +176,18 @@ fi
 echo ""
 echo "Running test suite (results upload to Supabase)..."
 TEST_EXIT=0
-# Ensure the updated PATH from provisioner is available to the test
-if [[ -d "/opt/homebrew/bin" ]]; then
-  export PATH="/opt/homebrew/bin:$PATH"
-elif [[ -d "/usr/local/Homebrew/bin" ]]; then
-  export PATH="/usr/local/Homebrew/bin:$PATH"
-fi
-openclaw-setup test --device-id "$DEVICE_ID" || TEST_EXIT=$?
+/opt/openclaw/venv/bin/openclaw-setup test --device-id "$DEVICE_ID" || TEST_EXIT=$?
 
 # Auto-finalize only if all tests passed
 if [[ $TEST_EXIT -eq 0 ]]; then
   echo ""
-  echo "All tests passed. Auto-finalizing (self-destruct)..."
-  sudo env PATH="$PATH" SUPABASE_URL="$SUPABASE_URL" SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" openclaw-setup finalize --device-id "$DEVICE_ID" --yes
+  echo "All tests passed. Finalizing — building Mona.app and launching Hub..."
+  sudo env PATH="$PATH" SUPABASE_URL="$SUPABASE_URL" SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" /opt/openclaw/venv/bin/openclaw-setup finalize --device-id "$DEVICE_ID" --yes
+  echo ""
+  echo "Setup complete. Mona Hub is running and the onboarding page should be open."
+  echo "You may now eject the setup drive and close this terminal."
 else
   echo ""
   echo "Some tests failed. Fix issues and run finalize manually when ready, or re-run this script."
   exit $TEST_EXIT
 fi
-
-echo ""
-echo "Done. Press Enter to close."
-read -r

@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 
 from fastapi import APIRouter, HTTPException
@@ -6,7 +7,9 @@ from fastapi.responses import StreamingResponse
 
 from backend.models.onboarding_state import ChatMessage, ChatResponse
 from backend.services.interaction import InteractionMode, interaction_manager
-from backend.services.llm import llm_service
+from backend.services.llm import CloudAPIError, llm_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -42,7 +45,10 @@ async def send_message(msg: ChatMessage):
             system_prompt=SYSTEM_PROMPT,
             model_id=msg.model_id,
         )
+    except CloudAPIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
+        logger.error("Unexpected LLM error: %s", exc)
         raise HTTPException(status_code=500, detail=f"LLM error: {exc}") from exc
 
     conversations[conversation_id].append({"role": "assistant", "content": response_text})
@@ -80,6 +86,12 @@ async def send_message_stream(msg: ChatMessage):
                 {"role": "assistant", "content": "".join(full_response)}
             )
             yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
+        except CloudAPIError as exc:
+            logger.warning("Cloud API error during stream: %s", exc)
+            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+        except Exception as exc:
+            logger.error("Unexpected error during stream: %s", exc)
+            yield f"data: {json.dumps({'error': f'An unexpected error occurred: {exc}'})}\n\n"
         finally:
             await interaction_manager.release()
 

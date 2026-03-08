@@ -45,7 +45,7 @@ const STYLES: StyleOption[] = [
 
 const stageVariants = {
   initial: { opacity: 0, y: 16 },
-  enter: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } },
+  enter: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] as const } },
   exit: { opacity: 0, y: -12, transition: { duration: 0.25 } },
 };
 
@@ -57,7 +57,7 @@ export function Profile() {
   const [style, setStyle] = useState("");
   const [role, setRole] = useState("");
   const [saving, setSaving] = useState(false);
-  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -94,10 +94,12 @@ export function Profile() {
     try {
       await saveProfile({
         name: name.trim(),
-        preferred_language: language,
-        industry: role.trim(),
+        language_pref: language,
+        communication_style: style,
+        role: role.trim(),
       });
-      await updateProgress(5, "profile", true);
+      localStorage.setItem("mona_profile", JSON.stringify({ name: name.trim(), language, style, industry: role.trim() }));
+      await updateProgress(5, 5, true);
       navigate("/welcome/mac-setup");
     } catch {
       navigate("/welcome/mac-setup");

@@ -72,6 +72,10 @@ class LLMModelTests(BaseTestSuite):
 
     def test_model_load_basic(self):
         """Attempt to load the smallest available model."""
+        aw = _load_active_work()
+        if aw and aw.get("llm_plan", {}).get("type") == "api_only":
+            return "skipped", {"note": "API-only mode, no local models to load"}
+
         model_dir = Path("/opt/openclaw/models")
         if not model_dir.exists() or not list(model_dir.iterdir()):
             return "skipped", {"note": "No models to test"}

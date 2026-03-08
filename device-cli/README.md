@@ -52,8 +52,13 @@ The fastest way to set up a new device: prepare a USB drive once, then on each M
    ```
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_SERVICE_KEY=your-service-role-key
+   HF_TOKEN=hf_YourHuggingFaceAccessToken
+   CLAWHUB_TOKEN=clh_YourClawHubToken
    ```
-   Replace with your actual Supabase project URL and service role key.
+   Replace with your actual Supabase project URL, service role key, HuggingFace access token, and ClawHub API token.
+   `HF_TOKEN` enables authenticated model downloads with higher rate limits and faster speeds.
+   `CLAWHUB_TOKEN` avoids rate limiting when installing community skills.
+   The tokens are also persisted on the device so Mona can download additional models and skills in the future.
 
 6. **(Optional) Bundled Python** — If the Mac may not have Python or Xcode Command Line Tools:
    - Download a relocatable Python 3.11+ for arm64 macOS (e.g. [python-build-standalone](https://github.com/indygreg/python-build-standalone/releases) — pick **macos-aarch64**).
@@ -187,18 +192,52 @@ Results are uploaded to Supabase (`device_test_results`, `device_test_summaries`
 
 Once finalized, the device is ready for the client. The onboarding flow is fully local and designed to introduce Mona as a warm, capable colleague.
 
-### 1. Initial Login
-- Clients log into the Mac using the default password: `1234`.
-- This password is shown on their MonoClaw web dashboard once the order is shipped.
-- Clients are instructed to change this password immediately after their first login.
+### 1. Preparing the Device for the Client
+Before closing the device and shipping it, the technician must ensure the **Mona Hub** application is configured to launch automatically upon the client's first login.
 
-### 2. Mona Hub Onboarding (12 Phases)
-The onboarding app launches automatically and guides the user through:
-- **Independence** — Celebrating 100% local, private ownership.
-- **Voice & Chat Demo** — Real-time interaction with local models (no internet required).
-- **Profile & Mac Setup** — Personalizing Mona's tone and the Mac's identity.
-- **Guided Configuration** — Step-by-step wizards for optional cloud LLMs (DeepSeek, Kimi, GLM-5) and messaging (WhatsApp, Telegram, Discord).
-- **Tools Overview** — Reviewing industry-specific tools and pre-installed ClawHub skills.
+**Technician Action (Final Step):**
+Run the following command to register the Mona Hub as a login item for the user:
+```bash
+# Run this as the technician, it will target the real user's login items
+openclaw-setup setup-onboarding-launch
+```
+This command creates a macOS LaunchAgent in `~/Library/LaunchAgents/com.monoclaw.monahub.plist` that starts the Mona Hub server and opens the onboarding interface in the default browser as soon as the client logs in.
+
+### 2. Initial Login
+- **Credentials**: Clients log into the Mac using the default password: `1234`.
+- **Dashboard**: This password is shown on their MonoClaw web dashboard once the order is shipped.
+- **Security**: Clients are instructed to change this password immediately after their first login.
+
+### 3. Mona Hub Onboarding (12 Phases)
+As soon as the client logs in, their default browser will open to `http://localhost:8000`, presenting the Mona Hub onboarding app. It guides the user through a carefully paced introduction.
+
+| Phase | Screen | Emotional Beat | Purpose |
+|-------|--------|----------------|---------|
+| 0 | **Welcome** | Anticipation | Mona introduces herself as a new colleague. |
+| 1 | **Independence** | Empowerment | Celebrating 100% local, private ownership of the agent. |
+| 2 | **Introduction** | Warmth | Setting the tone for a human-like relationship. |
+| 3 | **Voice Interaction** | Delight | Testing real-time, offline STT/TTS (Whisper + Qwen3-TTS). |
+| 4 | **Chat Experience** | Connection | Demonstrating streaming responses and model selection. |
+| 5 | **Profile** | Personalization | Defining Mona's name, tone, and personality. |
+| 6 | **Mac Setup** | Ownership | Customizing the Mac's account name and appearance. |
+| 7 | **API Keys** | Configuration | Guided wizards for optional cloud LLMs and messaging. |
+| 8 | **Tools & Skills** | Confidence | Reviewing industry tools and ClawHub community skills. |
+| 9 | **First Task** | Competence | Performing a guided industry-specific task with Mona. |
+| 10 | **Summary** | Reassurance | Reviewing the configuration and readiness state. |
+| 11 | **Launch** | Celebration | Final handover of the device to the client. |
+
+### 4. Guided Configuration Wizards
+For services requiring external setup, Mona provides step-by-step hand-holding:
+
+- **Cloud LLMs**: Detailed instructions for **DeepSeek**, **Kimi K2.5**, and **GLM-5**, including account creation and credit top-up links.
+- **Messaging**: Native integration for **WhatsApp (Twilio)**, **Telegram (BotFather)**, and **Discord (Developer Portal)**.
+- **Validation**: Every key entered is automatically validated against the provider's API with informative error messages for incorrect keys or missing credits.
+
+### 5. Interaction Management
+Mona is designed to handle complex interactions without technical friction:
+- **Interaction Manager**: A backend service ensures voice and text modes never conflict (e.g., Mona won't start speaking while you are still typing).
+- **Model Routing**: For Max Bundle users, Mona automatically routes tasks to the best local model (Fast, Think, Coder, or Complex).
+- **Privacy First**: All core interactions (Voice, Chat, Local Skills) happen entirely on-device with zero external data transmission.
 
 ---
 

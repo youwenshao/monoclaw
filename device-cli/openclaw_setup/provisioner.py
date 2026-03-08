@@ -1,6 +1,7 @@
 """Device provisioning: directory setup, dependency install, model download, config generation."""
 
 import os
+import sys
 import subprocess
 import json
 import hashlib
@@ -45,6 +46,8 @@ class Provisioner:
         self.supabase = create_client(supabase_url, supabase_key)
         self.device_id: Optional[str] = None
         self.order_spec: Optional[OrderSpec] = None
+        self.hf_token: Optional[str] = os.environ.get("HF_TOKEN")
+        self.clawhub_token: Optional[str] = os.environ.get("CLAWHUB_TOKEN")
 
     def run(self) -> bool:
         try:
@@ -132,6 +135,9 @@ class Provisioner:
             subprocess.run(["chown", "-R", f"{user}:", str(d)], check=True)
             console.print(f"  Created: {d}")
 
+        # Ensure the base ~/.openclaw directory is also owned by the user
+        subprocess.run(["chown", f"{user}:", str(user_home / ".openclaw")], check=True)
+
     def _set_permissions(self):
         console.print("\n[bold]Setting permissions...[/bold]")
         subprocess.run(["chmod", "755", "/etc/openclaw"], check=True)
@@ -214,7 +220,10 @@ class Provisioner:
                 # We must ensure the environment has PATH set so brew can find its own dependencies during install
                 env = os.environ.copy()
                 env["PATH"] = f"{brew_dir}:{env.get('PATH', '')}"
-                subprocess.run(["sudo", "-u", user, "env", f"PATH={env['PATH']}", brew_bin, "install", pkg], check=True)
+                subprocess.run(
+                    ["sudo", "-u", user, "env", f"PATH={env['PATH']}", brew_bin, "install", pkg],
+                    check=True, timeout=600, stdin=subprocess.DEVNULL,
+                )
             else:
                 console.print(f"  {pkg} already installed")
 
@@ -225,16 +234,53 @@ class Provisioner:
             capture_output=True, check=True,
         )
 
+        # Create permanent venv for Mona Hub
+        venv_dir = Path("/opt/openclaw/venv")
+        if not venv_dir.exists():
+            console.print("  Creating permanent Python environment...")
+            subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
+            subprocess.run(["chown", "-R", f"{user}:", str(venv_dir)], check=True)
+
+        venv_python = str(venv_dir / "bin" / "python3")
+
         # Python packages
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
-            task = progress.add_task("Installing Python packages...", total=None)
-            # Use the current python interpreter (which should be the venv one)
-            import sys
+            task = progress.add_task("Installing core Python packages...", total=None)
             subprocess.run(
-                [sys.executable, "-m", "pip", "install", "mlx-lm", "qwen-agent", "psutil", "schedule", "huggingface-hub", "mlx-whisper", "mlx-audio"],
-                capture_output=True, check=True,
+                ["sudo", "-u", user, venv_python, "-m", "pip", "install", "numpy<2.0", "mlx-lm", "qwen-agent", "psutil", "schedule", "huggingface-hub", "mlx-whisper", "fastapi", "uvicorn[standard]", "httpx", "python-multipart"],
+                capture_output=True, check=True, timeout=600, stdin=subprocess.DEVNULL,
             )
-            progress.update(task, description="Python packages installed")
+            progress.update(task, description="Core Python packages installed")
+
+            task2 = progress.add_task("Installing mlx-audio (requires pre-release transformers)...", total=None)
+            subprocess.run(
+                ["sudo", "-u", user, venv_python, "-m", "pip", "install", "mlx-audio>=0.3.0", "--pre"],
+                capture_output=True, check=True, timeout=600, stdin=subprocess.DEVNULL,
+            )
+            
+            # Verify mlx-audio qwen3_tts module is available
+            verify_result = subprocess.run(
+                ["sudo", "-u", user, venv_python, "-c", "from mlx_audio.tts.models.qwen3_tts import qwen3_tts; print('OK')"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if "OK" not in verify_result.stdout:
+                console.print("[red]Error: mlx-audio qwen3_tts module not available after install. Check dependency conflicts.[/red]")
+                raise RuntimeError("mlx-audio qwen3_tts module missing")
+                
+            progress.update(task2, description="mlx-audio installed and verified")
+
+        # Persist HuggingFace token on the device for future model downloads
+        if self.hf_token:
+            console.print("  Persisting HuggingFace token...")
+            try:
+                subprocess.run(
+                    ["sudo", "-u", user, venv_python, "-m", "huggingface_hub.commands.huggingface_cli",
+                     "login", "--token", self.hf_token],
+                    capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+                )
+                console.print("  [green]HuggingFace token saved to device[/green]")
+            except Exception as e:
+                console.print(f"  [yellow]Warning: Could not persist HF token: {e}[/yellow]")
 
     def _write_core_configs(self):
         console.print("\n[bold]Writing core configurations...[/bold]")
@@ -302,6 +348,7 @@ class Provisioner:
                     repo_id=hf_repo,
                     local_dir=str(dest),
                     local_dir_use_symlinks=False,
+                    token=self.hf_token,
                 )
                 console.print(f"  [green]  {model_id} downloaded successfully[/green]")
             except Exception as e:
@@ -473,12 +520,26 @@ class Provisioner:
 
         voice_models = [
             ("whisper-large-v3-turbo", "mlx-community/whisper-large-v3-turbo", "STT"),
-            ("qwen3-tts", "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit", "TTS"),
+            ("qwen3_tts", "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit", "TTS"),
         ]
 
         for i, (local_name, hf_repo, purpose) in enumerate(voice_models, 1):
             dest = model_dir / local_name
             if dest.exists() and any(dest.iterdir()):
+                # Ensure config.json has the correct model_type even if already downloaded
+                config_path = dest / "config.json"
+                if config_path.exists() and local_name == "qwen3_tts":
+                    try:
+                        with open(config_path, "r") as f:
+                            config = json.load(f)
+                        if config.get("model_type") != "qwen3_tts":
+                            config["model_type"] = "qwen3_tts"
+                            with open(config_path, "w") as f:
+                                json.dump(config, f, indent=2)
+                            console.print(f"  [green]  Fixed model_type in existing {local_name} config.json[/green]")
+                    except Exception:
+                        pass
+                
                 console.print(f"  [{i}/{len(voice_models)}] {local_name} ({purpose}) already downloaded")
                 continue
 
@@ -489,7 +550,23 @@ class Provisioner:
                     repo_id=hf_repo,
                     local_dir=str(dest),
                     local_dir_use_symlinks=False,
+                    token=self.hf_token,
                 )
+                
+                # Ensure config.json has the correct model_type for mlx-audio resolution
+                config_path = dest / "config.json"
+                if config_path.exists():
+                    try:
+                        with open(config_path, "r") as f:
+                            config = json.load(f)
+                        if config.get("model_type") != "qwen3_tts" and local_name == "qwen3_tts":
+                            config["model_type"] = "qwen3_tts"
+                            with open(config_path, "w") as f:
+                                json.dump(config, f, indent=2)
+                            console.print(f"  [green]  Fixed model_type in {local_name} config.json[/green]")
+                    except Exception as e:
+                        console.print(f"  [yellow]  Warning: Could not verify/fix config.json for {local_name}: {e}[/yellow]")
+
                 console.print(f"  [green]  {local_name} downloaded successfully[/green]")
             except Exception as e:
                 console.print(f"  [red]  Failed to download {local_name}: {e}[/red]")
@@ -499,13 +576,58 @@ class Provisioner:
         console.print("\n[bold]Installing ClawHub skills...[/bold]")
         user = _real_user()
 
+        # Ensure Homebrew bin is in PATH for npm/npx
+        env = os.environ.copy()
+        for brew_path in ["/opt/homebrew/bin", "/usr/local/bin"]:
+            if os.path.isdir(brew_path) and brew_path not in env.get("PATH", ""):
+                env["PATH"] = f"{brew_path}:{env.get('PATH', '')}"
+
         try:
-            subprocess.run(["sudo", "-u", user, "npm", "i", "-g", "clawhub"],
-                           capture_output=True, check=True)
+            subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "npm", "i", "-g", "clawhub"],
+                capture_output=True, check=True, timeout=120, stdin=subprocess.DEVNULL,
+            )
             console.print("  ClawHub CLI installed globally")
-        except subprocess.CalledProcessError as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             console.print(f"  [yellow]Warning: Failed to install clawhub CLI: {e}[/yellow]")
             return
+
+        # Resolve the global clawhub binary to avoid npx interactive prompts
+        clawhub_bin = None
+        for candidate in ["/opt/homebrew/bin/clawhub", "/usr/local/bin/clawhub"]:
+            if Path(candidate).exists():
+                clawhub_bin = candidate
+                break
+        if not clawhub_bin:
+            try:
+                which_result = subprocess.run(
+                    ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "which", "clawhub"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                if which_result.returncode == 0:
+                    clawhub_bin = which_result.stdout.strip()
+            except Exception:
+                pass
+
+        if clawhub_bin:
+            console.print(f"  Using clawhub binary: {clawhub_bin}")
+        else:
+            console.print("  [yellow]Global clawhub binary not found, falling back to npx --yes[/yellow]")
+
+        # Authenticate with ClawHub to avoid rate limits
+        if self.clawhub_token:
+            console.print("  Authenticating with ClawHub...")
+            try:
+                if clawhub_bin:
+                    auth_cmd = ["sudo", "-u", user, "env", f"PATH={env['PATH']}", clawhub_bin, "login", "--token", self.clawhub_token, "--no-browser"]
+                else:
+                    auth_cmd = ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "npx", "--yes", "clawhub@latest", "login", "--token", self.clawhub_token, "--no-browser"]
+                subprocess.run(
+                    auth_cmd, capture_output=True, check=True, timeout=30, stdin=subprocess.DEVNULL
+                )
+                console.print("  [green]ClawHub authentication successful[/green]")
+            except Exception as e:
+                console.print(f"  [yellow]Warning: ClawHub authentication failed: {e}[/yellow]")
 
         skills = [
             "self-improving-agent",
@@ -514,7 +636,7 @@ class Provisioner:
             "clawdbot-documentation-expert",
             "caldav-calendar",
             "agent-browser",
-            "wacli",
+            "whats",
             "byterover",
             "capability-evolver",
             "auto-updater-skill",
@@ -522,21 +644,46 @@ class Provisioner:
             "humanize-ai-text",
             "find-skills",
             "github",
-            "tavily-web-search",
+            "google-search",
             "obsidian",
         ]
 
         installed_count = 0
         for i, skill in enumerate(skills, 1):
             console.print(f"  [{i}/{len(skills)}] Installing {skill}...")
-            result = subprocess.run(
-                ["sudo", "-u", user, "npx", "clawhub@latest", "install", skill],
-                capture_output=True, text=True,
-            )
-            if result.returncode == 0:
-                installed_count += 1
-            else:
-                console.print(f"  [yellow]  Warning: {skill} installation failed[/yellow]")
+            try:
+                if clawhub_bin:
+                    cmd = ["sudo", "-u", user, "env", f"PATH={env['PATH']}", clawhub_bin, "install", skill, "--force"]
+                else:
+                    cmd = ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "npx", "--yes", "clawhub@latest", "install", skill, "--force"]
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True,
+                    timeout=300, stdin=subprocess.DEVNULL,
+                )
+                if result.returncode == 0 or "Already installed" in result.stdout or "Already installed" in result.stderr:
+                    installed_count += 1
+                    console.print(f"  [green]  {skill} installed[/green]")
+                elif "Rate limit exceeded" in result.stdout or "Rate limit exceeded" in result.stderr:
+                    console.print(f"  [yellow]  Warning: {skill} failed — Rate limit exceeded. Waiting 60s...[/yellow]")
+                    import time
+                    time.sleep(60)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True,
+                        timeout=300, stdin=subprocess.DEVNULL,
+                    )
+                    if result.returncode == 0 or "Already installed" in result.stdout or "Already installed" in result.stderr:
+                        installed_count += 1
+                        console.print(f"  [green]  {skill} installed on retry[/green]")
+                    else:
+                        stderr_short = (result.stderr or "").strip()[:200]
+                        console.print(f"  [yellow]  Warning: {skill} failed on retry — {stderr_short}[/yellow]")
+                else:
+                    stderr_short = (result.stderr or "").strip()[:200]
+                    console.print(f"  [yellow]  Warning: {skill} failed — {stderr_short}[/yellow]")
+            except subprocess.TimeoutExpired:
+                console.print(f"  [yellow]  Warning: {skill} timed out (5 min), skipping[/yellow]")
+            except Exception as e:
+                console.print(f"  [yellow]  Warning: {skill} error — {e}[/yellow]")
 
         console.print(f"  [green]Installed {installed_count}/{len(skills)} ClawHub skills[/green]")
 

@@ -1,16 +1,18 @@
-import type { ReactNode } from "react";
+import type { ReactNode, HTMLAttributes } from "react";
+import { motion, type MotionProps } from "framer-motion";
 
 type CardVariant = "raised" | "inset" | "flat";
 type Padding = "none" | "sm" | "md" | "lg";
 type Radius = "md" | "lg";
 
-interface NeuCardProps {
+type NeuCardProps = {
   variant?: CardVariant;
   padding?: Padding;
   radius?: Radius;
   className?: string;
   children: ReactNode;
-}
+} & Omit<HTMLAttributes<HTMLDivElement>, "children"> &
+  MotionProps;
 
 const paddingMap: Record<Padding, number> = {
   none: 0,
@@ -45,11 +47,12 @@ export function NeuCard({
   radius = "lg",
   className = "",
   children,
+  ...rest
 }: NeuCardProps) {
   const v = variantStyles[variant];
 
   return (
-    <div
+    <motion.div
       className={`border-0 ${className}`}
       style={{
         background: v.background,
@@ -57,8 +60,9 @@ export function NeuCard({
         padding: paddingMap[padding],
         borderRadius: radiusMap[radius],
       }}
+      {...rest}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

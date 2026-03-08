@@ -5,7 +5,7 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 interface NeuButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "onAnimationStart" | "onDragStart" | "onDragEnd" | "onDrag"> {
   variant?: Variant;
   size?: Size;
   pill?: boolean;

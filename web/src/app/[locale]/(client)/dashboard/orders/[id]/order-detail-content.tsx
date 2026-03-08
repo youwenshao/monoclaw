@@ -194,7 +194,7 @@ export function OrderDetailContent({
                 className="mt-0.5"
               />
               <span className="text-sm leading-relaxed">
-                I have received the hardware from Sentimento and hereby confirming my receipt.
+                I hereby declare the confirmation of my receipt of the hardware from Sentimento Technologies Limited and the completion of all outstanding payments.
               </span>
             </label>
             <Button

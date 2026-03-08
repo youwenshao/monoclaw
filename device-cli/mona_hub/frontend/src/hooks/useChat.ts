@@ -72,6 +72,19 @@ export function useChat() {
             if (!line.startsWith("data: ")) continue;
             try {
               const data = JSON.parse(line.slice(6));
+              if (data.error) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  if (updated.length > 0 && updated[updated.length - 1].role === "assistant") {
+                    updated[updated.length - 1] = {
+                      role: "assistant",
+                      content: data.error,
+                    };
+                  }
+                  return updated;
+                });
+                break;
+              }
               if (data.token) {
                 assistantContent += data.token;
                 setMessages((prev) => {
