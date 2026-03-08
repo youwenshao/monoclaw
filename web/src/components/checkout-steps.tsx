@@ -14,6 +14,8 @@ export function CheckoutSteps({ currentStep }: CheckoutStepsProps) {
     { num: 2, label: t("step2") },
     { num: 3, label: t("step3") },
     { num: 4, label: t("step4") },
+    { num: 5, label: "Contract" },
+    { num: 6, label: "Payment" },
   ];
 
   return (

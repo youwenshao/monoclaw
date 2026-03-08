@@ -7,6 +7,18 @@
 -- Order C (Max Bundle):            c3d4e5f6-a7b8-4901-c234-56789abcdef0  serial K2Q1SL8Y6M
 
 -- ============================================================
+-- Remove existing barebones seed order (Order A) so we can re-insert
+-- in the current schema. Cascades handle order_addons and order_status_history;
+-- devices and their test data must be deleted first (no CASCADE on order_id).
+-- ============================================================
+DELETE FROM device_test_results
+WHERE device_id IN (SELECT id FROM devices WHERE order_id = 'a1b2c3d4-e5f6-4789-a012-3456789abcde'::uuid);
+DELETE FROM device_test_summaries
+WHERE device_id IN (SELECT id FROM devices WHERE order_id = 'a1b2c3d4-e5f6-4789-a012-3456789abcde'::uuid);
+DELETE FROM devices WHERE order_id = 'a1b2c3d4-e5f6-4789-a012-3456789abcde'::uuid;
+DELETE FROM orders WHERE id = 'a1b2c3d4-e5f6-4789-a012-3456789abcde'::uuid;
+
+-- ============================================================
 -- ORDER A: Barebones (API-only, no local models)
 -- Mac mini M4, base software only, HK$39,999
 -- ============================================================

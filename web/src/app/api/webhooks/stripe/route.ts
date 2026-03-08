@@ -38,17 +38,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   const addons = metadata.addons ? JSON.parse(metadata.addons) : { models: [], bundle: null };
   const hardwareConfig = metadata.hardwareConfig ? JSON.parse(metadata.hardwareConfig) : {};
+  const signingSessionId = metadata.signingSessionId || null;
+
+  const clientId = session.client_reference_id || "00000000-0000-0000-0000-000000000000";
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
-      client_id: session.client_reference_id || "00000000-0000-0000-0000-000000000000",
+      client_id: clientId,
       status: "paid",
       hardware_type: metadata.hardwareType as "mac_mini_m4" | "imac_m4",
       hardware_config: hardwareConfig,
       total_price_hkd: Math.round((session.amount_total || 0) / 100),
       stripe_payment_intent_id: session.payment_intent as string,
       stripe_checkout_session_id: session.id,
+      signing_session_id: signingSessionId,
     })
     .select()
     .single();

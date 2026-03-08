@@ -19,6 +19,7 @@ import { Launch } from "@/components/onboarding/phases/Launch";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ChatInterface } from "@/components/dashboard/ChatInterface";
 import { ToolsGrid } from "@/components/dashboard/ToolsGrid";
+import { SettingsPage } from "@/components/dashboard/SettingsPage";
 
 function LoadingScreen() {
   return (
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<ChatInterface />} />
               <Route path="tools" element={<ToolsGrid />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route path="/welcome/*" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />

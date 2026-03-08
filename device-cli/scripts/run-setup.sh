@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # MonoClaw one-click device setup: provision, test, auto-finalize on success.
 # Run from pendrive: double-click "Run OpenClaw Setup.command" or run this script.
-# Layout: ROOT = volume root (e.g. /Volumes/MONOCLAW_SETUP); contains device-cli/, .env.provision, optional job.txt.
+# Layout: ROOT = volume root (e.g. /Volumes/MONOCLAW_SETUP); contains device-cli/, openclaw-bundle/, .openclaw-setup, .env.provision, optional job.txt.
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -16,6 +16,19 @@ if [[ ! -d "$ROOT/device-cli" ]] || [[ ! -f "$ROOT/.openclaw-setup" ]]; then
   echo "Rename the USB volume to MONOCLAW_SETUP and copy device-cli there, or run from the correct path."
   exit 1
 fi
+
+# Validate pre-built OpenClaw bundle exists on pendrive
+if [[ ! -d "$ROOT/openclaw-bundle" ]]; then
+  echo "Error: openclaw-bundle/ directory not found at $ROOT"
+  echo "Ensure the pre-built OpenClaw bundle is on the pendrive."
+  exit 1
+fi
+if [[ ! -f "$ROOT/openclaw-bundle/dist/entry.js" ]] && [[ ! -f "$ROOT/openclaw-bundle/dist/entry.mjs" ]]; then
+  echo "Error: openclaw-bundle/dist/entry.(m)js not found — bundle appears unbuilt."
+  echo "Build OpenClaw first: cd openclaw_reference && pnpm install && pnpm build"
+  exit 1
+fi
+echo "OpenClaw bundle found at $ROOT/openclaw-bundle/"
 
 # Python selection: bundled on pendrive (primary) or system 3.11+ (contingency)
 PYTHON=""
@@ -124,7 +137,8 @@ if [[ -n "$ORDER_ID" ]]; then
 else
   PROV_CMD="openclaw-setup provision --email $EMAIL --serial $SERIAL"
 fi
-if ! sudo env PATH="$PATH" SUPABASE_URL="$SUPABASE_URL" SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" HF_TOKEN="${HF_TOKEN:-}" CLAWHUB_TOKEN="${CLAWHUB_TOKEN:-}" OPENCLAW_ORDER_ID="${ORDER_ID:-}" OPENCLAW_EMAIL="${EMAIL:-}" OPENCLAW_SERIAL="$SERIAL" $PROV_CMD; then
+OPENCLAW_BUNDLE_SRC="$ROOT/openclaw-bundle"
+if ! sudo env PATH="$PATH" SUPABASE_URL="$SUPABASE_URL" SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" HF_TOKEN="${HF_TOKEN:-}" CLAWHUB_TOKEN="${CLAWHUB_TOKEN:-}" OPENCLAW_ORDER_ID="${ORDER_ID:-}" OPENCLAW_EMAIL="${EMAIL:-}" OPENCLAW_SERIAL="$SERIAL" OPENCLAW_BUNDLE_SRC="$OPENCLAW_BUNDLE_SRC" $PROV_CMD; then
   echo "Provision failed. Exiting."
   exit 1
 fi
@@ -155,6 +169,28 @@ if [[ ! -d /opt/openclaw/mona_hub/frontend/dist ]]; then
   exit 1
 fi
 echo "Frontend built successfully"
+
+# Start the OpenClaw gateway via its LaunchAgent
+echo ""
+echo "Starting OpenClaw gateway..."
+REAL_UID=$(id -u "$REAL_USER")
+GATEWAY_PLIST="$( eval echo "~$REAL_USER" )/Library/LaunchAgents/ai.openclaw.gateway.plist"
+if [[ -f "$GATEWAY_PLIST" ]]; then
+  sudo -u "$REAL_USER" launchctl bootstrap "gui/$REAL_UID" "$GATEWAY_PLIST" 2>/dev/null || true
+  echo "Waiting for OpenClaw gateway to become ready..."
+  for i in $(seq 1 30); do
+    if /usr/bin/curl -sf "http://127.0.0.1:18789/health" >/dev/null 2>&1; then
+      echo "OpenClaw gateway is ready (attempt $i)"
+      break
+    fi
+    sleep 2
+  done
+  if ! /usr/bin/curl -sf "http://127.0.0.1:18789/health" >/dev/null 2>&1; then
+    echo "Warning: OpenClaw gateway did not respond on :18789 within 60s. Tests may fail."
+  fi
+else
+  echo "Warning: Gateway LaunchAgent plist not found at $GATEWAY_PLIST"
+fi
 
 # Install openclaw-setup into the permanent venv so we can run tests from it
 echo "Installing setup CLI into permanent environment..."

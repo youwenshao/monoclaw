@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.models.onboarding_state import ChatMessage, ChatResponse
-from backend.services.complexity import infer_complexity
 from backend.services.interaction import InteractionMode, interaction_manager
 from backend.services.llm import CloudAPIError, llm_service
 from backend.services.tool_router import tool_router
@@ -18,9 +17,10 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 conversations: dict[str, list[dict[str, str]]] = {}
 
 SYSTEM_PROMPT = (
-    "You are Mona, a helpful AI assistant running locally on the user's Mac. "
-    "You have access to 12 industry-specific tool suites and can route requests "
-    "to the right tool automatically. Be warm, concise, and proactive."
+    "You are Mona, a helpful AI assistant running locally on the user's Mac "
+    "via the OpenClaw agent infrastructure. You have access to industry-specific "
+    "tool suites loaded as OpenClaw skills and can execute tools through the gateway. "
+    "Be warm, concise, and proactive."
 )
 
 
@@ -58,14 +58,10 @@ async def send_message(msg: ChatMessage):
     history = conversations[conversation_id]
     context = "\n".join(f"{m['role']}: {m['content']}" for m in history[-10:])
 
-    complexity = infer_complexity(clean_msg) if msg.model_id is None else None
-
     try:
         response_text = await llm_service.generate(
             prompt=context,
             system_prompt=system_prompt,
-            model_id=msg.model_id,
-            complexity=complexity,
         )
     except CloudAPIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -97,16 +93,12 @@ async def send_message_stream(msg: ChatMessage):
     history = conversations[conversation_id]
     context = "\n".join(f"{m['role']}: {m['content']}" for m in history[-10:])
 
-    complexity = infer_complexity(clean_msg) if msg.model_id is None else None
-
     async def event_stream():
         full_response = []
         try:
             async for token in llm_service.generate_stream(
                 prompt=context,
                 system_prompt=system_prompt,
-                model_id=msg.model_id,
-                complexity=complexity,
             ):
                 full_response.append(token)
                 yield f"data: {json.dumps({'token': token})}\n\n"
@@ -115,7 +107,7 @@ async def send_message_stream(msg: ChatMessage):
             )
             yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
         except CloudAPIError as exc:
-            logger.warning("Cloud API error during stream: %s", exc)
+            logger.warning("Gateway error during stream: %s", exc)
             yield f"data: {json.dumps({'error': str(exc)})}\n\n"
         except Exception as exc:
             logger.error("Unexpected error during stream: %s", exc)

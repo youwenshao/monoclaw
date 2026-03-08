@@ -223,6 +223,8 @@ fi
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>OPENCLAW_GATEWAY_URL</key>
+        <string>http://127.0.0.1:18789</string>
     </dict>
 </dict>
 </plist>"""

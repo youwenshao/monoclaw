@@ -14,18 +14,22 @@ export interface OrderState {
     models: string[];
     bundle: string | null;
   };
+  signingSessionId: string | null;
 }
 
 const DEFAULT_STATE: OrderState = {
   hardwareType: null,
   hardwareConfig: {},
   addons: { models: [], bundle: null },
+  signingSessionId: null,
 };
 
 interface CheckoutContextValue {
   order: OrderState;
   setHardware: (type: HardwareType, config?: OrderState["hardwareConfig"]) => void;
   setAddons: (addons: OrderState["addons"]) => void;
+  setSigningSession: (id: string) => void;
+  signingComplete: boolean;
   resetOrder: () => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
@@ -64,6 +68,12 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setOrder((prev) => ({ ...prev, addons }));
   }, []);
 
+  const setSigningSession = useCallback((id: string) => {
+    setOrder((prev) => ({ ...prev, signingSessionId: id }));
+  }, []);
+
+  const signingComplete = !!order.signingSessionId;
+
   const resetOrder = useCallback(() => {
     setOrder(DEFAULT_STATE);
     setCurrentStep(1);
@@ -72,7 +82,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   return (
     <CheckoutContext.Provider
-      value={{ order, setHardware, setAddons, resetOrder, currentStep, setCurrentStep }}
+      value={{ order, setHardware, setAddons, setSigningSession, signingComplete, resetOrder, currentStep, setCurrentStep }}
     >
       {children}
     </CheckoutContext.Provider>

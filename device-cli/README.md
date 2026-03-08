@@ -1,6 +1,8 @@
 # OpenClaw Device Setup CLI
 
-Python CLI for provisioning, testing, and finalizing Mac devices (Mac mini M4 / iMac M4) for MonoClaw. The setup flow is **order-aware**: it fetches the client's order from Supabase and automatically installs the correct LLM models, industry skills, and configuration for that order—no manual configuration needed.
+Python CLI for provisioning, testing, and finalizing Mac devices (Mac mini M4 / iMac M4) for MonoClaw. The setup flow is **order-aware**: it fetches the client's order from Supabase and automatically installs **OpenClaw** (the agent runtime), the correct LLM models, industry skills, and configuration for that order—no manual configuration needed.
+
+**Mona** is a user-friendly interface and skills/tools collection built on top of the **OpenClaw** agent infrastructure. During provisioning, the script installs OpenClaw from a pre-built bundle, configures its gateway as a daemon, and deploys Mona Hub so that all chat and tool execution goes through the OpenClaw gateway.
 
 ---
 
@@ -43,12 +45,18 @@ The fastest way to set up a new device: prepare a USB drive once, then on each M
 3. **Copy the `device-cli` folder** from this repo onto the volume:
    - You should have: `MONOCLAW_SETUP/device-cli/` containing `openclaw_setup/`, `scripts/`, `pyproject.toml`, etc.
 
-4. **Copy the launcher** to the volume root:
+4. **Add the pre-built OpenClaw bundle** (required):
+   - Build OpenClaw from the reference repo: `cd openclaw_reference && pnpm install && pnpm ui:build && pnpm build`.
+   - Copy the entire built directory to the volume as `MONOCLAW_SETUP/openclaw-bundle/`.
+   - The bundle must contain `dist/entry.js` (or `dist/entry.mjs`), `openclaw.mjs`, and `node_modules/`. The script validates this before running provision.
+   - Without the bundle, the one-click script will exit with an error.
+
+5. **Copy the launcher** to the volume root:
    - From: `device-cli/scripts/Run OpenClaw Setup.command`
    - To: `MONOCLAW_SETUP/Run OpenClaw Setup.command`
    - Make sure it is executable (it usually is by default).
 
-5. **Create `.env.provision`** at the volume root with:
+6. **Create `.env.provision`** at the volume root with:
    ```
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_SERVICE_KEY=your-service-role-key
@@ -60,12 +68,12 @@ The fastest way to set up a new device: prepare a USB drive once, then on each M
    `CLAWHUB_TOKEN` avoids rate limiting when installing community skills.
    The tokens are also persisted on the device so Mona can download additional models and skills in the future.
 
-6. **(Optional) Bundled Python** — If the Mac may not have Python or Xcode Command Line Tools:
+7. **(Optional) Bundled Python** — If the Mac may not have Python or Xcode Command Line Tools:
    - Download a relocatable Python 3.11+ for arm64 macOS (e.g. [python-build-standalone](https://github.com/indygreg/python-build-standalone/releases) — pick **macos-aarch64**).
    - Extract so you have: `MONOCLAW_SETUP/python/bin/python3`
    - If present, the script uses it and no system Python is required.
 
-7. **(Optional) Non-interactive: job file** — For one pendrive per order, create `job.txt` at the volume root:
+8. **(Optional) Non-interactive: job file** — For one pendrive per order, create `job.txt` at the volume root:
    - Line 1: Order UUID **or** `EMAIL:client@example.com` (to look up the client's most recent order)
    - Line 2: Mac serial number
    - If present, the script will not prompt for these.
@@ -80,6 +88,18 @@ The fastest way to set up a new device: prepare a USB drive once, then on each M
    OPENCLAW_EMAIL=client@example.com
    OPENCLAW_SERIAL=Mac-serial-here
    ```
+
+**Expected pendrive layout (minimum):**
+```
+MONOCLAW_SETUP/
+  .openclaw-setup
+  .env.provision
+  device-cli/           # this repo's device-cli folder
+  openclaw-bundle/      # pre-built OpenClaw (dist/, node_modules/, openclaw.mjs)
+  Run OpenClaw Setup.command
+  python/               # optional: python/bin/python3
+  job.txt               # optional: order/email + serial
+```
 
 ### Step 2: On the Mac to Be Provisioned
 
@@ -98,13 +118,16 @@ The fastest way to set up a new device: prepare a USB drive once, then on each M
 5. **Enter your Mac password** when prompted (needed for creating `/etc/openclaw`, `/opt/openclaw`, etc.).
 
 6. **Wait for the process to complete.** The script will:
-   - Install the CLI
+   - Install the CLI and validate the OpenClaw bundle
    - Fetch the order from Supabase (client, LLM plan, industry, personas)
    - Register the device
-   - Create directories and install dependencies
+   - Create directories and install dependencies (including **Node.js 22+** for OpenClaw)
+   - **Install OpenClaw** from the pendrive bundle to `/opt/openclaw/openclaw/` and create the `openclaw` CLI wrapper
    - Download the LLM models specified in the order (this can take 10–30+ minutes depending on plan)
-   - Install industry skills (software stack for the client's industry and persona add-ons)
-   - Write configuration and routing
+   - Install industry tool suites with `manifest.json` and **SKILL.md** (for OpenClaw skill discovery)
+   - Write OpenClaw config (`~/.openclaw/openclaw.json`), gateway token, and routing
+   - **Install the OpenClaw gateway daemon** (LaunchAgent `ai.openclaw.gateway` on port 18789)
+   - Deploy Mona Hub and build its frontend; start the gateway and verify health
    - Run the full test suite (results upload to Supabase)
    - If all tests pass: **auto-finalize** (remove CLI, mark device ready)
    - If any test fails: stop and report. Fix issues, then re-run or finalize manually.
@@ -133,40 +156,53 @@ Understanding the flow helps when troubleshooting. The provisioner does the foll
 
 ### 3. Directory Structure
 
-- Creates `/etc/openclaw/core`, `/opt/openclaw/models`, `/opt/openclaw/skills/local`, `/opt/openclaw/state`, `/var/log/openclaw`, `~/.openclaw/user`, `~/OpenClawWorkspace`.
+- Creates `/etc/openclaw/core`, `/opt/openclaw/models`, `/opt/openclaw/skills/local`, `/opt/openclaw/skills/clawhub`, `/opt/openclaw/state`, `/opt/openclaw/config/messaging`, `/var/log/openclaw`, `~/.openclaw/user`, `~/OpenClawWorkspace`.
 
 ### 4. Dependencies
 
-- Installs Python packages: `mlx-lm`, `mlx-whisper`, `mlx-audio`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`, `sentence-transformers` (for tool auto-routing). The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`) is pre-downloaded during setup to avoid first-request latency.
+- **Node.js 22+** — Required by OpenClaw. The provisioner checks the version and installs `node@22` via Homebrew if the system Node is older.
+- **FFmpeg** — Installed via Homebrew for media handling.
+- **Python packages** (in `/opt/openclaw/venv`): `mlx-lm`, `mlx-whisper`, `mlx-audio`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`, `sentence-transformers` (for tool auto-routing). The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`) is pre-downloaded during setup to avoid first-request latency.
 
-### 5. Core Configs
+### 5. OpenClaw Installation
+
+- Copies the **pre-built OpenClaw bundle** from the pendrive (`openclaw-bundle/`) to `/opt/openclaw/openclaw/`.
+- Creates a CLI wrapper at `/usr/local/bin/openclaw` that runs `node /opt/openclaw/openclaw/openclaw.mjs`.
+- OpenClaw is the core agent runtime: it runs the gateway (HTTP + WebSocket), loads skills, and executes tools. Mona Hub is a frontend that proxies chat requests to the gateway.
+
+### 6. Core Configs
 
 - Writes `SOUL.md`, `AGENTS.md`, `TOOLS.md` in `/etc/openclaw/core` with industry context and available tools.
 - Communication tools now include native support for **Telegram** and **Discord** alongside WhatsApp.
 
-### 6. Model Download
+### 7. Model Download
 
 - For each model in the order's LLM plan, downloads from Hugging Face Hub to `/opt/openclaw/models/{model-id}/`.
 - **Voice Models**: Automatically downloads `whisper-large-v3-turbo` (STT) and `Qwen3-TTS-12Hz-1.7B` (TTS) for fully offline voice interaction.
 - Uses 4-bit quantized MLX-compatible models. Progress is shown per model.
 
-### 7. Industry & Community Skills
+### 8. Industry & Community Skills
 
-- Creates skill directories under `/opt/openclaw/skills/local/{slug}/` for industry and persona stacks.
-- **ClawHub Integration**: Automatically installs 16 vetted, high-trust community skills from `clawhub.ai` (e.g., `self-improving-agent`, `agent-browser`, `find-skills`) via the ClawHub CLI.
+- Creates skill directories under `/opt/openclaw/skills/local/{slug}/` for industry and persona stacks. Each suite gets a `manifest.json` (for Mona Hub UI) and a **SKILL.md** (for OpenClaw agent skill discovery).
+- **ClawHub Integration**: Automatically installs 16 vetted, high-trust community skills from `clawhub.ai` (e.g., `self-improving-agent`, `agent-browser`, `find-skills`) via the ClawHub CLI into `/opt/openclaw/skills/clawhub/`.
 
-### 8. Configuration & Routing
+### 9. Configuration & Routing
 
 - **Auto-Routing (Max Bundle Only)**: Writes `/opt/openclaw/state/routing-config.json` for task-based model selection.
 - **LLM Provider Config**: Writes `/opt/openclaw/state/llm-provider.json` defining the offline/hybrid mode.
-- **Global Config**: Writes `~/.openclaw/config.json` to point the OpenClaw engine to local system paths.
+- **OpenClaw native config**: Writes `~/.openclaw/openclaw.json` with gateway port 18789, token auth, chat completions endpoint enabled, and skill dirs (`/opt/openclaw/skills/local`, `/opt/openclaw/skills/clawhub`). Writes `~/.openclaw/.env` with `OPENCLAW_GATEWAY_TOKEN` and optional API keys. The gateway token is also stored in `/opt/openclaw/state/gateway-token.txt` so Mona Hub can authenticate when proxying chat to the gateway.
+- **Legacy config**: Writes `~/.openclaw/config.json` for backward compatibility with path references.
 - **Messaging Stubs**: Creates credential stubs for WhatsApp, Telegram, and Discord in `/opt/openclaw/config/messaging/`.
 
-### 9. Active Work State
+### 10. OpenClaw Gateway Daemon
+
+- Installs a **LaunchAgent** at `~/Library/LaunchAgents/ai.openclaw.gateway.plist` that runs `openclaw gateway run` (port 18789, loopback). Logs go to `~/.openclaw/gateway.log` and `gateway.err.log`. The one-click script starts this agent after provisioning and polls `/health` until the gateway is ready.
+
+### 11. Active Work State
 
 - Writes `/opt/openclaw/state/active-work.json` with order ID, industry, personas, model list. Used by the test suite and runtime.
 
-### 10. Credentials
+### 12. Credentials
 
 - Stores `/opt/openclaw/.setup-credentials` with `device_id`, `order_id`, and Supabase URL (for the test reporter and finalize step).
 
@@ -177,8 +213,9 @@ Understanding the flow helps when troubleshooting. The provisioner does the foll
 The test suite validates:
 
 - **Hardware** — CPU (M4), RAM ≥16GB, SSD health, network, display, audio, etc.
-- **macOS environment** — macOS version, SIP, FileVault, Xcode CLI, Homebrew, Python, Node, FFmpeg.
-- **OpenClaw core** — Directories, config files, permissions, manifest integrity, industry skills.
+- **macOS environment** — macOS version, SIP, FileVault, Xcode CLI, Homebrew, Python, **Node 22+**, FFmpeg.
+- **OpenClaw core** — Directories (including `/opt/openclaw/openclaw/`), config files, permissions, manifest integrity, industry skills with SKILL.md.
+- **OpenClaw installation** — Pre-built bundle present (`dist/entry.js`), `openclaw` CLI wrapper responds, `~/.openclaw/openclaw.json` valid, gateway token stored, **gateway health** (HTTP 200 on `http://127.0.0.1:18789/health`), and LaunchAgent plist present.
 - **LLM models** — Expected models present, config integrity, load and inference per model.
 - **Voice** — Whisper Large V3 Turbo (STT) and Qwen3-TTS (TTS) model presence, inference verification, and language detection (English, Cantonese, Mandarin).
 - **Security** — Core immutability, sandbox, credentials permissions.
@@ -324,6 +361,16 @@ The `run-setup.sh` script supports both order ID and client email:
 
 ## Troubleshooting
 
+### "Pre-built OpenClaw bundle not found" or "openclaw-bundle/dist/entry.(m)js not found"
+
+- The one-click script requires a pre-built OpenClaw bundle on the pendrive. Build it from the reference repo: `cd openclaw_reference && pnpm install && pnpm ui:build && pnpm build`, then copy the whole directory to the volume as `openclaw-bundle/`.
+- Ensure `openclaw-bundle/dist/entry.js` or `openclaw-bundle/dist/entry.mjs` exists after the build.
+
+### "OpenClaw gateway did not respond on :18789 within 60s"
+
+- The gateway runs as a LaunchAgent. After provisioning, the script starts it and polls `/health`. If the gateway is slow to start (e.g. first run), wait a bit and re-run the test step, or check `~/.openclaw/gateway.err.log` for errors.
+- Ensure Node.js 22+ is installed: `node --version`.
+
 ### "No order found" or "Order not found"
 
 - Verify the order exists in Supabase and has status `paid` or later.
@@ -359,9 +406,18 @@ The `run-setup.sh` script supports both order ID and client email:
 
 ---
 
+## Architecture: Mona Hub and OpenClaw
+
+- **OpenClaw** is the agent runtime: it runs the **gateway** (HTTP on port 18789, WebSocket), loads skills from `/opt/openclaw/skills/local` and `clawhub`, and executes tools. It exposes an OpenAI-compatible `/v1/chat/completions` endpoint.
+- **Mona Hub** is the user-facing app (onboarding UI, chat UI, voice, system settings). Its backend **proxies all chat requests** to the OpenClaw gateway using the token in `/opt/openclaw/state/gateway-token.txt`. Tool execution and model selection are handled by the gateway; Mona provides the interface and industry tool suites (as OpenClaw skills via SKILL.md).
+
+---
+
 ## Requirements
 
 - **macOS 15+** (Sequoia)
 - **Python 3.11+** — from bundled pendrive Python, or from Xcode Command Line Tools (`xcode-select --install`)
+- **Node.js 22+** — required by OpenClaw; the provisioner installs it via Homebrew if needed
+- **Pre-built OpenClaw bundle** — must be on the pendrive as `openclaw-bundle/` with `dist/entry.js` (or `entry.mjs`) and `node_modules/`
 - **Network access** — Supabase, Hugging Face Hub (model downloads)
 - **~20–50 GB free disk** — for models (depends on LLM plan)

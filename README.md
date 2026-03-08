@@ -49,12 +49,14 @@ monoclaw/
 - **Framework**: Next.js 14 (App Router)
 - **Styling**: Tailwind CSS v4, shadcn/ui, Framer Motion
 - **Internationalization**: `next-intl` (English, 繁體中文, 简体中文)
-- **Backend/Auth**: Supabase (PostgreSQL, Auth, RLS). Google SSO setup and troubleshooting: [web/docs/AUTH_GOOGLE_SSO.md](web/docs/AUTH_GOOGLE_SSO.md)
-- **Payments**: Stripe (HKD, Apple Pay, Credit Cards)
+- **Backend/Auth**: Supabase (PostgreSQL, Auth, RLS). Google SSO: [web/docs/AUTH_GOOGLE_SSO.md](web/docs/AUTH_GOOGLE_SSO.md)
+- **Contract Signing**: Native Signing System (NSS) — email verification (Resend), audit trail, pdf-lib PDF generation, WORM storage. [web/docs/NATIVE_SIGNING_SYSTEM.md](web/docs/NATIVE_SIGNING_SYSTEM.md)
+- **Payments**: Stripe (HKD, Apple Pay, Credit Cards), after contract signing
 
 ### Device Provisioning
-- **Language**: Python 3.11+
-- **LLM Framework**: MLX (Apple Silicon optimized)
+- **OpenClaw**: Pre-built bundle installed to `/opt/openclaw/openclaw/`; gateway runs as a LaunchAgent (port 18789). Mona Hub proxies chat to the gateway. See [device-cli/README.md](device-cli/README.md).
+- **Language**: Python 3.11+, Node.js 22+ (for OpenClaw)
+- **LLM Framework**: MLX (Apple Silicon optimized); agent runtime and tool execution via OpenClaw gateway
 - **Testing**: Custom framework with `rich` reporting
 - **Security**: macOS `chflags` immutability, sandboxed execution
 
@@ -64,7 +66,7 @@ monoclaw/
 
 1.  **Foundation**: Initialized Next.js scaffold, Supabase schema, and trilingual i18n skeleton.
 2.  **Marketing Site**: Built the public-facing website, including interactive pricing and 12 industry detail pages.
-3.  **Checkout Flow**: Implemented a 4-step order wizard with Stripe integration and automated order creation.
+3.  **Checkout Flow**: Implemented a 6-step order wizard: Hardware → Add-ons → Tools → Review → **Contract (NSS)** → Payment. Guests can configure orders; sign-in is required before contract and payment. The **Native Signing System (NSS)** captures identity (Individual/Entity), verifies email (Resend), presents the contract with mandatory checkboxes and a 10-second review timer, and records a type-to-confirm signature. Signed PDFs are generated (pdf-lib), stored in Supabase Storage, and emailed. Stripe checkout runs after contract signing; see [web/docs/NATIVE_SIGNING_SYSTEM.md](web/docs/NATIVE_SIGNING_SYSTEM.md).
 4.  **Dashboards**: Created client-side order tracking and device test report viewers, plus admin-side order management.
 5.  **Device CLI**: Developed the `openclaw-setup` tool for hardware provisioning and comprehensive pre-shipping QA.
 6.  **Agent Prompts**: Authored 48 detailed prompts for coding agents to implement the industry-specific productivity tools.
@@ -98,7 +100,7 @@ We provide specialized software for:
 
 ## ⚖️ Legal & Privacy
 
-MonoClaw is a product of **Sentimento Technologies Limited**. All client data is treated as confidential under the Hong Kong Personal Data (Privacy) Ordinance (PDPO). Our software suite is sold as a one-time purchase with no recurring maintenance fees, as per the signed client contract.
+MonoClaw is a product of **Sentimento Technologies Limited**. All client data is treated as confidential under the Hong Kong Personal Data (Privacy) Ordinance (PDPO). The service agreement is executed electronically via the Native Signing System (NSS), which satisfies the Electronic Transactions Ordinance (Cap. 553). The software suite is sold as a one-time purchase with no recurring maintenance fees, as per the signed client contract.
 
 ---
 

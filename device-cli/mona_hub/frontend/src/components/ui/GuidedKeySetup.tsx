@@ -28,12 +28,14 @@ interface GuidedKeySetupProps {
   config: ProviderConfig;
   onComplete: (credentials: Record<string, string>) => void;
   onSkip: () => void;
+  onValidate?: (credentials: Record<string, string>) => Promise<{ valid: boolean; error?: string }>;
 }
 
 export function GuidedKeySetup({
   config,
   onComplete,
   onSkip,
+  onValidate,
 }: GuidedKeySetupProps) {
   const reducedMotion = useReducedMotion();
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -59,23 +61,26 @@ export function GuidedKeySetup({
     setValidation("checking");
     setErrorMsg("");
 
-    // Simulate async validation (parent should handle real validation)
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const firstError = config.fields.find(
-      (f) => config.validationErrors[f.key] && values[f.key].trim().length < 10
-    );
-
-    if (firstError) {
+    try {
+      if (onValidate) {
+        const result = await onValidate(values);
+        if (result.valid) {
+          setValidation("valid");
+          setTimeout(() => onComplete(values), 800);
+        } else {
+          setValidation("invalid");
+          setErrorMsg(result.error || "Invalid credentials. Try again.");
+        }
+      } else {
+        await new Promise((r) => setTimeout(r, 1200));
+        setValidation("valid");
+        setTimeout(() => onComplete(values), 800);
+      }
+    } catch (err) {
       setValidation("invalid");
-      setErrorMsg(
-        config.validationErrors[firstError.key] || "Invalid key"
-      );
-    } else {
-      setValidation("valid");
-      setTimeout(() => onComplete(values), 800);
+      setErrorMsg(err instanceof Error ? err.message : "Verification failed. Try again.");
     }
-  }, [values, config, onComplete]);
+  }, [values, onValidate, onComplete]);
 
   const borderForState = (): string | undefined => {
     if (validation === "checking")

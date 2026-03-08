@@ -2,6 +2,7 @@
 
 import json
 import hashlib
+import subprocess
 from pathlib import Path
 from .base import BaseTestSuite
 
@@ -24,7 +25,7 @@ class OpenClawCoreTests(BaseTestSuite):
         return "fail", {"error": "/etc/openclaw/core missing"}
 
     def test_opt_directory_exists(self):
-        for d in ["models", "skills", "state"]:
+        for d in ["models", "skills", "state", "openclaw"]:
             if not Path(f"/opt/openclaw/{d}").exists():
                 return "fail", {"missing": f"/opt/openclaw/{d}"}
         return "pass", {}
@@ -99,7 +100,7 @@ class OpenClawCoreTests(BaseTestSuite):
             return "fail", {"error": str(e)}
 
     def test_tool_suites_installed(self):
-        """Verify all 12 tool suites are installed with valid manifests."""
+        """Verify all tool suites are installed with valid manifests and SKILL.md."""
         aw = _load_active_work()
         if not aw:
             return "skipped", {"note": "No active-work.json"}
@@ -115,8 +116,11 @@ class OpenClawCoreTests(BaseTestSuite):
         for slug in expected_slugs:
             slug_dir = skills_dir / slug
             manifest_file = slug_dir / "manifest.json"
+            skill_md = slug_dir / "SKILL.md"
             if not slug_dir.exists() or not manifest_file.exists():
                 missing.append(slug)
+            elif not skill_md.exists():
+                missing.append(f"{slug} (SKILL.md missing)")
             else:
                 try:
                     manifest = json.loads(manifest_file.read_text())
@@ -158,3 +162,81 @@ class OpenClawCoreTests(BaseTestSuite):
             return "pass", {}
         except Exception as e:
             return "fail", {"error": str(e)}
+
+    # -- OpenClaw installation tests ------------------------------------------
+
+    def test_openclaw_installed(self):
+        """Verify the OpenClaw bundle is installed with dist/entry.(m)js."""
+        install_dir = Path("/opt/openclaw/openclaw")
+        if not install_dir.exists():
+            return "fail", {"error": "/opt/openclaw/openclaw directory missing"}
+        entry_js = install_dir / "dist" / "entry.js"
+        entry_mjs = install_dir / "dist" / "entry.mjs"
+        if not entry_js.exists() and not entry_mjs.exists():
+            return "fail", {"error": "dist/entry.(m)js not found in OpenClaw install"}
+        mjs = install_dir / "openclaw.mjs"
+        if not mjs.exists():
+            return "fail", {"error": "openclaw.mjs not found"}
+        return "pass", {"path": str(install_dir)}
+
+    def test_openclaw_cli_responds(self):
+        """Verify the openclaw CLI wrapper works."""
+        wrapper = Path("/usr/local/bin/openclaw")
+        if not wrapper.exists():
+            return "fail", {"error": "/usr/local/bin/openclaw wrapper missing"}
+        try:
+            result = subprocess.run(
+                [str(wrapper), "--version"],
+                capture_output=True, text=True, timeout=15,
+            )
+            if result.returncode == 0:
+                return "pass", {"version": result.stdout.strip()}
+            return "warning", {"exit_code": result.returncode, "stderr": result.stderr[:200]}
+        except subprocess.TimeoutExpired:
+            return "warning", {"note": "openclaw --version timed out (15s)"}
+        except Exception as e:
+            return "fail", {"error": str(e)}
+
+    def test_openclaw_config_valid(self):
+        """Verify ~/.openclaw/openclaw.json exists and is valid."""
+        config_path = Path.home() / ".openclaw" / "openclaw.json"
+        if not config_path.exists():
+            return "fail", {"error": f"{config_path} not found"}
+        try:
+            data = json.loads(config_path.read_text())
+            gateway = data.get("gateway", {})
+            if not gateway.get("port"):
+                return "warning", {"note": "gateway.port missing from config"}
+            if not gateway.get("auth", {}).get("token"):
+                return "warning", {"note": "gateway.auth.token missing from config"}
+            return "pass", {"port": gateway.get("port"), "bind": gateway.get("bind")}
+        except json.JSONDecodeError as e:
+            return "fail", {"error": f"Invalid JSON: {e}"}
+
+    def test_gateway_token_stored(self):
+        """Verify the gateway token file exists for Mona Hub."""
+        token_path = Path("/opt/openclaw/state/gateway-token.txt")
+        if not token_path.exists():
+            return "fail", {"error": "gateway-token.txt not found"}
+        token = token_path.read_text().strip()
+        if len(token) < 16:
+            return "warning", {"note": "Token appears too short"}
+        return "pass", {}
+
+    def test_gateway_health(self):
+        """Verify the OpenClaw gateway responds to health checks."""
+        try:
+            import urllib.request
+            req = urllib.request.urlopen("http://127.0.0.1:18789/health", timeout=5)
+            if req.status == 200:
+                return "pass", {"status": req.status}
+            return "warning", {"status": req.status}
+        except Exception as e:
+            return "warning", {"note": f"Gateway not responding: {e}"}
+
+    def test_gateway_launch_agent(self):
+        """Verify the gateway LaunchAgent plist exists."""
+        plist = Path.home() / "Library" / "LaunchAgents" / "ai.openclaw.gateway.plist"
+        if plist.exists():
+            return "pass", {"path": str(plist)}
+        return "fail", {"error": "ai.openclaw.gateway.plist not found in LaunchAgents"}

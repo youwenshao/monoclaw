@@ -16,3 +16,6 @@ build/
 *.swp
 *.swo
 .vercel
+
+# Reference clone of openclaw (do not commit)
+openclaw_reference/

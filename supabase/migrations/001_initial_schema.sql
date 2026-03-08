@@ -148,8 +148,23 @@ CREATE INDEX idx_device_test_results_category ON device_test_results(category);
 CREATE INDEX idx_device_test_summaries_device_id ON device_test_summaries(device_id);
 
 -- ============================================================
--- ROW LEVEL SECURITY
+-- ROW LEVEL SECURITY (helper to avoid recursion in profiles policy)
 -- ============================================================
+
+-- Returns true if the current user has admin or technician role. SECURITY DEFINER
+-- bypasses RLS so this does not recurse when used in policies that read from profiles.
+CREATE OR REPLACE FUNCTION public.is_admin_or_technician()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role IN ('admin', 'technician')
+  );
+$$;
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -170,12 +185,7 @@ CREATE POLICY "Users can update own profile"
 
 CREATE POLICY "Admins can manage all profiles"
   ON profiles FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- Orders policies
 CREATE POLICY "Clients can view own orders"
@@ -188,12 +198,7 @@ CREATE POLICY "Clients can insert own orders"
 
 CREATE POLICY "Admins can manage all orders"
   ON orders FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- Order addons policies
 CREATE POLICY "Clients can view own order addons"
@@ -216,12 +221,7 @@ CREATE POLICY "Clients can insert own order addons"
 
 CREATE POLICY "Admins can manage all order addons"
   ON order_addons FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- Order status history policies
 CREATE POLICY "Clients can view own order history"
@@ -235,12 +235,7 @@ CREATE POLICY "Clients can view own order history"
 
 CREATE POLICY "Admins can manage all order history"
   ON order_status_history FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- Devices policies
 CREATE POLICY "Clients can view own devices"
@@ -254,12 +249,7 @@ CREATE POLICY "Clients can view own devices"
 
 CREATE POLICY "Admins can manage all devices"
   ON devices FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- Device test results policies
 CREATE POLICY "Clients can view own device test results"
@@ -274,12 +264,7 @@ CREATE POLICY "Clients can view own device test results"
 
 CREATE POLICY "Admins can manage all test results"
   ON device_test_results FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- Device test summaries policies
 CREATE POLICY "Clients can view own device test summaries"
@@ -294,12 +279,7 @@ CREATE POLICY "Clients can view own device test summaries"
 
 CREATE POLICY "Admins can manage all test summaries"
   ON device_test_summaries FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'technician')
-    )
-  );
+  USING (public.is_admin_or_technician());
 
 -- ============================================================
 -- FUNCTIONS & TRIGGERS

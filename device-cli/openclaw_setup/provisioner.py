@@ -1,6 +1,8 @@
 """Device provisioning: directory setup, dependency install, model download, config generation."""
 
 import os
+import secrets
+import shutil
 import sys
 import subprocess
 import json
@@ -24,6 +26,9 @@ from .order_fetcher import (
 console = Console()
 
 CORE_FILES = ["SOUL.md", "AGENTS.md", "TOOLS.md"]
+OPENCLAW_INSTALL_DIR = Path("/opt/openclaw/openclaw")
+OPENCLAW_GATEWAY_PORT = 18789
+MIN_NODE_MAJOR = 22
 
 
 def _real_user() -> str:
@@ -57,6 +62,7 @@ class Provisioner:
             self._update_status("provisioning")
             self._create_directories()
             self._install_dependencies()
+            self._install_openclaw()
             self._write_core_configs()
             self._set_permissions()
             self._download_models()
@@ -72,6 +78,7 @@ class Provisioner:
             self._setup_messaging_config()
             self._write_llm_provider_config()
             self._write_openclaw_config()
+            self._install_openclaw_gateway()
             self._setup_heartbeat_daemon()
             self._setup_log_rotation()
             self._store_setup_credentials()
@@ -211,24 +218,59 @@ class Provisioner:
         if brew_dir not in os.environ["PATH"]:
             os.environ["PATH"] = f"{brew_dir}:{os.environ['PATH']}"
 
-        # Node.js and FFmpeg via Homebrew
-        for pkg in ["node", "ffmpeg"]:
-            # Check using absolute path to brew
-            pkg_check = subprocess.run(
-                ["sudo", "-u", user, brew_bin, "list", pkg],
-                capture_output=True, text=True,
+        # FFmpeg via Homebrew
+        pkg_check = subprocess.run(
+            ["sudo", "-u", user, brew_bin, "list", "ffmpeg"],
+            capture_output=True, text=True,
+        )
+        if pkg_check.returncode != 0:
+            console.print("  Installing ffmpeg via Homebrew...")
+            env = os.environ.copy()
+            env["PATH"] = f"{brew_dir}:{env.get('PATH', '')}"
+            subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", brew_bin, "install", "ffmpeg"],
+                check=True, timeout=600, stdin=subprocess.DEVNULL,
             )
-            if pkg_check.returncode != 0:
-                console.print(f"  Installing {pkg} via Homebrew...")
-                # We must ensure the environment has PATH set so brew can find its own dependencies during install
-                env = os.environ.copy()
-                env["PATH"] = f"{brew_dir}:{env.get('PATH', '')}"
-                subprocess.run(
-                    ["sudo", "-u", user, "env", f"PATH={env['PATH']}", brew_bin, "install", pkg],
-                    check=True, timeout=600, stdin=subprocess.DEVNULL,
-                )
-            else:
-                console.print(f"  {pkg} already installed")
+        else:
+            console.print("  ffmpeg already installed")
+
+        # Node.js 22+ (required by OpenClaw). Check existing version first.
+        env = os.environ.copy()
+        env["PATH"] = f"{brew_dir}:{env.get('PATH', '')}"
+        node_ok = False
+        try:
+            node_ver = subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "node", "--version"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if node_ver.returncode == 0:
+                ver_str = node_ver.stdout.strip().lstrip("v")
+                major = int(ver_str.split(".")[0])
+                if major >= MIN_NODE_MAJOR:
+                    node_ok = True
+                    console.print(f"  Node.js v{ver_str} found (>= {MIN_NODE_MAJOR})")
+                else:
+                    console.print(f"  Node.js v{ver_str} found but < {MIN_NODE_MAJOR}, upgrading...")
+        except Exception:
+            pass
+
+        if not node_ok:
+            console.print(f"  Installing Node.js {MIN_NODE_MAJOR}+ via Homebrew...")
+            subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", brew_bin, "install", f"node@{MIN_NODE_MAJOR}"],
+                capture_output=True, timeout=600, stdin=subprocess.DEVNULL,
+            )
+            # Link it so 'node' resolves to node@22
+            subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", brew_bin, "link", "--overwrite", f"node@{MIN_NODE_MAJOR}"],
+                capture_output=True, timeout=60, stdin=subprocess.DEVNULL,
+            )
+            # Verify
+            ver_check = subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "node", "--version"],
+                capture_output=True, text=True, timeout=10,
+            )
+            console.print(f"  Node.js installed: {ver_check.stdout.strip()}")
 
         # Enable macOS firewall
         console.print("  Enabling macOS firewall...")
@@ -312,6 +354,57 @@ class Provisioner:
             console.print("  [yellow]Warning: Embedding model pre-download failed; will download on first use.[/yellow]")
             if preload_result.stderr:
                 console.print(f"  [dim]{preload_result.stderr.strip()[:200]}[/dim]")
+
+    def _install_openclaw(self):
+        """Copy pre-built OpenClaw bundle to /opt/openclaw/openclaw/ and create CLI wrapper."""
+        console.print("\n[bold]Installing OpenClaw...[/bold]")
+        user = _real_user()
+
+        bundle_src = os.environ.get("OPENCLAW_BUNDLE_SRC")
+        if not bundle_src or not Path(bundle_src).is_dir():
+            raise RuntimeError(
+                "OPENCLAW_BUNDLE_SRC not set or directory missing. "
+                "Ensure openclaw-bundle/ is on the pendrive."
+            )
+
+        src = Path(bundle_src)
+        entry_js = src / "dist" / "entry.js"
+        entry_mjs = src / "dist" / "entry.mjs"
+        if not entry_js.exists() and not entry_mjs.exists():
+            raise RuntimeError(f"Pre-built OpenClaw bundle missing dist/entry.(m)js at {src}")
+
+        dest = OPENCLAW_INSTALL_DIR
+        if dest.exists():
+            console.print("  Removing previous OpenClaw installation...")
+            shutil.rmtree(dest)
+
+        console.print(f"  Copying bundle from {src} to {dest}...")
+        shutil.copytree(str(src), str(dest), symlinks=True)
+        subprocess.run(["chown", "-R", f"{user}:", str(dest)], check=True)
+        console.print(f"  [green]OpenClaw installed to {dest}[/green]")
+
+        # Create /usr/local/bin/openclaw wrapper
+        wrapper_path = Path("/usr/local/bin/openclaw")
+        wrapper_path.parent.mkdir(parents=True, exist_ok=True)
+        wrapper_path.write_text(
+            "#!/bin/bash\n"
+            f'exec /opt/homebrew/bin/node "{dest}/openclaw.mjs" "$@"\n'
+        )
+        wrapper_path.chmod(0o755)
+        console.print(f"  [green]CLI wrapper created: {wrapper_path}[/green]")
+
+        # Verify the CLI responds
+        try:
+            ver = subprocess.run(
+                ["sudo", "-u", user, str(wrapper_path), "--version"],
+                capture_output=True, text=True, timeout=15,
+            )
+            if ver.returncode == 0:
+                console.print(f"  OpenClaw version: {ver.stdout.strip()}")
+            else:
+                console.print(f"  [yellow]Warning: openclaw --version returned {ver.returncode}[/yellow]")
+        except Exception as e:
+            console.print(f"  [yellow]Warning: Could not verify openclaw CLI: {e}[/yellow]")
 
     def _write_core_configs(self):
         console.print("\n[bold]Writing core configurations...[/bold]")
@@ -408,6 +501,24 @@ class Provisioner:
             }
             (skill_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
+            # Write SKILL.md for OpenClaw agent skill discovery
+            tools_list = ", ".join(tools)
+            skill_md = (
+                f"---\n"
+                f"name: {suite_id}\n"
+                f"description: \"{suite_name}: {tools_list}\"\n"
+                f"---\n\n"
+                f"# {suite_name}\n\n"
+                f"Industry tool suite providing the following capabilities:\n\n"
+            )
+            for tool in tools:
+                skill_md += f"- **{tool}**\n"
+            skill_md += (
+                f"\nUse this skill when the user's request relates to {suite_name.lower()} tasks. "
+                f"Route through the `/{suite_id}` slash command or let auto-routing match.\n"
+            )
+            (skill_dir / "SKILL.md").write_text(skill_md)
+
             for j, tool in enumerate(tools):
                 config = {
                     "tool_name": tool,
@@ -422,7 +533,7 @@ class Provisioner:
 
             console.print(f"  [{i + 1}/{len(ALL_TOOL_SUITES)}] {suite_name} ({len(tools)} tools)")
 
-        console.print(f"  [green]Installed all {len(ALL_TOOL_SUITES)} tool suites[/green]")
+        console.print(f"  [green]Installed all {len(ALL_TOOL_SUITES)} tool suites with SKILL.md[/green]")
 
     def _setup_auto_routing(self):
         console.print("\n[bold]Configuring model routing...[/bold]")
@@ -497,6 +608,66 @@ class Provisioner:
         aw_path = Path("/opt/openclaw/state/active-work.json")
         aw_path.write_text(json.dumps(active_work, indent=2))
         console.print(f"  Wrote: {aw_path}")
+
+    def _install_openclaw_gateway(self):
+        """Install OpenClaw gateway as a macOS LaunchAgent."""
+        console.print("\n[bold]Installing OpenClaw gateway daemon...[/bold]")
+        user = _real_user()
+        user_home = _real_user_home()
+
+        agents_dir = user_home / "Library" / "LaunchAgents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+
+        label = "ai.openclaw.gateway"
+        plist_path = agents_dir / f"{label}.plist"
+        log_out = user_home / ".openclaw" / "gateway.log"
+        log_err = user_home / ".openclaw" / "gateway.err.log"
+
+        node_bin = "/opt/homebrew/bin/node"
+        if not Path(node_bin).exists():
+            node_bin = "/usr/local/bin/node"
+
+        plist = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{label}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{node_bin}</string>
+        <string>{OPENCLAW_INSTALL_DIR}/openclaw.mjs</string>
+        <string>gateway</string>
+        <string>run</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+    <key>WorkingDirectory</key>
+    <string>{OPENCLAW_INSTALL_DIR}</string>
+    <key>StandardOutPath</key>
+    <string>{log_out}</string>
+    <key>StandardErrorPath</key>
+    <string>{log_err}</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>OPENCLAW_STATE_DIR</key>
+        <string>{user_home}/.openclaw</string>
+        <key>HOME</key>
+        <string>{user_home}</string>
+    </dict>
+</dict>
+</plist>"""
+
+        plist_path.write_text(plist)
+        subprocess.run(["chown", f"{user}:", str(plist_path)], check=True)
+        console.print(f"  [green]Gateway LaunchAgent written: {plist_path}[/green]")
 
     def _setup_heartbeat_daemon(self):
         console.print("\n[bold]Setting up heartbeat daemon...[/bold]")
@@ -771,11 +942,88 @@ class Provisioner:
         console.print(f"  Wrote: {provider_path} (mode: {plan_type})")
 
     def _write_openclaw_config(self):
-        """Write global OpenClaw configuration file."""
+        """Write OpenClaw native config (openclaw.json) and .env for the gateway."""
         console.print("\n[bold]Writing OpenClaw configuration...[/bold]")
+        user = _real_user()
         user_home = _real_user_home()
+        state_dir = user_home / ".openclaw"
+        state_dir.mkdir(parents=True, exist_ok=True)
+
+        gateway_token = secrets.token_hex(32)
 
         config = {
+            "gateway": {
+                "port": OPENCLAW_GATEWAY_PORT,
+                "bind": "loopback",
+                "auth": {
+                    "mode": "token",
+                    "token": gateway_token,
+                },
+                "http": {
+                    "endpoints": {
+                        "chatCompletions": {"enabled": True},
+                        "responses": {"enabled": True},
+                    }
+                },
+            },
+            "skills": {
+                "load": {
+                    "extraDirs": [
+                        "/opt/openclaw/skills/local",
+                        "/opt/openclaw/skills/clawhub",
+                    ]
+                }
+            },
+            "agents": {
+                "defaults": {
+                    "workspace": str(user_home / "OpenClawWorkspace"),
+                }
+            },
+        }
+
+        config_path = state_dir / "openclaw.json"
+        config_path.write_text(json.dumps(config, indent=2))
+        subprocess.run(["chown", f"{user}:", str(config_path)], check=True)
+        console.print(f"  Wrote: {config_path}")
+
+        # Build .env with the gateway token and any API keys from the LLM provider config
+        env_lines = [
+            f"OPENCLAW_GATEWAY_TOKEN={gateway_token}",
+        ]
+        llm_config_path = Path("/opt/openclaw/state/llm-provider.json")
+        if llm_config_path.exists():
+            try:
+                llm_cfg = json.loads(llm_config_path.read_text())
+                api_keys = llm_cfg.get("api_keys", {})
+                key_map = {
+                    "deepseek": "DEEPSEEK_API_KEY",
+                    "kimi": "MOONSHOT_API_KEY",
+                    "glm5": "GLM_API_KEY",
+                    "openai": "OPENAI_API_KEY",
+                    "anthropic": "ANTHROPIC_API_KEY",
+                }
+                for provider, env_name in key_map.items():
+                    val = api_keys.get(provider)
+                    if val:
+                        env_lines.append(f"{env_name}={val}")
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        env_path = state_dir / ".env"
+        env_path.write_text("\n".join(env_lines) + "\n")
+        subprocess.run(["chown", f"{user}:", str(env_path)], check=True)
+        os.chmod(str(env_path), 0o600)
+        console.print(f"  Wrote: {env_path}")
+
+        # Persist gateway token for Mona Hub to read
+        token_path = Path("/opt/openclaw/state/gateway-token.txt")
+        token_path.write_text(gateway_token)
+        os.chmod(str(token_path), 0o600)
+        subprocess.run(["chown", f"{user}:", str(token_path)], check=True)
+        console.print(f"  Gateway token stored: {token_path}")
+
+        # Legacy Mona-internal config (still read by some Hub endpoints)
+        legacy_config = {
             "skills_dir": "/opt/openclaw/skills",
             "clawhub_skills_dir": "/opt/openclaw/skills/clawhub",
             "models_dir": "/opt/openclaw/models",
@@ -783,14 +1031,12 @@ class Provisioner:
             "workspace": str(user_home / "OpenClawWorkspace"),
             "messaging_config_dir": "/opt/openclaw/config/messaging",
         }
+        legacy_path = state_dir / "config.json"
+        legacy_path.write_text(json.dumps(legacy_config, indent=2))
+        subprocess.run(["chown", f"{user}:", str(legacy_path)], check=True)
+        console.print(f"  Wrote legacy config: {legacy_path}")
 
-        config_path = user_home / ".openclaw" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text(json.dumps(config, indent=2))
-
-        user = _real_user()
-        subprocess.run(["chown", f"{user}:", str(config_path)], check=True)
-        console.print(f"  Wrote: {config_path}")
+        subprocess.run(["chown", f"{user}:", str(state_dir)], check=True)
 
     def _store_setup_credentials(self):
         console.print("\n[bold]Storing setup credentials...[/bold]")

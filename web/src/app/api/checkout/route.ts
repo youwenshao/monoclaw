@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
+import { createClient } from "@/lib/supabase/server";
 import { SOFTWARE_BASE_PRICE_HKD, MODEL_CATEGORIES, LLM_MODELS, BUNDLES } from "@/lib/constants";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { hardwareType, hardwareConfig, addons } = body;
+    const { hardwareType, hardwareConfig, addons, signingSessionId } = body;
+
+    // Get authenticated user for client_reference_id
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const lineItems: { price_data: { currency: string; product_data: { name: string; description?: string }; unit_amount: number }; quantity: number }[] = [
       {
@@ -64,10 +71,12 @@ export async function POST(request: NextRequest) {
       mode: "payment",
       success_url: `${appUrl}/en/order/confirmation/{CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/en/order/review`,
+      client_reference_id: user?.id || undefined,
       metadata: {
         hardwareType,
         hardwareConfig: JSON.stringify(hardwareConfig),
         addons: JSON.stringify(addons),
+        signingSessionId: signingSessionId || "",
       },
     });
 

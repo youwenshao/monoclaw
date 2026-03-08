@@ -12,6 +12,23 @@ export type OrderStatus =
 
 export type HardwareType = "mac_mini_m4" | "imac_m4";
 
+export type ClientType = "individual" | "entity";
+
+export type SigningStatus =
+  | "pending_email"
+  | "pending_signature"
+  | "completed"
+  | "expired";
+
+export type AuditEventType =
+  | "email_sent"
+  | "email_verified"
+  | "contract_viewed"
+  | "checkbox_toggled"
+  | "signature_submitted"
+  | "pdf_generated"
+  | "email_delivered";
+
 export type AddonCategory =
   | "fast"
   | "standard"
@@ -70,8 +87,56 @@ export interface Order {
   delivery_address: string | null;
   notes: string | null;
   apple_order_number: string | null;
+  signing_session_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface SigningSession {
+  id: string;
+  user_id: string;
+  client_type: ClientType;
+  legal_name: string;
+  entity_jurisdiction: string | null;
+  br_number: string | null;
+  representative_name: string | null;
+  representative_title: string | null;
+  email: string;
+  email_verified_at: string | null;
+  verification_code_hash: string | null;
+  verification_expires_at: string | null;
+  verification_attempts: number;
+  ip_address: string | null;
+  user_agent: string;
+  template_version: string | null;
+  agreement_checks: boolean[];
+  signature_font_text: string | null;
+  signed_at: string | null;
+  status: SigningStatus;
+  immutable_pdf_path: string | null;
+  audit_chain_hash: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditTrailEntry {
+  id: string;
+  session_id: string;
+  event_type: AuditEventType;
+  timestamp: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown> | null;
+  previous_hash: string | null;
+  current_hash: string | null;
+}
+
+export interface ContractTemplate {
+  id: string;
+  version: string;
+  html_content: string;
+  created_at: string;
+  is_active: boolean;
 }
 
 export interface OrderAddon {
@@ -200,6 +265,38 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Omit<DeviceTestSummary, "id">>;
+        Relationships: [];
+      };
+      signing_sessions: {
+        Row: SigningSession;
+        Insert: Omit<SigningSession, "id" | "created_at" | "updated_at" | "status" | "verification_attempts"> & {
+          id?: string;
+          status?: SigningStatus;
+          verification_attempts?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<SigningSession, "id">>;
+        Relationships: [];
+      };
+      audit_trail: {
+        Row: AuditTrailEntry;
+        Insert: Omit<AuditTrailEntry, "id" | "timestamp" | "previous_hash" | "current_hash"> & {
+          id?: string;
+          timestamp?: string;
+          previous_hash?: string;
+          current_hash?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      contract_templates: {
+        Row: ContractTemplate;
+        Insert: Omit<ContractTemplate, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<ContractTemplate, "id">>;
         Relationships: [];
       };
     };
