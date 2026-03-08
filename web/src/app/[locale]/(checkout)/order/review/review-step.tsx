@@ -10,13 +10,13 @@ import {
   LLM_MODELS,
   MODEL_CATEGORIES,
   BUNDLES,
-  INDUSTRY_VERTICALS,
-  CLIENT_PERSONAS,
+  TOOL_SUITES,
 } from "@/lib/constants";
 import { formatHKD } from "@/lib/stripe";
 import { CheckoutSteps } from "@/components/checkout-steps";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, CreditCard, Loader2 } from "lucide-react";
 
@@ -32,13 +32,6 @@ export function ReviewStep() {
     : null;
   const selectedModels = order.addons.models.map((id) =>
     LLM_MODELS.find((m) => m.id === id)
-  ).filter(Boolean);
-
-  const industry = INDUSTRY_VERTICALS.find((i) => i.slug === order.industry) ||
-    CLIENT_PERSONAS.find((p) => p.slug === order.industry);
-
-  const personas = order.personas.map((s) =>
-    CLIENT_PERSONAS.find((p) => p.slug === s)
   ).filter(Boolean);
 
   let addonsTotal = 0;
@@ -69,8 +62,6 @@ export function ReviewStep() {
           hardwareType: order.hardwareType,
           hardwareConfig: order.hardwareConfig,
           addons: order.addons,
-          industry: order.industry,
-          personas: order.personas,
         }),
       });
       const data = await res.json();
@@ -149,23 +140,20 @@ export function ReviewStep() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Industry Configuration</CardTitle>
+            <CardTitle className="text-lg">Included Tool Suites</CardTitle>
           </CardHeader>
           <CardContent>
-            {industry && (
-              <div className="mb-2">
-                <p className="font-medium">{industry.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {industry.softwareStack.join(", ")}
-                </p>
-              </div>
-            )}
-            {personas.length > 0 && (
-              <div className="mt-3">
-                <p className="text-sm text-muted-foreground">Additional profiles:</p>
-                <p className="text-sm">{personas.map((p) => p?.name).join(", ")}</p>
-              </div>
-            )}
+            <p className="mb-3 text-sm text-muted-foreground">
+              All {TOOL_SUITES.length} tool suites are included with every Mona Mac.
+              Mona auto-routes your requests to the right tool.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {TOOL_SUITES.map((suite) => (
+                <Badge key={suite.id} variant="secondary" className="text-xs">
+                  {suite.name}
+                </Badge>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>

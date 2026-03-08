@@ -14,24 +14,18 @@ export interface OrderState {
     models: string[];
     bundle: string | null;
   };
-  industry: string | null;
-  personas: string[];
 }
 
 const DEFAULT_STATE: OrderState = {
   hardwareType: null,
   hardwareConfig: {},
   addons: { models: [], bundle: null },
-  industry: null,
-  personas: [],
 };
 
 interface CheckoutContextValue {
   order: OrderState;
   setHardware: (type: HardwareType, config?: OrderState["hardwareConfig"]) => void;
   setAddons: (addons: OrderState["addons"]) => void;
-  setIndustry: (industry: string | null) => void;
-  setPersonas: (personas: string[]) => void;
   resetOrder: () => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
@@ -70,14 +64,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setOrder((prev) => ({ ...prev, addons }));
   }, []);
 
-  const setIndustry = useCallback((industry: string | null) => {
-    setOrder((prev) => ({ ...prev, industry }));
-  }, []);
-
-  const setPersonas = useCallback((personas: string[]) => {
-    setOrder((prev) => ({ ...prev, personas }));
-  }, []);
-
   const resetOrder = useCallback(() => {
     setOrder(DEFAULT_STATE);
     setCurrentStep(1);
@@ -86,7 +72,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   return (
     <CheckoutContext.Provider
-      value={{ order, setHardware, setAddons, setIndustry, setPersonas, resetOrder, currentStep, setCurrentStep }}
+      value={{ order, setHardware, setAddons, resetOrder, currentStep, setCurrentStep }}
     >
       {children}
     </CheckoutContext.Provider>

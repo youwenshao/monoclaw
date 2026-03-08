@@ -80,7 +80,7 @@ export function ConfirmationContent({ orderId }: { orderId: string }) {
             <div>
               <p className="font-medium">We handle the rest</p>
               <p className="text-sm text-muted-foreground">
-                We&apos;ll install OpenClaw, configure your industry software, run comprehensive tests, and deliver your AI-ready device.
+                We&apos;ll install OpenClaw with all 12 tool suites, run comprehensive tests, and deliver your AI-ready device.
               </p>
             </div>
           </div>

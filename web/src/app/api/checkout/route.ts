@@ -5,7 +5,7 @@ import { SOFTWARE_BASE_PRICE_HKD, MODEL_CATEGORIES, LLM_MODELS, BUNDLES } from "
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { hardwareType, hardwareConfig, addons, industry, personas } = body;
+    const { hardwareType, hardwareConfig, addons } = body;
 
     const lineItems: { price_data: { currency: string; product_data: { name: string; description?: string }; unit_amount: number }; quantity: number }[] = [
       {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
           currency: "hkd",
           product_data: {
             name: "OpenClaw Software Suite",
-            description: `Industry: ${industry || "General"} | Hardware: ${hardwareType}`,
+            description: `All 12 tool suites included | Hardware: ${hardwareType}`,
           },
           unit_amount: SOFTWARE_BASE_PRICE_HKD * 100,
         },
@@ -68,8 +68,6 @@ export async function POST(request: NextRequest) {
         hardwareType,
         hardwareConfig: JSON.stringify(hardwareConfig),
         addons: JSON.stringify(addons),
-        industry: industry || "",
-        personas: JSON.stringify(personas),
       },
     });
 

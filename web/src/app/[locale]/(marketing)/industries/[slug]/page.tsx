@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { INDUSTRY_VERTICALS, CLIENT_PERSONAS } from "@/lib/constants";
+import { TOOL_SUITES } from "@/lib/constants";
 import {
   Card,
   CardHeader,
@@ -40,10 +40,10 @@ const industryIcons: Record<string, React.ReactNode> = {
   "medical-dental": <Stethoscope className="h-8 w-8" />,
   construction: <HardHat className="h-8 w-8" />,
   "import-export": <Ship className="h-8 w-8" />,
-  "academic-researcher": <GraduationCap className="h-8 w-8" />,
+  academic: <GraduationCap className="h-8 w-8" />,
   "vibe-coder": <Code className="h-8 w-8" />,
   solopreneur: <Store className="h-8 w-8" />,
-  "curious-student": <BookOpen className="h-8 w-8" />,
+  student: <BookOpen className="h-8 w-8" />,
 };
 
 const INDUSTRY_DETAILS: Record<
@@ -310,7 +310,7 @@ const INDUSTRY_DETAILS: Record<
     valueProposition:
       "Automated customs paperwork, 24/7 supplier chasing, real-time inventory reconciliation",
   },
-  "academic-researcher": {
+  academic: {
     painPoints: [
       "Reading 200+ papers for systematic literature reviews",
       "Formatting citations for various academic standards",
@@ -406,7 +406,7 @@ const INDUSTRY_DETAILS: Record<
     valueProposition:
       "Unified business dashboard, automated MPF, one-click social posting",
   },
-  "curious-student": {
+  student: {
     painPoints: [
       "Formatting thesis documents with proper TOC and citations",
       "Summarizing 50-page case studies for exams",
@@ -440,19 +440,12 @@ const INDUSTRY_DETAILS: Record<
   },
 };
 
-function findIndustry(slug: string) {
-  const vertical = INDUSTRY_VERTICALS.find((v) => v.slug === slug);
-  if (vertical) return vertical;
-  const persona = CLIENT_PERSONAS.find((p) => p.slug === slug);
-  return persona ?? null;
+function findToolSuite(slug: string) {
+  return TOOL_SUITES.find((s) => s.id === slug) ?? null;
 }
 
 export async function generateStaticParams() {
-  const allSlugs = [
-    ...INDUSTRY_VERTICALS.map((v) => v.slug),
-    ...CLIENT_PERSONAS.map((p) => p.slug),
-  ];
-  return allSlugs.map((slug) => ({ slug }));
+  return TOOL_SUITES.map((s) => ({ slug: s.id }));
 }
 
 export async function generateMetadata({
@@ -461,10 +454,10 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const industry = findIndustry(slug);
-  if (!industry) return {};
+  const suite = findToolSuite(slug);
+  if (!suite) return {};
   return {
-    title: `${industry.name} — MonoClaw`,
+    title: `${suite.name} — MonoClaw`,
   };
 }
 
@@ -476,8 +469,8 @@ export default async function IndustryDetailPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const industry = findIndustry(slug);
-  if (!industry) notFound();
+  const suite = findToolSuite(slug);
+  if (!suite) notFound();
 
   const details = INDUSTRY_DETAILS[slug];
   if (!details) notFound();
@@ -490,10 +483,10 @@ export default async function IndustryDetailPage({
           {industryIcons[slug]}
         </div>
         <h1 className="mb-3 text-4xl font-bold tracking-tight">
-          {industry.name}
+          {suite.name}
         </h1>
         <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-          {industry.tagline}
+          {suite.description}
         </p>
       </div>
 
@@ -548,7 +541,7 @@ export default async function IndustryDetailPage({
       <div className="text-center">
         <Button asChild size="lg">
           <Link href={"/order" as never}>
-            Get Started with {industry.name}
+            Get Started with {suite.name}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

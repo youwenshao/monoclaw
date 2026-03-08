@@ -74,12 +74,32 @@ def open_system_settings(panel: str) -> bool:
 
 
 def get_installed_tools() -> List[InstalledTool]:
-    """Return a list of installed ClawHub/local tools."""
-    # Stub implementation
-    return [
-        InstalledTool(id="run_shell", name="Shell Access", description="Execute terminal commands", type="local", enabled=True),
-        InstalledTool(id="file_operations", name="File Operations", description="Read and write files", type="local", enabled=True),
-    ]
+    """Return a list of installed tool suites from /opt/openclaw/skills/local/."""
+    import json
+    from pathlib import Path
+
+    skills_dir = Path("/opt/openclaw/skills/local")
+    tools: List[InstalledTool] = []
+
+    if skills_dir.exists():
+        for manifest_path in sorted(skills_dir.glob("*/manifest.json")):
+            try:
+                data = json.loads(manifest_path.read_text())
+                tools.append(InstalledTool(
+                    slug=data.get("slug", manifest_path.parent.name),
+                    name=data.get("name", manifest_path.parent.name),
+                    description=f"{data.get('name', '')} tool suite",
+                    tools=data.get("tools", []),
+                ))
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    if not tools:
+        tools = [
+            InstalledTool(slug="general", name="General Assistant", description="General-purpose assistant", tools=[]),
+        ]
+
+    return tools
 
 
 def get_installed_models() -> List[InstalledModel]:

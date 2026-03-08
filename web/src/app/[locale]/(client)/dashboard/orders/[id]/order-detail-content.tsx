@@ -11,15 +11,14 @@ import {
   LLM_MODELS,
   BUNDLES,
   MODEL_CATEGORIES,
-  INDUSTRY_VERTICALS,
-  CLIENT_PERSONAS,
+  TOOL_SUITES,
 } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, Circle, ArrowLeft, FileText, Monitor, Brain, Building2, Package } from "lucide-react";
+import { Check, Circle, ArrowLeft, FileText, Monitor, Brain, Wrench, Package } from "lucide-react";
 
 export function OrderDetailContent({
   order,
@@ -58,11 +57,6 @@ export function OrderDetailContent({
       setConfirmLoading(false);
     }
   }
-
-  const industryInfo = INDUSTRY_VERTICALS.find((v) => v.slug === order.industry);
-  const personaInfos = (order.personas || [])
-    .map((slug) => CLIENT_PERSONAS.find((p) => p.slug === slug))
-    .filter(Boolean);
 
   const bundleAddon = addons.find((a) => a.addon_type === "bundle");
   const modelAddons = addons.filter((a) => a.addon_type === "model");
@@ -303,49 +297,32 @@ export function OrderDetailContent({
         </Card>
       </div>
 
-      {/* Industry & Personas */}
-      {(industryInfo || personaInfos.length > 0) && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" /> Industry & Personas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            {industryInfo && (
-              <div>
-                <p className="mb-1 text-muted-foreground">Primary Industry</p>
-                <Badge className="mb-2">{industryInfo.name}</Badge>
+      {/* Supported Tools */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wrench className="h-5 w-5" /> Supported Tools
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <p className="text-muted-foreground">
+            All {TOOL_SUITES.length} tool suites are pre-installed on your Mac.
+            Mona auto-routes requests to the right tool based on context.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {TOOL_SUITES.map((suite) => (
+              <div key={suite.id}>
+                <Badge className="mb-1">{suite.name}</Badge>
                 <div className="flex flex-wrap gap-1">
-                  {industryInfo.softwareStack.map((tool) => (
+                  {suite.tools.map((tool) => (
                     <Badge key={tool} variant="outline" className="text-xs">{tool}</Badge>
                   ))}
                 </div>
               </div>
-            )}
-            {personaInfos.length > 0 && (
-              <>
-                {industryInfo && <Separator />}
-                <div>
-                  <p className="mb-1 text-muted-foreground">Persona Add-ons</p>
-                  <div className="space-y-2">
-                    {personaInfos.map((persona) => (
-                      <div key={persona!.slug}>
-                        <Badge variant="secondary" className="mb-1">{persona!.name}</Badge>
-                        <div className="flex flex-wrap gap-1">
-                          {persona!.softwareStack.map((tool) => (
-                            <Badge key={tool} variant="outline" className="text-xs">{tool}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Devices */}
       {devices.length > 0 && (

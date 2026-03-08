@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { COMPANY, INDUSTRY_VERTICALS } from "@/lib/constants";
+import { COMPANY, TOOL_SUITES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Mail, Globe, MapPin } from "lucide-react";
 
@@ -127,9 +127,9 @@ export default async function ContactPage({
                 <option value="" disabled>
                   Select your industry
                 </option>
-                {INDUSTRY_VERTICALS.map((v) => (
-                  <option key={v.slug} value={v.slug}>
-                    {v.name}
+                {TOOL_SUITES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
                   </option>
                 ))}
                 <option value="other">Other</option>

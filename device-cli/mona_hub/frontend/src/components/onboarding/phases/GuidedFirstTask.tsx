@@ -18,11 +18,7 @@ export function GuidedFirstTask() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const profile = localStorage.getItem("mona_profile");
-    const parsed = profile ? JSON.parse(profile) : null;
-    const industry = parsed?.industry ?? "general";
-
-    startGuidedTask(industry, "quick-demo")
+    startGuidedTask("general", "quick-demo")
       .then((res) => {
         setResponse(res.response);
         setLoading(false);

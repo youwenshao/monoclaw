@@ -41,6 +41,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   model_id?: string;
+  tool_id?: string;
 }
 
 export interface ChatResponse {
@@ -256,6 +257,10 @@ export function saveLlmConfig(
     method: "PUT",
     body: JSON.stringify({ provider, api_key: apiKey }),
   });
+}
+
+export function getChatTools(): Promise<ToolInfo[]> {
+  return apiFetch<ToolInfo[]>("/api/chat/tools");
 }
 
 // --- Chat ---

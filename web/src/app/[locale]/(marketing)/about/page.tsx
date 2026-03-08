@@ -35,8 +35,8 @@ export default async function AboutPage({
             employee that runs entirely on local hardware. No cloud dependency,
             no data leaving your office, no recurring API fees. MonoClaw deploys
             Mona — your dedicated AI assistant — on Apple Silicon Macs, pre-loaded
-            with industry-specific software tailored to Hong Kong&apos;s unique
-            business landscape.
+            with 12 pre-installed tool suites covering Hong Kong&apos;s key industries
+            and professional needs.
           </p>
         </section>
 
@@ -86,7 +86,7 @@ export default async function AboutPage({
               <span className="font-medium text-foreground">OpenClaw</span>, our
               open-source agent platform. OpenClaw provides the runtime, model
               management, and tool framework that powers Mona and all
-              industry-specific software.
+              tool suites.
             </p>
             <a
               href={`https://${COMPANY.openclawWebsite}`}

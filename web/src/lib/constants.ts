@@ -136,52 +136,26 @@ export const BUNDLES: Bundle[] = [
   },
 ];
 
-export type IndustrySlug =
-  | "real-estate"
-  | "immigration"
-  | "fnb-hospitality"
-  | "accounting"
-  | "legal"
-  | "medical-dental"
-  | "construction"
-  | "import-export";
-
-export type PersonaSlug =
-  | "academic-researcher"
-  | "vibe-coder"
-  | "solopreneur"
-  | "curious-student";
-
-export interface IndustryVertical {
-  slug: IndustrySlug;
+export interface ToolSuite {
+  id: string;
   name: string;
-  tagline: string;
-  softwareStack: string[];
+  description: string;
+  tools: string[];
 }
 
-export const INDUSTRY_VERTICALS: IndustryVertical[] = [
-  { slug: "real-estate", name: "Real Estate & Property", tagline: "One-click listing distribution, automated tenancy paperwork, 24/7 viewing coordination", softwareStack: ["PropertyGPT", "ListingSync Agent", "TenancyDoc Automator", "ViewingBot"] },
-  { slug: "immigration", name: "Immigration Consulting", tagline: "Automated document verification, real-time policy alerts, zero-touch client updates", softwareStack: ["VisaDoc OCR", "FormAutoFill", "PolicyWatcher", "ClientPortal Bot"] },
-  { slug: "fnb-hospitality", name: "F&B & Hospitality", tagline: "Zero double-bookings, automated no-show prevention, digital queue management", softwareStack: ["TableMaster AI", "NoShowShield", "QueueBot", "SommelierMemory"] },
-  { slug: "accounting", name: "Accounting & Bookkeeping", tagline: "Automated invoice processing, hands-off bank reconciliation, zero missed tax deadlines", softwareStack: ["InvoiceOCR Pro", "ReconcileAgent", "TaxCalendar Bot", "FXTracker"] },
-  { slug: "legal", name: "Legal & Professional Services", tagline: "AI-powered document review, automated deadline management, zero-conflict client intake", softwareStack: ["LegalDoc Analyzer", "DiscoveryAssistant", "DeadlineGuardian", "IntakeBot"] },
-  { slug: "medical-dental", name: "Medical & Dental Clinics", tagline: "24/7 appointment booking, automated scribing, instant insurance verification", softwareStack: ["ClinicScheduler", "MedReminder Bot", "ScribeAI", "InsuranceAgent"] },
-  { slug: "construction", name: "Construction & Property Management", tagline: "Automated BD permit tracking, digital safety compliance, photo-based defect logging", softwareStack: ["PermitTracker", "SafetyForm Bot", "DefectsManager", "SiteCoordinator"] },
-  { slug: "import-export", name: "Import/Export & Trading", tagline: "Automated customs paperwork, 24/7 supplier chasing, real-time inventory reconciliation", softwareStack: ["TradeDoc AI", "SupplierBot", "StockReconcile", "FXInvoice"] },
-];
-
-export interface ClientPersona {
-  slug: PersonaSlug;
-  name: string;
-  tagline: string;
-  softwareStack: string[];
-}
-
-export const CLIENT_PERSONAS: ClientPersona[] = [
-  { slug: "academic-researcher", name: "Academic Researcher", tagline: "AI-powered literature review, auto-formatted citations, grant deadline tracking", softwareStack: ["PaperSieve", "CiteBot", "TranslateAssist", "GrantTracker"] },
-  { slug: "vibe-coder", name: "Vibe Coder", tagline: "Local coding assistant, HK-specific dev tools, zero API costs", softwareStack: ["CodeQwen-9B", "HKDevKit", "DocuWriter", "GitAssistant"] },
-  { slug: "solopreneur", name: "Solopreneur", tagline: "Unified business dashboard, automated MPF, one-click social posting", softwareStack: ["BizOwner OS", "MPFCalc", "SocialSync", "SupplierLedger"] },
-  { slug: "curious-student", name: "Student", tagline: "Private study assistant, interview prep, job tracking, thesis formatting", softwareStack: ["StudyBuddy", "InterviewPrep", "JobTracker", "ThesisFormatter"] },
+export const TOOL_SUITES: ToolSuite[] = [
+  { id: "real-estate", name: "Real Estate & Property", description: "One-click listing distribution, automated tenancy paperwork, 24/7 viewing coordination", tools: ["PropertyGPT", "ListingSync Agent", "TenancyDoc Automator", "ViewingBot"] },
+  { id: "immigration", name: "Immigration Consulting", description: "Automated document verification, real-time policy alerts, zero-touch client updates", tools: ["VisaDoc OCR", "FormAutoFill", "PolicyWatcher", "ClientPortal Bot"] },
+  { id: "fnb-hospitality", name: "F&B & Hospitality", description: "Zero double-bookings, automated no-show prevention, digital queue management", tools: ["TableMaster AI", "NoShowShield", "QueueBot", "SommelierMemory"] },
+  { id: "accounting", name: "Accounting & Bookkeeping", description: "Automated invoice processing, hands-off bank reconciliation, zero missed tax deadlines", tools: ["InvoiceOCR Pro", "ReconcileAgent", "TaxCalendar Bot", "FXTracker"] },
+  { id: "legal", name: "Legal & Professional Services", description: "AI-powered document review, automated deadline management, zero-conflict client intake", tools: ["LegalDoc Analyzer", "DiscoveryAssistant", "DeadlineGuardian", "IntakeBot"] },
+  { id: "medical-dental", name: "Medical & Dental Clinics", description: "24/7 appointment booking, automated scribing, instant insurance verification", tools: ["ClinicScheduler", "MedReminder Bot", "ScribeAI", "InsuranceAgent"] },
+  { id: "construction", name: "Construction & Property Management", description: "Automated BD permit tracking, digital safety compliance, photo-based defect logging", tools: ["PermitTracker", "SafetyForm Bot", "DefectsManager", "SiteCoordinator"] },
+  { id: "import-export", name: "Import/Export & Trading", description: "Automated customs paperwork, 24/7 supplier chasing, real-time inventory reconciliation", tools: ["TradeDoc AI", "SupplierBot", "StockReconcile", "FXInvoice"] },
+  { id: "academic", name: "Academic Researcher", description: "AI-powered literature review, auto-formatted citations, grant deadline tracking", tools: ["PaperSieve", "CiteBot", "TranslateAssist", "GrantTracker"] },
+  { id: "vibe-coder", name: "Vibe Coder", description: "Local coding assistant, HK-specific dev tools, zero API costs", tools: ["CodeQwen-9B", "HKDevKit", "DocuWriter", "GitAssistant"] },
+  { id: "solopreneur", name: "Solopreneur", description: "Unified business dashboard, automated MPF, one-click social posting", tools: ["BizOwner OS", "MPFCalc", "SocialSync", "SupplierLedger"] },
+  { id: "student", name: "Student", description: "Private study assistant, interview prep, job tracking, thesis formatting", tools: ["StudyBuddy", "InterviewPrep", "JobTracker", "ThesisFormatter"] },
 ];
 
 interface OrderStatusConfig {

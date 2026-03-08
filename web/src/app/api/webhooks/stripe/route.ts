@@ -37,7 +37,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata || {};
 
   const addons = metadata.addons ? JSON.parse(metadata.addons) : { models: [], bundle: null };
-  const personas = metadata.personas ? JSON.parse(metadata.personas) : [];
   const hardwareConfig = metadata.hardwareConfig ? JSON.parse(metadata.hardwareConfig) : {};
 
   const { data: order, error: orderError } = await supabase
@@ -50,8 +49,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       total_price_hkd: Math.round((session.amount_total || 0) / 100),
       stripe_payment_intent_id: session.payment_intent as string,
       stripe_checkout_session_id: session.id,
-      industry: metadata.industry || null,
-      personas: personas.length > 0 ? personas : [],
     })
     .select()
     .single();

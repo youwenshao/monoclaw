@@ -45,7 +45,6 @@ export interface Profile {
   id: string;
   role: UserRole;
   company_name: string | null;
-  industry: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   language_pref: "en" | "zh-hant" | "zh-hans";
@@ -70,8 +69,6 @@ export interface Order {
   stripe_checkout_session_id: string | null;
   delivery_address: string | null;
   notes: string | null;
-  industry: string | null;
-  personas: string[];
   apple_order_number: string | null;
   created_at: string;
   updated_at: string;
@@ -149,10 +146,9 @@ export interface Database {
       };
       orders: {
         Row: Order;
-        Insert: Omit<Order, "id" | "created_at" | "updated_at" | "status" | "personas"> & {
+        Insert: Omit<Order, "id" | "created_at" | "updated_at" | "status"> & {
           id?: string;
           status?: OrderStatus;
-          personas?: string[];
           created_at?: string;
           updated_at?: string;
         };

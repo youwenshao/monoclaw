@@ -5,7 +5,7 @@ import { PageTransition, FadeUp, NeuInput, NeuButton, NeuCard } from "@/componen
 import { saveProfile, updateProgress } from "@/lib/api";
 import { childVariants } from "@/lib/animations";
 
-type Stage = "name" | "language" | "style" | "role";
+type Stage = "name" | "language" | "style";
 
 interface LanguageOption {
   value: string;
@@ -55,7 +55,6 @@ export function Profile() {
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("");
   const [style, setStyle] = useState("");
-  const [role, setRole] = useState("");
   const [saving, setSaving] = useState(false);
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -83,26 +82,20 @@ export function Profile() {
     autoAdvanceTimer.current = setTimeout(() => setStage("style"), 500);
   }
 
-  function handleStyleSelect(value: string) {
+  async function handleStyleSelect(value: string) {
     setStyle(value);
-    autoAdvanceTimer.current = setTimeout(() => setStage("role"), 500);
-  }
-
-  async function handleComplete() {
-    if (!role.trim() || saving) return;
     setSaving(true);
     try {
       await saveProfile({
         name: name.trim(),
         language_pref: language,
-        communication_style: style,
-        role: role.trim(),
+        communication_style: value,
       });
-      localStorage.setItem("mona_profile", JSON.stringify({ name: name.trim(), language, style, industry: role.trim() }));
+      localStorage.setItem("mona_profile", JSON.stringify({ name: name.trim(), language, style: value }));
       await updateProgress(5, 5, true);
-      navigate("/welcome/mac-setup");
+      setTimeout(() => navigate("/welcome/mac-setup"), 600);
     } catch {
-      navigate("/welcome/mac-setup");
+      setTimeout(() => navigate("/welcome/mac-setup"), 600);
     } finally {
       setSaving(false);
     }
@@ -209,43 +202,18 @@ export function Profile() {
           </motion.div>
         )}
 
-        {stage === "role" && (
-          <motion.div
-            key="role"
-            variants={stageVariants}
-            initial="initial"
-            animate="enter"
-            exit="exit"
-            className="flex w-full max-w-[400px] flex-col items-center gap-8"
-          >
-            <h2 className="text-2xl font-light text-text-primary">
-              What's your role?
-            </h2>
-            <NeuInput
-              placeholder="e.g., Property Agent, Accountant, Student..."
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleComplete()}
-              autoFocus
-              className="w-full"
-            />
-            <NeuButton onClick={handleComplete} disabled={!role.trim() || saving}>
-              {saving ? "Saving..." : "Complete Profile"}
-            </NeuButton>
-          </motion.div>
-        )}
       </AnimatePresence>
 
       <FadeUp className="mt-12">
         <div className="flex items-center justify-center gap-2">
-          {(["name", "language", "style", "role"] as Stage[]).map((s) => (
+          {(["name", "language", "style"] as Stage[]).map((s) => (
             <motion.div
               key={s}
               className={`h-1.5 rounded-full transition-colors ${
                 s === stage
                   ? "w-6 bg-accent"
-                  : (["name", "language", "style", "role"].indexOf(s) <
-                      ["name", "language", "style", "role"].indexOf(stage))
+                  : (["name", "language", "style"].indexOf(s) <
+                      ["name", "language", "style"].indexOf(stage))
                     ? "w-1.5 bg-accent/40"
                     : "w-1.5 bg-text-tertiary/30"
               }`}

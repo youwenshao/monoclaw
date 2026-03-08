@@ -35,7 +35,7 @@ export function useChat() {
   );
 
   const sendMessageStream = useCallback(
-    async (text: string, modelId?: string) => {
+    async (text: string, modelId?: string, toolId?: string) => {
       const userMessage: ChatMessage = { role: "user", content: text };
       setMessages((prev) => [...prev, userMessage]);
       setIsStreaming(true);
@@ -50,6 +50,7 @@ export function useChat() {
             message: text,
             conversation_id: conversationId,
             model_id: modelId,
+            tool_id: toolId,
           }),
           signal: abortRef.current.signal,
         });

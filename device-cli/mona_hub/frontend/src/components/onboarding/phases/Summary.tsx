@@ -103,7 +103,7 @@ export function Summary() {
           label: "Tools",
           value:
             toolsResult.status === "fulfilled"
-              ? `${toolsResult.value.length} industry tools installed`
+              ? `${toolsResult.value.length} tool suites installed`
               : "Demo tools available",
         },
         {

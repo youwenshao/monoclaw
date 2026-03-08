@@ -137,7 +137,7 @@ Understanding the flow helps when troubleshooting. The provisioner does the foll
 
 ### 4. Dependencies
 
-- Installs Python packages: `mlx-lm`, `mlx-whisper`, `mlx-audio`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`.
+- Installs Python packages: `mlx-lm`, `mlx-whisper`, `mlx-audio`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`, `sentence-transformers` (for tool auto-routing). The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`) is pre-downloaded during setup to avoid first-request latency.
 
 ### 5. Core Configs
 

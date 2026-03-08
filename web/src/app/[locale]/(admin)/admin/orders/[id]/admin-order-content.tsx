@@ -11,21 +11,19 @@ import {
   LLM_MODELS,
   BUNDLES,
   MODEL_CATEGORIES,
-  INDUSTRY_VERTICALS,
-  CLIENT_PERSONAS,
+  TOOL_SUITES,
 } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, ChevronRight, Save, User, Monitor, Brain, Building2, Truck } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Save, User, Monitor, Brain, Wrench, Truck } from "lucide-react";
 
 interface ClientProfile {
   id: string;
   contact_name: string | null;
   company_name: string | null;
   contact_phone: string | null;
-  industry: string | null;
   role: string;
   email: string | null;
 }
@@ -85,11 +83,6 @@ export function AdminOrderContent({
       setSaving(false);
     }
   }
-
-  const industryInfo = INDUSTRY_VERTICALS.find((v) => v.slug === order.industry);
-  const personaInfos = (order.personas || [])
-    .map((slug) => CLIENT_PERSONAS.find((p) => p.slug === slug))
-    .filter(Boolean);
 
   const bundleAddon = addons.find((a) => a.addon_type === "bundle");
   const modelAddons = addons.filter((a) => a.addon_type === "model");
@@ -293,48 +286,23 @@ export function AdminOrderContent({
           </CardContent>
         </Card>
 
-        {/* Industry & Personas */}
+        {/* Supported Tools */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" /> Industry & Personas
+              <Wrench className="h-4 w-4" /> Supported Tools
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div>
-              <p className="mb-1 text-muted-foreground">Primary Industry</p>
-              {industryInfo ? (
-                <div>
-                  <Badge className="mb-2">{industryInfo.name}</Badge>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {industryInfo.softwareStack.map((tool) => (
-                      <Badge key={tool} variant="outline" className="text-xs">{tool}</Badge>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">Not selected</span>
-              )}
-            </div>
-            <Separator />
-            <div>
-              <p className="mb-1 text-muted-foreground">Persona Add-ons (free)</p>
-              {personaInfos.length > 0 ? (
-                <div className="space-y-2">
-                  {personaInfos.map((persona) => (
-                    <div key={persona!.slug}>
-                      <Badge variant="secondary" className="mb-1">{persona!.name}</Badge>
-                      <div className="flex flex-wrap gap-1">
-                        {persona!.softwareStack.map((tool) => (
-                          <Badge key={tool} variant="outline" className="text-xs">{tool}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-muted-foreground">None selected</span>
-              )}
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              All {TOOL_SUITES.length} tool suites pre-installed (auto-routed)
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {TOOL_SUITES.map((suite) => (
+                <Badge key={suite.id} variant="secondary" className="text-xs">
+                  {suite.name}
+                </Badge>
+              ))}
             </div>
           </CardContent>
         </Card>

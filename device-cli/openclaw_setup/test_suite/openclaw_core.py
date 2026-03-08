@@ -98,22 +98,17 @@ class OpenClawCoreTests(BaseTestSuite):
         except json.JSONDecodeError as e:
             return "fail", {"error": str(e)}
 
-    def test_industry_skills_installed(self):
-        """Verify industry skill directories match active-work.json configuration."""
+    def test_tool_suites_installed(self):
+        """Verify all 12 tool suites are installed with valid manifests."""
         aw = _load_active_work()
         if not aw:
             return "skipped", {"note": "No active-work.json"}
 
         skills_dir = Path("/opt/openclaw/skills/local")
-        industry = aw.get("industry")
-        personas = aw.get("personas", [])
-        expected_slugs = []
-        if industry:
-            expected_slugs.append(industry)
-        expected_slugs.extend(personas)
+        expected_slugs = aw.get("tool_suites", [])
 
         if not expected_slugs:
-            return "pass", {"note": "No industry or persona skills expected"}
+            return "warning", {"note": "No tool_suites listed in active-work.json"}
 
         missing = []
         valid = []
@@ -131,8 +126,8 @@ class OpenClawCoreTests(BaseTestSuite):
                     missing.append(slug)
 
         if missing:
-            return "fail", {"missing": missing, "valid": len(valid)}
-        return "pass", {"skills": valid}
+            return "fail", {"missing": missing, "valid": len(valid), "expected": len(expected_slugs)}
+        return "pass", {"skills": valid, "total": len(valid)}
 
     def test_log_directory_exists(self):
         if Path("/var/log/openclaw").exists():

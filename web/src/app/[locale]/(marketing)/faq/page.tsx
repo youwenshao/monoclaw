@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   {
     question: "How does the setup process work?",
     answer:
-      "After payment, you purchase hardware from Apple and ship it to our office. We install OpenClaw, configure your industry-specific software, run comprehensive tests, and deliver it ready to use.",
+      "After payment, you purchase hardware from Apple and ship it to our office. We install OpenClaw with all 12 tool suites, run comprehensive tests, and deliver it ready to use.",
   },
   {
     question: "Are there any recurring fees?",

@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { IndustryStep } from "./industry-step";
+import { ToolsShowcaseStep } from "./industry-step";
 
 export default async function IndustryPage({
   params,
@@ -8,5 +8,5 @@ export default async function IndustryPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <IndustryStep />;
+  return <ToolsShowcaseStep />;
 }

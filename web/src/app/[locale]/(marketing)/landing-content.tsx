@@ -36,11 +36,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   HARDWARE_OPTIONS,
-  INDUSTRY_VERTICALS,
-  CLIENT_PERSONAS,
+  TOOL_SUITES,
   SOFTWARE_BASE_PRICE_HKD,
-  type IndustrySlug,
-  type PersonaSlug,
 } from "@/lib/constants";
 import { formatHKD } from "@/lib/stripe";
 
@@ -57,7 +54,7 @@ const staggerContainer = {
   viewport: { once: true, margin: "-60px" },
 };
 
-const INDUSTRY_ICONS: Record<IndustrySlug, LucideIcon> = {
+const TOOL_ICONS: Record<string, LucideIcon> = {
   "real-estate": Building2,
   immigration: Briefcase,
   "fnb-hospitality": UtensilsCrossed,
@@ -66,13 +63,10 @@ const INDUSTRY_ICONS: Record<IndustrySlug, LucideIcon> = {
   "medical-dental": Stethoscope,
   construction: HardHat,
   "import-export": Ship,
-};
-
-const PERSONA_ICONS: Record<PersonaSlug, LucideIcon> = {
-  "academic-researcher": GraduationCap,
+  academic: GraduationCap,
   "vibe-coder": Code,
   solopreneur: Store,
-  "curious-student": BookOpen,
+  student: BookOpen,
 };
 
 const HOW_IT_WORKS_STEPS = [
@@ -85,7 +79,7 @@ const HOW_IT_WORKS_STEPS = [
     icon: Cpu,
     title: "We Set It Up",
     description:
-      "OpenClaw installed, tested, and configured for your industry.",
+      "OpenClaw installed with all 12 tool suites, tested, and ready.",
   },
   {
     icon: Bot,
@@ -249,15 +243,16 @@ export function LandingContent() {
         </div>
       </section>
 
-      {/* ── Industry Grid ── */}
+      {/* ── Tool Suites Grid ── */}
       <section className="py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div className="mx-auto mb-16 max-w-2xl text-center" {...fadeUp}>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Built for Your Industry
+              12 Tool Suites, One Mac
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Pre-configured AI tools tailored to how you actually work.
+              Every Mona Mac ships with all 12 tool suites. Mona auto-routes
+              your requests to the right tool based on context.
             </p>
           </motion.div>
 
@@ -265,12 +260,12 @@ export function LandingContent() {
             className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             {...staggerContainer}
           >
-            {INDUSTRY_VERTICALS.map((industry) => {
-              const Icon = INDUSTRY_ICONS[industry.slug];
+            {TOOL_SUITES.map((suite) => {
+              const Icon = TOOL_ICONS[suite.id] || Bot;
               return (
-                <motion.div key={industry.slug} {...fadeUp}>
+                <motion.div key={suite.id} {...fadeUp}>
                   <Link
-                    href={`/industries/${industry.slug}` as never}
+                    href={`/industries/${suite.id}` as never}
                     className="group block h-full"
                   >
                     <Card className="h-full transition-shadow duration-200 group-hover:shadow-md">
@@ -280,49 +275,16 @@ export function LandingContent() {
                             <Icon className="size-5" />
                           </div>
                           <Badge variant="secondary" className="text-xs">
-                            {industry.softwareStack.length} tools
+                            {suite.tools.length} tools
                           </Badge>
                         </div>
                         <CardTitle className="text-base">
-                          {industry.name}
+                          {suite.name}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm leading-relaxed text-muted-foreground">
-                          {industry.tagline}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </motion.div>
-              );
-            })}
-
-            {CLIENT_PERSONAS.map((persona) => {
-              const Icon = PERSONA_ICONS[persona.slug];
-              return (
-                <motion.div key={persona.slug} {...fadeUp}>
-                  <Link
-                    href={`/industries/${persona.slug}` as never}
-                    className="group block h-full"
-                  >
-                    <Card className="h-full transition-shadow duration-200 group-hover:shadow-md">
-                      <CardHeader>
-                        <div className="mb-1 flex items-center gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <Icon className="size-5" />
-                          </div>
-                          <Badge variant="secondary" className="text-xs">
-                            {persona.softwareStack.length} tools
-                          </Badge>
-                        </div>
-                        <CardTitle className="text-base">
-                          {persona.name}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {persona.tagline}
+                          {suite.description}
                         </p>
                       </CardContent>
                     </Card>

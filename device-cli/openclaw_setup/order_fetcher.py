@@ -8,23 +8,20 @@ from supabase import Client
 
 console = Console()
 
-INDUSTRY_SOFTWARE_STACKS: dict[str, list[str]] = {
-    "real-estate": ["PropertyGPT", "ListingSync Agent", "TenancyDoc Automator", "ViewingBot"],
-    "immigration": ["VisaDoc OCR", "FormAutoFill", "PolicyWatcher", "ClientPortal Bot"],
-    "fnb-hospitality": ["TableMaster AI", "NoShowShield", "QueueBot", "SommelierMemory"],
-    "accounting": ["InvoiceOCR Pro", "ReconcileAgent", "TaxCalendar Bot", "FXTracker"],
-    "legal": ["LegalDoc Analyzer", "DiscoveryAssistant", "DeadlineGuardian", "IntakeBot"],
-    "medical-dental": ["ClinicScheduler", "MedReminder Bot", "ScribeAI", "InsuranceAgent"],
-    "construction": ["PermitTracker", "SafetyForm Bot", "DefectsManager", "SiteCoordinator"],
-    "import-export": ["TradeDoc AI", "SupplierBot", "StockReconcile", "FXInvoice"],
-}
-
-PERSONA_SOFTWARE_STACKS: dict[str, list[str]] = {
-    "academic-researcher": ["PaperSieve", "CiteBot", "TranslateAssist", "GrantTracker"],
-    "vibe-coder": ["CodeQwen-9B", "HKDevKit", "DocuWriter", "GitAssistant"],
-    "solopreneur": ["BizOwner OS", "MPFCalc", "SocialSync", "SupplierLedger"],
-    "curious-student": ["StudyBuddy", "InterviewPrep", "JobTracker", "ThesisFormatter"],
-}
+ALL_TOOL_SUITES: list[dict[str, object]] = [
+    {"id": "real-estate", "name": "Real Estate & Property", "tools": ["PropertyGPT", "ListingSync Agent", "TenancyDoc Automator", "ViewingBot"]},
+    {"id": "immigration", "name": "Immigration Consulting", "tools": ["VisaDoc OCR", "FormAutoFill", "PolicyWatcher", "ClientPortal Bot"]},
+    {"id": "fnb-hospitality", "name": "F&B & Hospitality", "tools": ["TableMaster AI", "NoShowShield", "QueueBot", "SommelierMemory"]},
+    {"id": "accounting", "name": "Accounting & Bookkeeping", "tools": ["InvoiceOCR Pro", "ReconcileAgent", "TaxCalendar Bot", "FXTracker"]},
+    {"id": "legal", "name": "Legal & Professional Services", "tools": ["LegalDoc Analyzer", "DiscoveryAssistant", "DeadlineGuardian", "IntakeBot"]},
+    {"id": "medical-dental", "name": "Medical & Dental Clinics", "tools": ["ClinicScheduler", "MedReminder Bot", "ScribeAI", "InsuranceAgent"]},
+    {"id": "construction", "name": "Construction & Property Management", "tools": ["PermitTracker", "SafetyForm Bot", "DefectsManager", "SiteCoordinator"]},
+    {"id": "import-export", "name": "Import/Export & Trading", "tools": ["TradeDoc AI", "SupplierBot", "StockReconcile", "FXInvoice"]},
+    {"id": "academic", "name": "Academic Researcher", "tools": ["PaperSieve", "CiteBot", "TranslateAssist", "GrantTracker"]},
+    {"id": "vibe-coder", "name": "Vibe Coder", "tools": ["CodeQwen-9B", "HKDevKit", "DocuWriter", "GitAssistant"]},
+    {"id": "solopreneur", "name": "Solopreneur", "tools": ["BizOwner OS", "MPFCalc", "SocialSync", "SupplierLedger"]},
+    {"id": "student", "name": "Student", "tools": ["StudyBuddy", "InterviewPrep", "JobTracker", "ThesisFormatter"]},
+]
 
 ALL_MODEL_IDS = [
     "qwen-3.5-0.8b", "deepseek-r1-1.5b", "llama-3.1-1b", "smollm2-1.7b", "gemma-3-1b",
@@ -82,11 +79,7 @@ class OrderSpec:
     client_email: Optional[str]
     hardware_type: str
     hardware_config: dict
-    industry: Optional[str]
-    personas: list[str]
     llm_plan: LlmPlan
-    industry_software: list[str] = field(default_factory=list)
-    persona_software: list[str] = field(default_factory=list)
 
 
 class OrderFetcher:
@@ -106,24 +99,12 @@ class OrderFetcher:
         client_email = self._get_client_email(order_row["client_id"])
         llm_plan = self._build_llm_plan(addons.data or [])
 
-        industry = order_row.get("industry")
-        personas = order_row.get("personas") or []
-
-        industry_sw = INDUSTRY_SOFTWARE_STACKS.get(industry, []) if industry else []
-        persona_sw = []
-        for p in personas:
-            persona_sw.extend(PERSONA_SOFTWARE_STACKS.get(p, []))
-
         spec = OrderSpec(
             order_id=order_id,
             client_email=client_email,
             hardware_type=order_row["hardware_type"],
             hardware_config=order_row.get("hardware_config") or {},
-            industry=industry,
-            personas=personas,
             llm_plan=llm_plan,
-            industry_software=industry_sw,
-            persona_software=persona_sw,
         )
 
         self._print_summary(spec)
@@ -187,13 +168,8 @@ class OrderFetcher:
 
     def _print_summary(self, spec: OrderSpec):
         console.print(f"\n  [cyan]Hardware:[/cyan]     {spec.hardware_type}")
-        console.print(f"  [cyan]Industry:[/cyan]     {spec.industry or 'None'}")
-        console.print(f"  [cyan]Personas:[/cyan]     {', '.join(spec.personas) if spec.personas else 'None'}")
         console.print(f"  [cyan]LLM Plan:[/cyan]     {spec.llm_plan.plan_type}" +
                        (f" ({spec.llm_plan.bundle_id})" if spec.llm_plan.bundle_id else ""))
         console.print(f"  [cyan]Models:[/cyan]       {len(spec.llm_plan.model_ids)} model(s)")
-        if spec.industry_software:
-            console.print(f"  [cyan]Industry SW:[/cyan]  {', '.join(spec.industry_software)}")
-        if spec.persona_software:
-            console.print(f"  [cyan]Persona SW:[/cyan]   {', '.join(spec.persona_software)}")
+        console.print(f"  [cyan]Tool Suites:[/cyan]  All {len(ALL_TOOL_SUITES)} suites (auto-routed)")
         console.print()

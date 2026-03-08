@@ -23,6 +23,7 @@ class ChatMessage(BaseModel):
     message: str
     conversation_id: str | None = None
     model_id: str | None = None
+    tool_id: str | None = None
 
 
 class ChatResponse(BaseModel):

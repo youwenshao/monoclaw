@@ -51,17 +51,25 @@ export function ToolsOverview() {
         </h2>
       </FadeUp>
 
+      <FadeUp className="mb-4">
+        <p className="text-sm text-text-secondary">
+          All 12 tool suites are pre-installed on your Mac. I automatically
+          route your requests to the right tool, or you can pick one
+          with a slash command like <code className="rounded bg-white/5 px-1.5 py-0.5 text-accent">/real-estate</code>.
+        </p>
+      </FadeUp>
+
       <FadeUp className="mb-8">
         <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-sm text-accent">
-          {loading ? "..." : `${tools.length} tools installed`}
+          {loading ? "..." : `${tools.length} tool suites installed`}
         </span>
       </FadeUp>
 
-      {/* Industry Tools */}
+      {/* Tool Suites */}
       {tools.length > 0 && (
         <FadeUp className="mb-10">
           <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-text-tertiary">
-            Industry Tools
+            Your Tools
           </h3>
           <motion.div
             variants={staggerContainer}

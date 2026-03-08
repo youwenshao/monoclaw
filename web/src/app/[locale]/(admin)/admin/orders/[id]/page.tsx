@@ -41,7 +41,7 @@ export default async function AdminOrderDetailPage({
     service.from("order_status_history").select("*").eq("order_id", id).order("created_at", { ascending: true }),
     service.from("order_addons").select("*").eq("order_id", id),
     service.from("devices").select("*").eq("order_id", id),
-    service.from("profiles").select("id, contact_name, company_name, contact_phone, industry, role").eq("id", order.client_id).maybeSingle(),
+    service.from("profiles").select("id, contact_name, company_name, contact_phone, role").eq("id", order.client_id).maybeSingle(),
   ]);
 
   let clientEmail: string | null = null;

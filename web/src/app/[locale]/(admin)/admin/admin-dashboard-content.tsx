@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Order, Device } from "@/types/database";
 import { formatHKD } from "@/lib/stripe";
-import { ORDER_STATUS_FLOW, INDUSTRY_VERTICALS, BUNDLES } from "@/lib/constants";
+import { ORDER_STATUS_FLOW, BUNDLES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -100,7 +100,6 @@ export function AdminDashboardContent({
                 <TableHead>Order ID</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Hardware</TableHead>
-                <TableHead>Industry</TableHead>
                 <TableHead>LLM Plan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Total</TableHead>
@@ -110,7 +109,7 @@ export function AdminDashboardContent({
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No orders yet
                   </TableCell>
                 </TableRow>
@@ -118,7 +117,6 @@ export function AdminDashboardContent({
                 orders.slice(0, 30).map((order) => {
                   const statusConfig = ORDER_STATUS_FLOW.find((s) => s.status === order.status);
                   const clientProfile = profileMap[order.client_id];
-                  const industryInfo = INDUSTRY_VERTICALS.find((v) => v.slug === order.industry);
                   const llmPlan = getLlmPlanLabel(addonsByOrder[order.id]);
                   return (
                     <TableRow key={order.id}>
@@ -134,13 +132,6 @@ export function AdminDashboardContent({
                         {clientProfile?.contact_name || clientProfile?.company_name || order.client_id.slice(0, 8)}
                       </TableCell>
                       <TableCell>{order.hardware_type === "mac_mini_m4" ? "Mac mini" : "iMac"}</TableCell>
-                      <TableCell>
-                        {industryInfo ? (
-                          <Badge variant="outline" className="text-xs">{industryInfo.name}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
                       <TableCell className="text-xs">{llmPlan}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">

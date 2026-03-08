@@ -267,10 +267,10 @@ class LLMService:
 
     # ---- Unified generate methods ----
 
-    async def generate(self, prompt: str, system_prompt: str = "", max_tokens: int = 512, model_id: str | None = None) -> str:
+    async def generate(self, prompt: str, system_prompt: str = "", max_tokens: int = 512, model_id: str | None = None, complexity: str | None = None) -> str:
         """Non-streaming generation. Tries local models first, falls back to cloud."""
         try:
-            self.select_model(model_id)
+            self.select_model(model_id=model_id, complexity=complexity)
         except (ImportError, RuntimeError, FileNotFoundError):
             provider, api_key = self._get_cloud_config()
             if provider and api_key and provider in CLOUD_PROVIDERS:
@@ -289,11 +289,11 @@ class LLMService:
             logger.error("Generation failed: %s", e)
             raise CloudAPIError(f"Local model inference failed: {e}")
 
-    async def generate_stream(self, prompt: str, system_prompt: str = "", max_tokens: int = 512, model_id: str | None = None) -> AsyncGenerator[str, None]:
+    async def generate_stream(self, prompt: str, system_prompt: str = "", max_tokens: int = 512, model_id: str | None = None, complexity: str | None = None) -> AsyncGenerator[str, None]:
         """Streaming generation. Tries local models first, falls back to cloud."""
         use_cloud = False
         try:
-            self.select_model(model_id)
+            self.select_model(model_id=model_id, complexity=complexity)
         except (ImportError, RuntimeError, FileNotFoundError):
             provider, api_key = self._get_cloud_config()
             if provider and api_key and provider in CLOUD_PROVIDERS:

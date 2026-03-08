@@ -1,5 +1,7 @@
 """Mona Hub — FastAPI application serving the onboarding UI and OpenClaw APIs."""
 
+import json
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,10 +13,28 @@ from backend.routers import chat, onboarding, system, voice
 
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+ROUTING_CONFIG_PATH = Path("/opt/openclaw/state/routing-config.json")
+
+
+def _warm_moderate_model():
+    """Background: load the moderate route model so first user message is snappy."""
+    try:
+        from backend.services.llm import llm_service
+        llm_service.select_model(model_id=None, complexity="moderate")
+    except Exception:
+        pass
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if ROUTING_CONFIG_PATH.exists():
+        try:
+            config = json.loads(ROUTING_CONFIG_PATH.read_text())
+            if config.get("auto_routing_enabled") and config.get("routes", {}).get("moderate"):
+                t = threading.Thread(target=_warm_moderate_model, daemon=True)
+                t.start()
+        except (json.JSONDecodeError, OSError):
+            pass
     yield
 
 

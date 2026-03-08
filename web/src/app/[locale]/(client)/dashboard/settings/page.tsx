@@ -44,10 +44,6 @@ export default async function SettingsPage({
             <p>{profile?.company_name || "—"}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-muted-foreground">Industry</label>
-            <p>{profile?.industry || "—"}</p>
-          </div>
-          <div>
             <label className="text-sm font-medium text-muted-foreground">Language</label>
             <p>{profile?.language_pref || "en"}</p>
           </div>

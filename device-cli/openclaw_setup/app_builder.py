@@ -111,14 +111,27 @@ class MonaAppBuilder:
         path.write_text(plist)
 
     def _write_executable(self, path: Path):
-        """Shell script that opens the Hub in the browser (starting the server if needed)."""
+        """Shell script that opens the Hub in the browser, force-restarting the agent if needed."""
+        agents_dir = self.user_home / "Library" / "LaunchAgents"
+        plist_path = agents_dir / f"{LAUNCH_AGENT_LABEL}.plist"
+
         script = f"""#!/bin/bash
-# Mona — opens Mona Hub in the default browser, starting the server if needed.
+# Mona — opens Mona Hub in the default browser.
+# If the server is not responding, force a full stop/start cycle of the
+# LaunchAgent so a fresh process can bind (with SO_REUSEADDR via run_server.py).
 PORT={SERVER_PORT}
 HOST="127.0.0.1"
+PLIST="{plist_path}"
+LABEL="{LAUNCH_AGENT_LABEL}"
+GUI_DOMAIN="gui/$(id -u)"
 
 if ! /usr/bin/curl -sf "http://$HOST:$PORT/api/onboarding/state" >/dev/null 2>&1; then
-    /bin/launchctl start {LAUNCH_AGENT_LABEL}
+    # Server is down. Force unload then reload the agent so launchd starts
+    # a completely new instance (avoids the no-op launchctl start problem).
+    /bin/launchctl bootout "$GUI_DOMAIN/$LABEL" 2>/dev/null
+    sleep 2
+    /bin/launchctl bootstrap "$GUI_DOMAIN" "$PLIST" 2>/dev/null
+
     for i in $(seq 1 30); do
         sleep 1
         if /usr/bin/curl -sf "http://$HOST:$PORT/api/onboarding/state" >/dev/null 2>&1; then
@@ -198,6 +211,8 @@ fi
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
     <key>WorkingDirectory</key>
     <string>{MONA_HUB_PATH}</string>
     <key>StandardOutPath</key>
@@ -225,17 +240,17 @@ fi
         start_script.write_text(f"""#!/bin/bash
 # Mona Hub launcher — starts the server and opens the browser if onboarding is pending.
 # Called by launchd (via LaunchAgent) on login, or directly during initial setup.
+# Uses run_server.py which creates a SO_REUSEADDR socket so restarts never
+# fail with "Address already in use" during TIME_WAIT.
 ONBOARDING_STATE="{onboarding_state}"
 PORT={SERVER_PORT}
 HOST={SERVER_HOST}
 BROWSER_HOST="127.0.0.1"
+MAX_RETRIES=3
+RETRY_DELAY=10
 
-# If the server is already running (e.g. from the initial finalize launch),
-# wait for it to exit before taking over.  This prevents a port conflict
-# between the manually-started process and the launchd-managed one.
-while /usr/bin/lsof -i :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; do
-    sleep 10
-done
+export MONA_HOST="$HOST"
+export MONA_PORT="$PORT"
 
 open_browser_if_needed() {{
     sleep 5
@@ -250,7 +265,23 @@ open_browser_if_needed() {{
 
 open_browser_if_needed &
 
-cd {MONA_HUB_PATH} && exec {self.python_bin} -m uvicorn backend.main:app --host $HOST --port $PORT
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+    ATTEMPT=$((ATTEMPT + 1))
+    cd {MONA_HUB_PATH} && {self.python_bin} {MONA_HUB_PATH}/run_server.py
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 0 ]; then
+        break
+    fi
+    echo "$(date): run_server.py exited with $EXIT_CODE (attempt $ATTEMPT/$MAX_RETRIES), retrying in ${{RETRY_DELAY}}s..." >&2
+    sleep $RETRY_DELAY
+    RETRY_DELAY=$((RETRY_DELAY * 2))
+done
+
+if [ $ATTEMPT -ge $MAX_RETRIES ]; then
+    echo "$(date): run_server.py failed after $MAX_RETRIES attempts, giving up." >&2
+    exit 1
+fi
 """)
         start_script.chmod(0o755)
         subprocess.run(["chown", f"{self.user}:", str(start_script)], check=True)
@@ -277,8 +308,8 @@ cd {MONA_HUB_PATH} && exec {self.python_bin} -m uvicorn backend.main:app --host 
             [
                 "sudo", "-u", self.user, "bash", "-c",
                 f"cd {MONA_HUB_PATH} && "
-                f"nohup {self.python_bin} -m uvicorn backend.main:app "
-                f"--host {SERVER_HOST} --port {SERVER_PORT} "
+                f"MONA_HOST={SERVER_HOST} MONA_PORT={SERVER_PORT} "
+                f"nohup {self.python_bin} {MONA_HUB_PATH}/run_server.py "
                 f">> '{log_path}' 2>> '{err_path}' &"
             ],
             stdin=subprocess.DEVNULL,

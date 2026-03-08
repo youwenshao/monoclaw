@@ -18,8 +18,7 @@ from .order_fetcher import (
     MODEL_HF_REPOS,
     MODEL_CATEGORY_MAP,
     ROUTING_COMPLEXITY_MAP,
-    INDUSTRY_SOFTWARE_STACKS,
-    PERSONA_SOFTWARE_STACKS,
+    ALL_TOOL_SUITES,
 )
 
 console = Console()
@@ -62,9 +61,13 @@ class Provisioner:
             self._set_permissions()
             self._download_models()
             self._download_voice_models()
-            self._install_industry_skills()
+            user = _real_user()
+            subprocess.run(["chown", "-R", f"{user}:", "/opt/openclaw/models"], check=True)
+            console.print(f"  Chowned models to {user}")
+            self._install_all_tool_suites()
             self._install_clawhub_skills()
             self._setup_auto_routing()
+            self._setup_tool_routing()
             self._write_active_work_json()
             self._setup_messaging_config()
             self._write_llm_provider_config()
@@ -247,10 +250,18 @@ class Provisioner:
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
             task = progress.add_task("Installing core Python packages...", total=None)
             subprocess.run(
-                ["sudo", "-u", user, venv_python, "-m", "pip", "install", "numpy<2.0", "mlx-lm", "qwen-agent", "psutil", "schedule", "huggingface-hub", "mlx-whisper", "fastapi", "uvicorn[standard]", "httpx", "python-multipart"],
+                ["sudo", "-u", user, venv_python, "-m", "pip", "install", "numpy<2.0", "mlx-lm", "qwen-agent", "psutil", "schedule", "huggingface-hub", "mlx-whisper", "fastapi", "uvicorn[standard]", "httpx", "python-multipart", "sentence-transformers>=3.0"],
                 capture_output=True, check=True, timeout=600, stdin=subprocess.DEVNULL,
             )
             progress.update(task, description="Core Python packages installed")
+
+            # Verify sentence-transformers import (used by tool_router for embedding-based routing)
+            verify_st = subprocess.run(
+                ["sudo", "-u", user, venv_python, "-c", "from sentence_transformers import SentenceTransformer; print('OK')"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if "OK" not in (verify_st.stdout or ""):
+                console.print("  [yellow]Warning: sentence-transformers import check failed; tool auto-routing may use keyword fallback.[/yellow]")
 
             task2 = progress.add_task("Installing mlx-audio (requires pre-release transformers)...", total=None)
             subprocess.run(
@@ -281,6 +292,26 @@ class Provisioner:
                 console.print("  [green]HuggingFace token saved to device[/green]")
             except Exception as e:
                 console.print(f"  [yellow]Warning: Could not persist HF token: {e}[/yellow]")
+
+        # Pre-download embedding model for tool auto-routing (avoids first-request latency)
+        _embedding_model_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        console.print("  Pre-downloading embedding model for tool auto-routing...")
+        preload_result = subprocess.run(
+            [
+                "sudo", "-u", user, venv_python, "-c",
+                f"from sentence_transformers import SentenceTransformer; m = SentenceTransformer({repr(_embedding_model_id)}); print('OK')",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            stdin=subprocess.DEVNULL,
+        )
+        if "OK" in (preload_result.stdout or ""):
+            console.print("  [green]Embedding model cached[/green]")
+        else:
+            console.print("  [yellow]Warning: Embedding model pre-download failed; will download on first use.[/yellow]")
+            if preload_result.stderr:
+                console.print(f"  [dim]{preload_result.stderr.strip()[:200]}[/dim]")
 
     def _write_core_configs(self):
         console.print("\n[bold]Writing core configurations...[/bold]")
@@ -354,71 +385,44 @@ class Provisioner:
             except Exception as e:
                 console.print(f"  [red]  Failed to download {model_id}: {e}[/red]")
 
-    def _install_industry_skills(self):
-        console.print("\n[bold]Installing industry skills...[/bold]")
-
-        if not self.order_spec:
-            console.print("  [yellow]No order spec, skipping[/yellow]")
-            return
+    def _install_all_tool_suites(self):
+        console.print("\n[bold]Installing all tool suites...[/bold]")
 
         skills_dir = Path("/opt/openclaw/skills/local")
         subprocess.run(["sudo", "chmod", "-R", "755", str(skills_dir)], check=True)
 
-        installed = []
+        base_port = 8001
+        for i, suite in enumerate(ALL_TOOL_SUITES):
+            suite_id = suite["id"]
+            tools = suite["tools"]
+            suite_name = suite["name"]
 
-        if self.order_spec.industry:
-            slug = self.order_spec.industry
-            tools = INDUSTRY_SOFTWARE_STACKS.get(slug, [])
-            if tools:
-                skill_dir = skills_dir / slug
-                skill_dir.mkdir(parents=True, exist_ok=True)
-                manifest = {
-                    "slug": slug,
-                    "type": "industry",
-                    "tools": tools,
+            skill_dir = skills_dir / suite_id
+            skill_dir.mkdir(parents=True, exist_ok=True)
+
+            manifest = {
+                "slug": suite_id,
+                "name": suite_name,
+                "type": "tool_suite",
+                "tools": tools,
+            }
+            (skill_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+
+            for j, tool in enumerate(tools):
+                config = {
+                    "tool_name": tool,
+                    "suite": suite_id,
+                    "port": base_port + (i * 4) + j,
+                    "enabled": True,
                 }
-                (skill_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
-                for j, tool in enumerate(tools):
-                    config = {
-                        "tool_name": tool,
-                        "industry": slug,
-                        "port": 8001 + j,
-                        "enabled": True,
-                    }
-                    tool_slug = tool.lower().replace(" ", "-").replace("/", "-")
-                    (skill_dir / f"{tool_slug}.yaml").write_text(
-                        "\n".join(f"{k}: {json.dumps(v) if isinstance(v, bool) else v}" for k, v in config.items())
-                    )
-                installed.append(slug)
-                console.print(f"  Installed industry: {slug} ({len(tools)} tools)")
+                tool_slug = tool.lower().replace(" ", "-").replace("/", "-")
+                (skill_dir / f"{tool_slug}.yaml").write_text(
+                    "\n".join(f"{k}: {json.dumps(v) if isinstance(v, bool) else v}" for k, v in config.items())
+                )
 
-        for persona in self.order_spec.personas:
-            tools = PERSONA_SOFTWARE_STACKS.get(persona, [])
-            if tools:
-                skill_dir = skills_dir / persona
-                skill_dir.mkdir(parents=True, exist_ok=True)
-                manifest = {
-                    "slug": persona,
-                    "type": "persona",
-                    "tools": tools,
-                }
-                (skill_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
-                for j, tool in enumerate(tools):
-                    config = {
-                        "tool_name": tool,
-                        "persona": persona,
-                        "port": 8500 + j,
-                        "enabled": True,
-                    }
-                    tool_slug = tool.lower().replace(" ", "-").replace("/", "-")
-                    (skill_dir / f"{tool_slug}.yaml").write_text(
-                        "\n".join(f"{k}: {json.dumps(v) if isinstance(v, bool) else v}" for k, v in config.items())
-                    )
-                installed.append(persona)
-                console.print(f"  Installed persona: {persona} ({len(tools)} tools)")
+            console.print(f"  [{i + 1}/{len(ALL_TOOL_SUITES)}] {suite_name} ({len(tools)} tools)")
 
-        if not installed:
-            console.print("  [yellow]No industry or persona skills to install[/yellow]")
+        console.print(f"  [green]Installed all {len(ALL_TOOL_SUITES)} tool suites[/green]")
 
     def _setup_auto_routing(self):
         console.print("\n[bold]Configuring model routing...[/bold]")
@@ -451,6 +455,29 @@ class Provisioner:
         routing_path.write_text(json.dumps(routing, indent=2))
         console.print(f"  Wrote: {routing_path}")
 
+    def _setup_tool_routing(self):
+        console.print("\n[bold]Configuring tool auto-routing...[/bold]")
+
+        tool_routing = {
+            "auto_routing_enabled": True,
+            "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+            "confidence_threshold": 0.5,
+            "suites": [],
+        }
+
+        for suite in ALL_TOOL_SUITES:
+            tool_routing["suites"].append({
+                "id": suite["id"],
+                "name": suite["name"],
+                "tools": suite["tools"],
+                "description": f"{suite['name']}: {', '.join(suite['tools'])}",
+            })
+
+        tool_routing_path = Path("/opt/openclaw/state/tool-routing-config.json")
+        tool_routing_path.write_text(json.dumps(tool_routing, indent=2))
+        console.print(f"  Wrote: {tool_routing_path}")
+        console.print(f"  [green]Tool auto-routing configured for {len(ALL_TOOL_SUITES)} suites[/green]")
+
     def _write_active_work_json(self):
         console.print("\n[bold]Writing active work configuration...[/bold]")
 
@@ -459,15 +486,12 @@ class Provisioner:
             "order_id": self.order_id,
             "device_id": self.device_id,
             "hardware_type": spec.hardware_type if spec else "unknown",
-            "industry": spec.industry if spec else None,
-            "personas": spec.personas if spec else [],
             "llm_plan": {
                 "type": spec.llm_plan.plan_type if spec else "api_only",
                 "bundle_id": spec.llm_plan.bundle_id if spec else None,
                 "models": spec.llm_plan.model_ids if spec else [],
             },
-            "industry_software": spec.industry_software if spec else [],
-            "persona_software": spec.persona_software if spec else [],
+            "tool_suites": [s["id"] for s in ALL_TOOL_SUITES],
         }
 
         aw_path = Path("/opt/openclaw/state/active-work.json")
@@ -807,14 +831,7 @@ class Provisioner:
         return "mac_mini_m4"
 
     def _get_soul_md(self) -> str:
-        industry_ctx = ""
-        if self.order_spec and self.order_spec.industry:
-            industry_ctx = f"""
-## Client Context
-- **Primary Industry**: {self.order_spec.industry}
-- **Personas**: {', '.join(self.order_spec.personas) if self.order_spec.personas else 'None'}
-- Tailor all responses and tool suggestions to this industry context.
-"""
+        suite_list = ", ".join(s["name"] for s in ALL_TOOL_SUITES)
         return f"""# Core Identity & Safety Constraints
 
 ## Immutable Directives
@@ -830,17 +847,30 @@ class Provisioner:
 - **Privacy**: Treat all client data as confidential under Hong Kong PDPO
 
 ## Decision Framework
-1. Safety Check -> 2. Capability Match -> 3. Execution -> 4. Verification
-{industry_ctx}"""
+1. Safety Check -> 2. Capability Match -> 3. Tool Routing -> 4. Execution -> 5. Verification
+
+## Available Tool Suites
+All {len(ALL_TOOL_SUITES)} tool suites are installed: {suite_list}.
+Mona auto-routes user requests to the appropriate tool suite via embedding similarity.
+Users may also manually select a tool via slash commands or the tool dropdown.
+"""
 
     def _get_agents_md(self) -> str:
-        industry_tools = ""
-        if self.order_spec:
-            all_tools = self.order_spec.industry_software + self.order_spec.persona_software
-            if all_tools:
-                industry_tools = "\n### Industry-Specific Tools\n" + "\n".join(f"- {t}" for t in all_tools) + "\n"
+        suite_sections = []
+        for suite in ALL_TOOL_SUITES:
+            tool_lines = "\n".join(f"  - {t}" for t in suite["tools"])
+            suite_sections.append(f"- **{suite['name']}** (`/{suite['id']}`)\n{tool_lines}")
+        all_suites_text = "\n".join(suite_sections)
 
         return f"""# Agent Capabilities & Tool Use
+
+## Tool Auto-Routing
+Mona uses embedding-based similarity matching to automatically route user requests
+to the most relevant tool suite. Users can override with slash commands (e.g. `/real-estate`)
+or the tool dropdown in the chat UI.
+
+## Installed Tool Suites ({len(ALL_TOOL_SUITES)} total)
+{all_suites_text}
 
 ## Available Tool Categories
 ### Communication Tools
@@ -864,7 +894,7 @@ class Provisioner:
 - run_shell: Sandboxed to ~/OpenClawWorkspace/ only
 - database_query: SQLite only
 - file_operations: Restricted to allowed directories
-{industry_tools}
+
 ## Safety Guardrails
 - All run_shell commands logged to /var/log/openclaw/shell-audit.log
 - File deletion requires explicit --confirm-delete flag
