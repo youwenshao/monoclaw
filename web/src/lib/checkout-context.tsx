@@ -15,6 +15,8 @@ export interface OrderState {
     bundle: string | null;
   };
   signingSessionId: string | null;
+  /** True only after contract is fully signed (submit-signature succeeded). */
+  contractSigned: boolean;
 }
 
 const DEFAULT_STATE: OrderState = {
@@ -22,6 +24,7 @@ const DEFAULT_STATE: OrderState = {
   hardwareConfig: {},
   addons: { models: [], bundle: null },
   signingSessionId: null,
+  contractSigned: false,
 };
 
 interface CheckoutContextValue {
@@ -29,6 +32,7 @@ interface CheckoutContextValue {
   setHardware: (type: HardwareType, config?: OrderState["hardwareConfig"]) => void;
   setAddons: (addons: OrderState["addons"]) => void;
   setSigningSession: (id: string) => void;
+  setContractSigned: (signed: boolean) => void;
   signingComplete: boolean;
   resetOrder: () => void;
   currentStep: number;
@@ -72,7 +76,12 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setOrder((prev) => ({ ...prev, signingSessionId: id }));
   }, []);
 
-  const signingComplete = !!order.signingSessionId;
+  const setContractSigned = useCallback((signed: boolean) => {
+    setOrder((prev) => ({ ...prev, contractSigned: signed }));
+  }, []);
+
+  /** True only when the contract has been fully signed (not just session created). */
+  const signingComplete = order.contractSigned;
 
   const resetOrder = useCallback(() => {
     setOrder(DEFAULT_STATE);
@@ -82,7 +91,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   return (
     <CheckoutContext.Provider
-      value={{ order, setHardware, setAddons, setSigningSession, signingComplete, resetOrder, currentStep, setCurrentStep }}
+      value={{ order, setHardware, setAddons, setSigningSession, setContractSigned, signingComplete, resetOrder, currentStep, setCurrentStep }}
     >
       {children}
     </CheckoutContext.Provider>

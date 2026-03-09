@@ -21,6 +21,7 @@ from backend.services import mac_config, messaging
 from backend.services.interaction import interaction_manager
 from backend.services.llm import llm_service
 from backend.services import profile
+from backend.services import openclaw_config
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 
@@ -141,6 +142,9 @@ async def get_routing_config():
 async def set_active_model(body: ActiveModelUpdate):
     try:
         llm_service.set_active_model(body.model_id)
+        # Sync to OpenClaw so the gateway uses the selected local model as default
+        openclaw_config.sync_openclaw_active_model(body.model_id)
+        openclaw_config.restart_gateway()
     except (FileNotFoundError, ImportError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"success": True, "model_id": body.model_id}
@@ -228,12 +232,41 @@ async def get_llm_config():
     return _read_llm_config()
 
 
+@router.get("/default-model-status")
+async def get_default_model_status():
+    """Return whether a default model is set and gateway is healthy (for Settings hint)."""
+    status = openclaw_config.get_default_model_status()
+    status["gateway_healthy"] = llm_service._check_gateway_health()
+    if not status["has_default_model"]:
+        status["message"] = "Add an API key below to set a default model for chat, or ensure local models are available."
+    elif not status["gateway_healthy"]:
+        status["message"] = "OpenClaw gateway is not responding. Restart the gateway or try again later."
+    return status
+
+
 @router.put("/llm-config")
 async def save_llm_config(body: LlmConfigUpdate):
     config = _read_llm_config()
+    # Preserve provisioner-written structure: api_keys map, default_provider, offline_mode, etc.
+    if "api_keys" not in config or not isinstance(config.get("api_keys"), dict):
+        api_keys = {}
+        if config.get("provider") and config.get("api_key"):
+            api_keys[config["provider"]] = config["api_key"]
+        config["api_keys"] = api_keys
+    api_keys = config["api_keys"]
     if body.provider is not None:
-        config["provider"] = body.provider
-    if body.api_key is not None:
-        config["api_key"] = body.api_key
+        config["default_provider"] = body.provider
+        config["provider"] = body.provider  # legacy flat field for UI
+    if body.api_key is not None and body.provider is not None:
+        api_keys[body.provider] = body.api_key
+        config["api_key"] = body.api_key  # legacy flat field for UI
     _write_llm_config(config)
+    # Sync to OpenClaw so the gateway has a working default model
+    try:
+        openclaw_config.sync_openclaw_after_llm_save(
+            body.provider, body.api_key, config
+        )
+        openclaw_config.restart_gateway()
+    except Exception:
+        pass  # do not fail the request if sync fails (e.g. permissions)
     return {"success": True}

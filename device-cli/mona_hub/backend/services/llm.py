@@ -1,7 +1,9 @@
 """LLM service backed by the OpenClaw gateway's OpenAI-compatible API."""
+import asyncio
 import json
 import logging
 import threading
+import time
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -20,6 +22,10 @@ VOICE_MODEL_DIRS = {"whisper-large-v3-turbo", "qwen3_tts", "qwen3-tts"}
 
 CLOUD_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
 
+# Stream timeouts: total wall time and max idle time without a token
+STREAM_TOTAL_TIMEOUT_SEC = 120
+STREAM_IDLE_TIMEOUT_SEC = 30
+
 
 class CloudAPIError(Exception):
     """Raised when a gateway or cloud API call fails with an actionable user message."""
@@ -29,9 +35,9 @@ class LLMService:
     """Proxies chat requests through the local OpenClaw gateway."""
 
     def __init__(self):
-        self._active_model_id: str | None = None
-        self._abort = threading.Event()
         self._routing_config = self._load_json(ROUTING_CONFIG_PATH)
+        self._active_model_id: str | None = self._routing_config.get("active_model_id")
+        self._abort = threading.Event()
         self._active_work = self._load_json(ACTIVE_WORK_PATH)
         self._cancel_stream: httpx.Response | None = None
 
@@ -84,12 +90,21 @@ class LLMService:
             })
         return models
 
+    def _save_json(self, path: Path, data: dict):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, indent=2))
+        except OSError as e:
+            logger.error(f"Failed to save JSON to {path}: {e}")
+
     def get_routing_config(self) -> dict:
         self._routing_config = self._load_json(ROUTING_CONFIG_PATH)
+        # Sync in-memory active model if it was set but not in file yet
+        active_model = self._active_model_id or self._routing_config.get("active_model_id")
         return {
             "auto_routing_enabled": self._routing_config.get("auto_routing_enabled", False),
             "routes": self._routing_config.get("routes", {}),
-            "active_model_id": self._active_model_id,
+            "active_model_id": active_model,
             "available_models": self.get_available_models(),
             "cloud_provider": None,
             "gateway": {"url": GATEWAY_URL, "healthy": self._check_gateway_health()},
@@ -104,9 +119,15 @@ class LLMService:
 
     def set_active_model(self, model_id: str):
         self._active_model_id = model_id
+        config = self._load_json(ROUTING_CONFIG_PATH)
+        config["active_model_id"] = model_id
+        self._save_json(ROUTING_CONFIG_PATH, config)
 
     def set_routing_mode(self, auto: bool):
         self._routing_config["auto_routing_enabled"] = auto
+        config = self._load_json(ROUTING_CONFIG_PATH)
+        config["auto_routing_enabled"] = auto
+        self._save_json(ROUTING_CONFIG_PATH, config)
 
     async def generate(
         self,
@@ -200,9 +221,34 @@ class LLMService:
                         )
 
                     buffer = ""
-                    async for chunk in resp.aiter_text():
+                    stream = resp.aiter_text()
+                    started = time.monotonic()
+                    last_content_at = started
+                    while True:
                         if self._abort.is_set():
                             break
+                        remaining_total = STREAM_TOTAL_TIMEOUT_SEC - (time.monotonic() - started)
+                        remaining_idle = STREAM_IDLE_TIMEOUT_SEC - (time.monotonic() - last_content_at)
+                        if remaining_total <= 0:
+                            raise CloudAPIError(
+                                "OpenClaw did not respond in time. Check that a default model is set "
+                                "and the API key is valid in Settings."
+                            )
+                        if remaining_idle <= 0:
+                            raise CloudAPIError(
+                                "OpenClaw stopped responding. Check that a default model is set "
+                                "and the API key is valid in Settings."
+                            )
+                        timeout = min(remaining_total, remaining_idle, 5.0)
+                        try:
+                            chunk = await asyncio.wait_for(stream.__anext__(), timeout=timeout)
+                        except StopAsyncIteration:
+                            break
+                        except asyncio.TimeoutError:
+                            raise CloudAPIError(
+                                "OpenClaw did not respond in time. Check that a default model is set "
+                                "and the API key is valid in Settings."
+                            )
                         buffer += chunk
                         while "\n" in buffer:
                             line, buffer = buffer.split("\n", 1)
@@ -217,6 +263,7 @@ class LLMService:
                                 delta = data["choices"][0].get("delta", {})
                                 content = delta.get("content")
                                 if content:
+                                    last_content_at = time.monotonic()
                                     yield content
                             except (json.JSONDecodeError, KeyError, IndexError):
                                 continue

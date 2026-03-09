@@ -29,6 +29,8 @@ CORE_FILES = ["SOUL.md", "AGENTS.md", "TOOLS.md"]
 OPENCLAW_INSTALL_DIR = Path("/opt/openclaw/openclaw")
 OPENCLAW_GATEWAY_PORT = 18789
 MIN_NODE_MAJOR = 22
+OPENCLAW_MODELS_PATH = Path("/opt/openclaw/models")
+VOICE_MODEL_DIRS = {"whisper-large-v3-turbo", "qwen3_tts", "qwen3-tts"}
 
 
 def _real_user() -> str:
@@ -41,6 +43,207 @@ def _real_user_home() -> Path:
     """Get the home directory of the actual user."""
     user = _real_user()
     return Path(f"/Users/{user}")
+
+
+# Used by sync_openclaw_config_from_state and _write_openclaw_config
+_ENV_KEY_MAP = {
+    "deepseek": "DEEPSEEK_API_KEY",
+    "kimi": "MOONSHOT_API_KEY",
+    "glm5": "GLM_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+}
+_PROVIDER_MODEL_MAP = {
+    "deepseek": "deepseek/deepseek-chat",
+    "openai": "openai/gpt-4o",
+    "anthropic": "anthropic/claude-sonnet-4-5",
+    "kimi": "moonshot/kimi-k2.5",
+    "glm5": "glm5/glm-4-flash",
+}
+
+
+def _default_model_from_llm_cfg(llm_cfg: dict) -> str | None:
+    """Return OpenClaw 'provider/model' from llm-provider config when provider has API key."""
+    provider = (llm_cfg.get("default_provider") or llm_cfg.get("provider") or "").strip().lower()
+    if not provider:
+        return None
+    model = _PROVIDER_MODEL_MAP.get(provider)
+    if model and llm_cfg.get("api_keys", {}).get(provider):
+        return model
+    return None
+
+
+def _first_local_model_id_static() -> str | None:
+    """First non-voice model dir under /opt/openclaw/models for Ollama default."""
+    if not OPENCLAW_MODELS_PATH.exists():
+        return None
+    for entry in sorted(OPENCLAW_MODELS_PATH.iterdir()):
+        if entry.is_dir() and entry.name not in VOICE_MODEL_DIRS:
+            return entry.name
+    return None
+
+
+def _model_from_routing(routing_cfg: dict) -> str | None:
+    """If routing has active_model_id that is a local model, return ollama/{id}."""
+    active = routing_cfg.get("active_model_id")
+    if not active or not isinstance(active, str):
+        return None
+    if active in VOICE_MODEL_DIRS:
+        return None
+    if (OPENCLAW_MODELS_PATH / active).exists():
+        return f"ollama/{active}"
+    return None
+
+
+def sync_openclaw_config_from_state() -> None:
+    """Write ~/.openclaw from state files, preserving gateway token. Used by reconfigure-gateway."""
+    user = _real_user()
+    user_home = _real_user_home()
+    state_dir = user_home / ".openclaw"
+    state_dir.mkdir(parents=True, exist_ok=True)
+
+    token_path = Path("/opt/openclaw/state/gateway-token.txt")
+    gateway_token = ""
+    if token_path.exists():
+        try:
+            gateway_token = token_path.read_text().strip()
+        except OSError:
+            pass
+    if not gateway_token:
+        console.print("[yellow]No gateway token found; run full provision to generate one.[/yellow]")
+        return
+
+    llm_config_path = Path("/opt/openclaw/state/llm-provider.json")
+    llm_cfg = {}
+    if llm_config_path.exists():
+        try:
+            llm_cfg = json.loads(llm_config_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    routing_path = Path("/opt/openclaw/state/routing-config.json")
+    routing_cfg = {}
+    if routing_path.exists():
+        try:
+            routing_cfg = json.loads(routing_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    config_path = state_dir / "openclaw.json"
+    existing_model = None
+    if config_path.exists():
+        try:
+            existing = json.loads(config_path.read_text())
+            existing_model = (existing.get("agents") or {}).get("defaults", {}).get("model")
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Default model: routing active (local) > cloud from llm > existing > first local
+    computed_model = _model_from_routing(routing_cfg)
+    if not computed_model:
+        computed_model = _default_model_from_llm_cfg(llm_cfg)
+    if not computed_model and existing_model:
+        computed_model = existing_model
+    if not computed_model:
+        first_local = _first_local_model_id_static()
+        if first_local:
+            computed_model = f"ollama/{first_local}"
+
+    config = {
+        "gateway": {
+            "mode": "local",
+            "port": OPENCLAW_GATEWAY_PORT,
+            "bind": "loopback",
+            "auth": {"mode": "token", "token": gateway_token},
+            "http": {
+                "endpoints": {
+                    "chatCompletions": {"enabled": True},
+                    "responses": {"enabled": True},
+                }
+            },
+        },
+        "skills": {
+            "load": {
+                "extraDirs": [
+                    "/opt/openclaw/skills/local",
+                    "/opt/openclaw/skills/clawhub",
+                ]
+            }
+        },
+        "agents": {
+            "defaults": {
+                "workspace": str(user_home / "OpenClawWorkspace"),
+            }
+        },
+    }
+    if computed_model:
+        config["agents"]["defaults"]["model"] = computed_model
+
+    config_path.write_text(json.dumps(config, indent=2))
+    if os.geteuid() == 0:
+        subprocess.run(["chown", f"{user}:", str(config_path)], check=True)
+
+    our_env_keys = {"OPENCLAW_GATEWAY_TOKEN"} | set(_ENV_KEY_MAP.values())
+    env_lines = [f"OPENCLAW_GATEWAY_TOKEN={gateway_token}"]
+    env_path = state_dir / ".env"
+    if env_path.exists():
+        try:
+            for line in env_path.read_text().splitlines():
+                line_stripped = line.strip()
+                if not line_stripped or line_stripped.startswith("#"):
+                    env_lines.append(line)
+                    continue
+                if "=" in line_stripped:
+                    key = line_stripped.split("=", 1)[0].strip()
+                    if key not in our_env_keys:
+                        env_lines.append(line)
+        except OSError:
+            pass
+    for provider, env_name in _ENV_KEY_MAP.items():
+        val = llm_cfg.get("api_keys", {}).get(provider)
+        if val:
+            env_lines.append(f"{env_name}={val}")
+    env_path.write_text("\n".join(env_lines) + "\n")
+    if os.geteuid() == 0:
+        subprocess.run(["chown", f"{user}:", str(env_path)], check=True)
+    os.chmod(str(env_path), 0o600)
+
+
+def restart_gateway() -> bool:
+    """Stop then start the OpenClaw gateway LaunchAgent (so it picks up new config). Returns True on success."""
+    user = _real_user()
+    user_home = _real_user_home()
+    plist_path = user_home / "Library" / "LaunchAgents" / "ai.openclaw.gateway.plist"
+    if not plist_path.exists():
+        console.print(f"[yellow]Gateway plist not found: {plist_path}[/yellow]")
+        return False
+    try:
+        uid = subprocess.run(
+            ["id", "-u", user],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        ).stdout.strip()
+    except subprocess.CalledProcessError:
+        return False
+    domain = f"gui/{uid}"
+    run_as_user = os.geteuid() == 0
+    prefix = ["sudo", "-u", user] if run_as_user else []
+    subprocess.run(
+        prefix + ["launchctl", "bootout", domain, str(plist_path)],
+        capture_output=True,
+        timeout=10,
+    )
+    result = subprocess.run(
+        prefix + ["launchctl", "bootstrap", domain, str(plist_path)],
+        capture_output=True,
+        timeout=10,
+    )
+    if result.returncode != 0:
+        console.print(f"[yellow]launchctl bootstrap failed: {result.stderr.decode() if result.stderr else 'unknown'}[/yellow]")
+        return False
+    return True
 
 
 class Provisioner:
@@ -122,6 +325,7 @@ class Provisioner:
             "/opt/openclaw/skills/local",
             "/opt/openclaw/skills/clawhub",
             "/opt/openclaw/state",
+            "/opt/openclaw/state/chat",
             "/opt/openclaw/config/messaging",
             "/var/log/openclaw",
         ]
@@ -136,7 +340,7 @@ class Provisioner:
             console.print(f"  Created: {d}")
 
         # Ensure state and log dirs are writable by the real user
-        subprocess.run(["chown", "-R", f"{user}:", "/opt/openclaw/state", "/var/log/openclaw"], check=True)
+        subprocess.run(["chown", "-R", f"{user}:", "/opt/openclaw/state", "/opt/openclaw/state/chat", "/var/log/openclaw"], check=True)
         console.print(f"  Chowned state/log dirs to {user}")
 
         for d in user_dirs:
@@ -272,6 +476,30 @@ class Provisioner:
             )
             console.print(f"  Node.js installed: {ver_check.stdout.strip()}")
 
+        # pnpm (required by OpenClaw gateway Control UI build)
+        pnpm_ok = False
+        try:
+            pnpm_ver = subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "pnpm", "--version"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if pnpm_ver.returncode == 0 and pnpm_ver.stdout.strip():
+                pnpm_ok = True
+                console.print(f"  pnpm v{pnpm_ver.stdout.strip()} found")
+        except Exception:
+            pass
+        if not pnpm_ok:
+            console.print("  Installing pnpm globally for OpenClaw Control UI...")
+            subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "npm", "install", "-g", "pnpm"],
+                capture_output=True, timeout=120, stdin=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                ["sudo", "-u", user, "env", f"PATH={env['PATH']}", "pnpm", "--version"],
+                capture_output=True, text=True, timeout=10, check=True,
+            )
+            console.print("  pnpm installed")
+
         # Enable macOS firewall
         console.print("  Enabling macOS firewall...")
         subprocess.run(
@@ -326,23 +554,33 @@ class Provisioner:
         if self.hf_token:
             console.print("  Persisting HuggingFace token...")
             try:
-                subprocess.run(
+                login_result = subprocess.run(
                     ["sudo", "-u", user, venv_python, "-m", "huggingface_hub.commands.huggingface_cli",
                      "login", "--token", self.hf_token],
-                    capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+                    capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL,
                 )
-                console.print("  [green]HuggingFace token saved to device[/green]")
+                if login_result.returncode == 0:
+                    console.print("  [green]HuggingFace token saved to device[/green]")
+                else:
+                    console.print("  [yellow]Warning: Could not persist HF token (login failed).[/yellow]")
+                    if login_result.stderr:
+                        console.print(f"  [dim]{login_result.stderr.strip()[:200]}[/dim]")
             except Exception as e:
                 console.print(f"  [yellow]Warning: Could not persist HF token: {e}[/yellow]")
 
         # Pre-download embedding model for tool auto-routing (avoids first-request latency)
         _embedding_model_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         console.print("  Pre-downloading embedding model for tool auto-routing...")
+        preload_cmd = [
+            "sudo", "-u", user,
+            venv_python, "-c",
+            f"from sentence_transformers import SentenceTransformer; m = SentenceTransformer({repr(_embedding_model_id)}); print('OK')",
+        ]
+        if self.hf_token:
+            preload_cmd.insert(2, "env")
+            preload_cmd.insert(3, f"HF_TOKEN={self.hf_token}")
         preload_result = subprocess.run(
-            [
-                "sudo", "-u", user, venv_python, "-c",
-                f"from sentence_transformers import SentenceTransformer; m = SentenceTransformer({repr(_embedding_model_id)}); print('OK')",
-            ],
+            preload_cmd,
             capture_output=True,
             text=True,
             timeout=300,
@@ -353,7 +591,7 @@ class Provisioner:
         else:
             console.print("  [yellow]Warning: Embedding model pre-download failed; will download on first use.[/yellow]")
             if preload_result.stderr:
-                console.print(f"  [dim]{preload_result.stderr.strip()[:200]}[/dim]")
+                console.print(f"  [dim]{preload_result.stderr.strip()[:500]}[/dim]")
 
     def _install_openclaw(self):
         """Copy pre-built OpenClaw bundle to /opt/openclaw/openclaw/ and create CLI wrapper."""
@@ -545,7 +783,11 @@ class Provisioner:
         model_ids = self.order_spec.llm_plan.model_ids
         is_max = self.order_spec.llm_plan.bundle_id == "max_bundle"
 
-        routing = {"auto_routing_enabled": is_max, "routes": {}}
+        routing = {
+            "auto_routing_enabled": is_max,
+            "active_model_id": model_ids[0] if model_ids else None,
+            "routes": {}
+        }
 
         if is_max:
             for complexity, categories in ROUTING_COMPLEXITY_MAP.items():
@@ -825,7 +1067,7 @@ class Provisioner:
                 console.print(f"  [yellow]Warning: ClawHub authentication failed: {e}[/yellow]")
 
         skills = [
-            "self-improving-agent",
+            "self-improving",
             "proactive-agent",
             "gog",
             "clawdbot-documentation-expert",
@@ -941,8 +1183,34 @@ class Provisioner:
         provider_path.write_text(json.dumps(config, indent=2))
         console.print(f"  Wrote: {provider_path} (mode: {plan_type})")
 
+    def _first_local_model_id(self) -> str | None:
+        """First non-voice model dir under /opt/openclaw/models for Ollama default."""
+        if not OPENCLAW_MODELS_PATH.exists():
+            return None
+        for entry in sorted(OPENCLAW_MODELS_PATH.iterdir()):
+            if entry.is_dir() and entry.name not in VOICE_MODEL_DIRS:
+                return entry.name
+        return None
+
+    def _default_model_from_llm_provider(self, llm_cfg: dict) -> str | None:
+        """Return OpenClaw 'provider/model' from llm-provider.json default_provider + api_keys."""
+        provider = (llm_cfg.get("default_provider") or llm_cfg.get("provider") or "").strip().lower()
+        if not provider:
+            return None
+        key_map = {
+            "deepseek": "deepseek/deepseek-chat",
+            "openai": "openai/gpt-4o",
+            "anthropic": "anthropic/claude-sonnet-4-5",
+            "kimi": "moonshot/kimi-k2.5",
+            "glm5": "glm5/glm-4-flash",
+        }
+        model = key_map.get(provider)
+        if model and llm_cfg.get("api_keys", {}).get(provider):
+            return model
+        return None
+
     def _write_openclaw_config(self):
-        """Write OpenClaw native config (openclaw.json) and .env for the gateway."""
+        """Write OpenClaw native config (openclaw.json) and .env for the gateway. Re-run safe: merges existing config and .env."""
         console.print("\n[bold]Writing OpenClaw configuration...[/bold]")
         user = _real_user()
         user_home = _real_user_home()
@@ -950,9 +1218,18 @@ class Provisioner:
         state_dir.mkdir(parents=True, exist_ok=True)
 
         gateway_token = secrets.token_hex(32)
+        llm_config_path = Path("/opt/openclaw/state/llm-provider.json")
+        llm_cfg = {}
+        if llm_config_path.exists():
+            try:
+                llm_cfg = json.loads(llm_config_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                pass
 
+        # Base config (gateway, skills)
         config = {
             "gateway": {
+                "mode": "local",
                 "port": OPENCLAW_GATEWAY_PORT,
                 "bind": "loopback",
                 "auth": {
@@ -981,35 +1258,64 @@ class Provisioner:
             },
         }
 
+        # Re-run safe: preserve or set agents.defaults.model
         config_path = state_dir / "openclaw.json"
+        existing_model = None
+        if config_path.exists():
+            try:
+                existing = json.loads(config_path.read_text())
+                existing_model = (existing.get("agents") or {}).get("defaults", {}).get("model")
+                if isinstance(existing.get("models"), dict) and existing["models"]:
+                    config["models"] = existing["models"]
+            except (json.JSONDecodeError, OSError):
+                pass
+        computed_model = self._default_model_from_llm_provider(llm_cfg)
+        if computed_model:
+            config["agents"]["defaults"]["model"] = computed_model
+        elif existing_model:
+            config["agents"]["defaults"]["model"] = existing_model
+        else:
+            # Local MLX fallback: no API key and no default — use first local model via Ollama
+            default_provider = (llm_cfg.get("default_provider") or "").strip().lower()
+            if default_provider in ("mlx", "local_only", "hybrid") or not llm_cfg.get("api_keys"):
+                first_local = self._first_local_model_id()
+                if first_local:
+                    config["agents"]["defaults"]["model"] = f"ollama/{first_local}"
+                    console.print(f"  Default model set to local: ollama/{first_local}")
+
         config_path.write_text(json.dumps(config, indent=2))
         subprocess.run(["chown", f"{user}:", str(config_path)], check=True)
         console.print(f"  Wrote: {config_path}")
 
-        # Build .env with the gateway token and any API keys from the LLM provider config
-        env_lines = [
-            f"OPENCLAW_GATEWAY_TOKEN={gateway_token}",
-        ]
-        llm_config_path = Path("/opt/openclaw/state/llm-provider.json")
-        if llm_config_path.exists():
-            try:
-                llm_cfg = json.loads(llm_config_path.read_text())
-                api_keys = llm_cfg.get("api_keys", {})
-                key_map = {
-                    "deepseek": "DEEPSEEK_API_KEY",
-                    "kimi": "MOONSHOT_API_KEY",
-                    "glm5": "GLM_API_KEY",
-                    "openai": "OPENAI_API_KEY",
-                    "anthropic": "ANTHROPIC_API_KEY",
-                }
-                for provider, env_name in key_map.items():
-                    val = api_keys.get(provider)
-                    if val:
-                        env_lines.append(f"{env_name}={val}")
-            except (json.JSONDecodeError, OSError):
-                pass
-
+        # Build .env: merge existing .env then overwrite gateway token and API keys from llm-provider
+        key_map = {
+            "deepseek": "DEEPSEEK_API_KEY",
+            "kimi": "MOONSHOT_API_KEY",
+            "glm5": "GLM_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+        }
+        our_env_keys = {"OPENCLAW_GATEWAY_TOKEN"} | set(key_map.values())
+        env_lines = [f"OPENCLAW_GATEWAY_TOKEN={gateway_token}"]
         env_path = state_dir / ".env"
+        if env_path.exists():
+            try:
+                for line in env_path.read_text().splitlines():
+                    line_stripped = line.strip()
+                    if not line_stripped or line_stripped.startswith("#"):
+                        env_lines.append(line)
+                        continue
+                    if "=" in line_stripped:
+                        key = line_stripped.split("=", 1)[0].strip()
+                        if key not in our_env_keys:
+                            env_lines.append(line)
+            except (OSError, Exception):
+                pass
+        api_keys = llm_cfg.get("api_keys", {})
+        for provider, env_name in key_map.items():
+            val = api_keys.get(provider)
+            if val:
+                env_lines.append(f"{env_name}={val}")
         env_path.write_text("\n".join(env_lines) + "\n")
         subprocess.run(["chown", f"{user}:", str(env_path)], check=True)
         os.chmod(str(env_path), 0o600)

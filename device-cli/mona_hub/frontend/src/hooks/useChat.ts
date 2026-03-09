@@ -1,12 +1,37 @@
-import { useCallback, useRef, useState } from "react";
-import { sendChatMessage, abortChatMessage, type ChatMessage } from "@/lib/api";
+import { useCallback, useRef, useState, useEffect } from "react";
+import { 
+  sendChatMessage, 
+  abortChatMessage, 
+  getConversation, 
+  type ChatMessage 
+} from "@/lib/api";
 
-export function useChat() {
+export function useChat(initialConversationId?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (initialConversationId && initialConversationId !== "new") {
+      setConversationId(initialConversationId);
+      setIsLoading(true);
+      getConversation(initialConversationId)
+        .then((conv) => {
+          setMessages(conv.messages);
+        })
+        .catch(() => {
+          setMessages([]);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setConversationId(undefined);
+      setMessages([]);
+    }
+  }, [initialConversationId]);
 
   const sendMessage = useCallback(
     async (text: string) => {

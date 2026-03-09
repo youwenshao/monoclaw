@@ -1,5 +1,8 @@
 import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import crypto from "crypto";
+import fs from "fs/promises";
+import path from "path";
 import type { SigningSession } from "@/types/database";
 
 const MARGIN = 50;
@@ -17,6 +20,7 @@ interface RenderContext {
   bodyFont: PDFFont;
   boldFont: PDFFont;
   italicFont: PDFFont;
+  signatureFont: PDFFont;
   y: number;
   page: PDFPage;
   pageNum: number;
@@ -119,6 +123,7 @@ function mergeTemplate(
 
   // Replace variables
   text = text.replace(/\{\{legal_name\}\}/g, session.legal_name);
+  text = text.replace(/\{\{email\}\}/g, session.email);
   text = text.replace(
     /\{\{entity_jurisdiction\}\}/g,
     session.entity_jurisdiction || "",
@@ -160,9 +165,26 @@ export async function generateContractPdf(
   templateHtml: string,
 ): Promise<{ pdfBytes: Uint8Array; sha256: string }> {
   const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+
   const bodyFont = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
   const italicFont = await doc.embedFont(StandardFonts.HelveticaOblique);
+
+  // Load and embed custom signature font
+  let signatureFont = italicFont;
+  try {
+    const fontPath = path.join(
+      process.cwd(),
+      "public",
+      "fonts",
+      "DancingScript-Regular.ttf",
+    );
+    const fontBytes = await fs.readFile(fontPath);
+    signatureFont = await doc.embedFont(fontBytes);
+  } catch (err) {
+    console.error("Failed to load custom signature font, falling back:", err);
+  }
 
   const firstPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
@@ -171,6 +193,7 @@ export async function generateContractPdf(
     bodyFont,
     boldFont,
     italicFont,
+    signatureFont,
     y: PAGE_HEIGHT - MARGIN,
     page: firstPage,
     pageNum: 1,
@@ -207,7 +230,7 @@ export async function generateContractPdf(
       drawText(ctx, "Signature:", { font: bodyFont, size: FONT_SIZE_BODY });
       ctx.y -= LINE_HEIGHT * 0.2;
       drawText(ctx, sigName, {
-        font: italicFont,
+        font: ctx.signatureFont,
         size: FONT_SIZE_SIGNATURE,
       });
       ctx.y -= LINE_HEIGHT * 0.3;

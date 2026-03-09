@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { Orb, NeuCard, NeuButton, NeuInput, ModelSelector, StopButton, VoiceToggle } from "@/components/ui";
 import { useChat } from "@/hooks/useChat";
 import { useVoice } from "@/hooks/useVoice";
@@ -158,13 +158,32 @@ function ToolSelector({
 
 export function ChatInterface() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { conversationId: routeConvId } = useParams();
+  const navigate = useNavigate();
+
+  const [lastConvId, setLastConvId] = useState<string | null>(() => localStorage.getItem("last_conversation_id"));
+
+  // Determine the actual conversation ID to use
+  const activeConvId = routeConvId || lastConvId || undefined;
+
   const {
     messages,
     sendMessageStream,
     abortGeneration,
     isLoading,
     isStreaming,
-  } = useChat();
+    conversationId: currentConvId,
+  } = useChat(activeConvId === "new" ? undefined : activeConvId);
+
+  // Persist last conversation ID
+  useEffect(() => {
+    if (currentConvId && currentConvId !== "new") {
+      localStorage.setItem("last_conversation_id", currentConvId);
+      if (!routeConvId || routeConvId === "new") {
+        navigate(`/chat/${currentConvId}`, { replace: true });
+      }
+    }
+  }, [currentConvId, routeConvId, navigate]);
 
   const { speak, isPlaying, startListening, stopListening, isListening, transcript } = useVoice();
 

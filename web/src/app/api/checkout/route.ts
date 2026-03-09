@@ -3,6 +3,9 @@ import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { SOFTWARE_BASE_PRICE_HKD, MODEL_CATEGORIES, LLM_MODELS, BUNDLES } from "@/lib/constants";
 
+/** Configuration fee: 40% deposit at checkout, 60% due 7 days after receipt of hardware. */
+const DEPOSIT_RATIO = 0.4;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -19,10 +22,10 @@ export async function POST(request: NextRequest) {
         price_data: {
           currency: "hkd",
           product_data: {
-            name: "OpenClaw Software Suite",
-            description: `All 12 tool suites included | Hardware: ${hardwareType}`,
+            name: "OpenClaw Software Suite (40% deposit)",
+            description: `All 12 tool suites included | Hardware: ${hardwareType} | Balance (60%) due 7 days after delivery`,
           },
-          unit_amount: SOFTWARE_BASE_PRICE_HKD * 100,
+          unit_amount: Math.round(SOFTWARE_BASE_PRICE_HKD * 100 * DEPOSIT_RATIO),
         },
         quantity: 1,
       },
@@ -35,10 +38,10 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: "hkd",
             product_data: {
-              name: bundle.name,
+              name: `${bundle.name} (40% deposit)`,
               description: bundle.description,
             },
-            unit_amount: bundle.priceHkd * 100,
+            unit_amount: Math.round(bundle.priceHkd * 100 * DEPOSIT_RATIO),
           },
           quantity: 1,
         });
@@ -53,10 +56,10 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: "hkd",
             product_data: {
-              name: `${model.name} ${model.parameterSize}`,
+              name: `${model.name} ${model.parameterSize} (40% deposit)`,
               description: `${category.name} model - ${model.description}`,
             },
-            unit_amount: category.priceHkd * 100,
+            unit_amount: Math.round(category.priceHkd * 100 * DEPOSIT_RATIO),
           },
           quantity: 1,
         });

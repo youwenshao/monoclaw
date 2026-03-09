@@ -861,7 +861,15 @@ Users who commissioned the Max Bundle (1,999 HKD) have access to **Automated Mod
 - **Code**: Specialized coding models (e.g., Qwen Coder)
 
 ### Manual Selection
-All users can manually override model selection via the **ModelSelector** pill in the chat interface.
+All users can manually override model selection via the **ModelSelector** pill in the chat interface. The selected model and routing mode are **persisted** to disk (`routing-config.json`) and synced to OpenClaw’s default model so the gateway uses the user’s choice across restarts and tab switches.
+
+### Persistent Chat & Conversations
+Chat history is stored locally (one JSON file per conversation in `/opt/openclaw/state/chat/`). The Chat tab shows a **conversation sidebar** with:
+- **New chat** — Creates a new conversation and focuses the input.
+- **Conversation list** — Each item shows title (or first message snippet) and date; clicking opens that conversation. Delete via the trash icon on hover.
+- **Single active context** — Only one conversation is active at a time; the input and sidebar actions (New chat, switch conversation) are disabled while Mona is streaming a response.
+
+Conversations not opened or used for **30 days** are automatically removed on Hub startup (auto-drain). The last-open conversation id is remembered so returning to the Chat tab restores the same thread.
 
 ### Voice/Text Interaction Manager
 To ensure a seamless experience, Mona uses an **Interaction Manager** that prevents voice and text modes from conflicting. 
@@ -908,6 +916,19 @@ A neuomorphic on/off switch for Mona's voice.
 | Thumb (off) | `var(--surface-raised)`, left-aligned |
 | Thumb (on) | `var(--accent)`, right-aligned |
 | Transition | 200ms ease-out |
+
+### Conversation Sidebar (Chat tab)
+
+When the user is on the Chat route, a left sidebar lists conversations and provides "New chat".
+
+| Property | Value |
+|----------|-------|
+| Width | 280px |
+| Background | `var(--surface)` |
+| Border | Right border, `var(--shadow-dark)` 20% |
+| New chat button | Full-width `NeuButton`, Plus icon + "New chat" |
+| List item | NavLink to `/chat/:id`, title + date; trash icon on hover (delete) |
+| Disabled state | When streaming, New chat and conversation switches are disabled |
 
 ### StopButton
 
@@ -991,4 +1012,4 @@ box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shad
 ---
 
 *This is a living document. As Mona evolves, so will this guide.*
-*Last updated: 2026-03-07*
+*Last updated: 2026-03-08*

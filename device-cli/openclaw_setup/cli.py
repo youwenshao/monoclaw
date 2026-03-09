@@ -126,6 +126,26 @@ def finalize(device_id: str, supabase_url: str, supabase_key: str, yes: bool):
 
 
 @main.command()
+def reconfigure_gateway():
+    """Reapply OpenClaw config from state files and restart the gateway.
+
+    Reads llm-provider.json and routing-config.json, writes ~/.openclaw (preserving
+    the gateway token), then runs launchctl bootout + bootstrap so the gateway
+    picks up the new agent default model and API keys. Use after changing API key
+    or active model in Mona Hub Settings, or after editing state files on disk.
+    """
+    from .provisioner import sync_openclaw_config_from_state, restart_gateway
+
+    console.print("[bold blue]Reconfiguring OpenClaw gateway...[/bold blue]")
+    sync_openclaw_config_from_state()
+    if restart_gateway():
+        console.print("[green]Gateway restarted.[/green]")
+    else:
+        console.print("[yellow]Gateway restart failed; check plist and launchctl.[/yellow]")
+        sys.exit(1)
+
+
+@main.command()
 def device_id():
     """Print device_id from setup credentials (for scripting after provision)."""
     cred_path = Path("/opt/openclaw/.setup-credentials")

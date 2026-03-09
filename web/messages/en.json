@@ -27,6 +27,8 @@
     "legal": "Legal",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
+    "cookies": "Cookie Policy",
+    "endUserCertificate": "End User Certificate",
     "copyright": "© 2026 Sentimento Technologies Limited. All rights reserved.",
     "madeIn": "Made in Hong Kong",
     "description": "MonoClaw deploys Mona, your AI-powered virtual employee, on dedicated Mac hardware running locally in Hong Kong."
@@ -99,7 +101,10 @@
     "confirmation": "Order Confirmed",
     "confirmationMessage": "Thank you for your order! Please follow the instructions below to purchase your hardware.",
     "appleRedirect": "Purchase Hardware from Apple",
-    "shippingInstructions": "Ship to our office address for setup"
+    "step1ConfigReminder": "You are free to purchase any configuration of {hardware} at your discretion—our service is designed to work with any configuration.",
+    "shippingInstructions": "Ship to our office address for setup",
+    "copyAddress": "Copy Address",
+    "copied": "Copied!"
   },
   "admin": {
     "title": "Admin Dashboard",

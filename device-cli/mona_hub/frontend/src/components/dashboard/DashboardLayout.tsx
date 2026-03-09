@@ -1,5 +1,8 @@
-import { Outlet, NavLink } from "react-router-dom";
-import { Orb } from "@/components/ui";
+import { useState, useEffect, useCallback } from "react";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Orb, NeuCard, NeuButton } from "@/components/ui";
+import { listConversations, deleteConversation, type ConversationInfo } from "@/lib/api";
 
 function ChatIcon({ className = "" }: { className?: string }) {
   return (
@@ -29,6 +32,24 @@ function GearIcon({ className = "" }: { className?: string }) {
   );
 }
 
+function PlusIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border-0 cursor-pointer select-none transition-colors ${
     isActive ? "text-accent" : "text-text-secondary hover:text-text-primary"
@@ -42,6 +63,37 @@ const navLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 });
 
 export function DashboardLayout() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isChat = location.pathname === "/" || location.pathname.startsWith("/chat");
+  const currentChatId = location.pathname.startsWith("/chat/") ? location.pathname.split("/")[2] : null;
+
+  const [conversations, setConversations] = useState<ConversationInfo[]>([]);
+
+  const refreshConversations = useCallback(() => {
+    listConversations().then(setConversations).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (isChat) {
+      refreshConversations();
+    }
+  }, [isChat, refreshConversations, location.pathname]);
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm("Delete this conversation?")) {
+      try {
+        await deleteConversation(id);
+        refreshConversations();
+        if (currentChatId === id) {
+          navigate("/");
+        }
+      } catch {}
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <header
@@ -78,9 +130,70 @@ export function DashboardLayout() {
         </NavLink>
       </header>
 
-      <main className="flex-1">
-        <Outlet />
-      </main>
+      <div className="flex flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {isChat && (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 280, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              className="flex flex-col border-r bg-surface overflow-hidden"
+              style={{ borderColor: "color-mix(in srgb, var(--shadow-dark) 20%, transparent)" }}
+            >
+              <div className="p-4">
+                <NeuButton
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={() => navigate("/chat/new")}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  New Chat
+                </NeuButton>
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 pb-4">
+                <div className="flex flex-col gap-1">
+                  {conversations.map((conv) => (
+                    <NavLink
+                      key={conv.id}
+                      to={`/chat/${conv.id}`}
+                      className={({ isActive }) =>
+                        `group flex flex-col gap-1 p-3 rounded-xl transition-colors ${
+                          isActive
+                            ? "bg-surface-inset text-accent"
+                            : "text-text-secondary hover:bg-surface-inset hover:text-text-primary"
+                        }`
+                      }
+                      style={({ isActive }) => ({
+                        boxShadow: isActive
+                          ? "inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light)"
+                          : "none",
+                      })}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-medium">
+                          {conv.title}
+                        </span>
+                        <button
+                          onClick={(e) => handleDelete(e, conv.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-error transition-all"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <span className="text-[10px] opacity-50">
+                        {new Date(conv.updated_at).toLocaleDateString()}
+                      </span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        <main className="flex-1 overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

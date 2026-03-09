@@ -14,15 +14,27 @@ FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 
 def _check_gateway_on_startup():
-    """Background: verify the OpenClaw gateway is reachable at startup."""
+    """Background: verify the OpenClaw gateway is reachable and drain old chats."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Verify gateway
     try:
         from backend.services.llm import llm_service
         status = llm_service.get_model_status()
         if status["status"] == "ready":
-            import logging
-            logging.getLogger(__name__).info("OpenClaw gateway is healthy")
+            logger.info("OpenClaw gateway is healthy")
     except Exception:
         pass
+
+    # Drain old chats (30 days)
+    try:
+        from backend.services.chat_history import chat_history_service
+        count = chat_history_service.drain_older_than(30)
+        if count > 0:
+            logger.info(f"Drained {count} old conversations on startup")
+    except Exception as e:
+        logger.error(f"Failed to drain old chats on startup: {e}")
 
 
 @asynccontextmanager

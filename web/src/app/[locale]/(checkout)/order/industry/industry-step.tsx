@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useCheckout } from "@/lib/checkout-context";
+import { createClient } from "@/lib/supabase/client";
 import { TOOL_SUITES } from "@/lib/constants";
 import { CheckoutSteps } from "@/components/checkout-steps";
 import { Button } from "@/components/ui/button";
@@ -27,8 +29,18 @@ const icons: Record<string, React.ReactNode> = {
 
 export function ToolsShowcaseStep() {
   const t = useTranslations("order");
-  const { setCurrentStep } = useCheckout();
+  const { setCurrentStep, signingComplete } = useCheckout();
   const router = useRouter();
+  const [user, setUser] = useState<{ id: string } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setAuthChecked(true);
+    });
+  }, []);
 
   function handleBack() {
     setCurrentStep(2);
@@ -36,8 +48,12 @@ export function ToolsShowcaseStep() {
   }
 
   function handleNext() {
-    setCurrentStep(4);
-    router.push("/order/review" as never);
+    setCurrentStep(user && !signingComplete ? 5 : 4);
+    if (user && !signingComplete) {
+      router.push("/order/contract" as never);
+    } else {
+      router.push("/order/review" as never);
+    }
   }
 
   return (

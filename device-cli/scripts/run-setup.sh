@@ -170,12 +170,13 @@ if [[ ! -d /opt/openclaw/mona_hub/frontend/dist ]]; then
 fi
 echo "Frontend built successfully"
 
-# Start the OpenClaw gateway via its LaunchAgent
+# Start the OpenClaw gateway via its LaunchAgent (stop first so config is refreshed)
 echo ""
 echo "Starting OpenClaw gateway..."
 REAL_UID=$(id -u "$REAL_USER")
 GATEWAY_PLIST="$( eval echo "~$REAL_USER" )/Library/LaunchAgents/ai.openclaw.gateway.plist"
 if [[ -f "$GATEWAY_PLIST" ]]; then
+  sudo -u "$REAL_USER" launchctl bootout "gui/$REAL_UID" "$GATEWAY_PLIST" 2>/dev/null || true
   sudo -u "$REAL_USER" launchctl bootstrap "gui/$REAL_UID" "$GATEWAY_PLIST" 2>/dev/null || true
   echo "Waiting for OpenClaw gateway to become ready..."
   for i in $(seq 1 30); do

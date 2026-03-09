@@ -40,6 +40,7 @@ function renderContractHtml(
   }
 
   html = html.replace(/\{\{legal_name\}\}/g, session.legal_name);
+  html = html.replace(/\{\{email\}\}/g, session.email);
   html = html.replace(
     /\{\{entity_jurisdiction\}\}/g,
     session.entity_jurisdiction || "",

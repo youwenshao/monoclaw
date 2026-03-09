@@ -59,6 +59,7 @@ export default function App() {
           <>
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<ChatInterface />} />
+              <Route path="chat/:conversationId" element={<ChatInterface />} />
               <Route path="tools" element={<ToolsGrid />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

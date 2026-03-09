@@ -20,7 +20,7 @@ import type { SigningSession } from "@/types/database";
 
 export function SignatureStep() {
   const router = useRouter();
-  const { order } = useCheckout();
+  const { order, setContractSigned } = useCheckout();
   const sessionId = order.signingSessionId;
 
   const [session, setSession] = useState<SigningSession | null>(null);
@@ -73,6 +73,7 @@ export function SignatureStep() {
         return;
       }
 
+      setContractSigned(true);
       setSuccess(true);
       setTimeout(() => {
         router.push("/order/review" as never);

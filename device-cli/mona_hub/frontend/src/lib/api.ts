@@ -249,6 +249,50 @@ export function getLlmConfig(): Promise<Record<string, unknown>> {
   return apiFetch<Record<string, unknown>>("/api/system/llm-config");
 }
 
+export interface ConversationInfo {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  last_accessed_at: string;
+  message_count: number;
+}
+
+export interface ConversationDetails extends ConversationInfo {
+  messages: ChatMessage[];
+}
+
+export function listConversations(): Promise<ConversationInfo[]> {
+  return apiFetch<ConversationInfo[]>("/api/chat/conversations");
+}
+
+export function getConversation(id: string): Promise<ConversationDetails> {
+  return apiFetch<ConversationDetails>(`/api/chat/conversations/${id}`);
+}
+
+export function createConversation(title?: string): Promise<ConversationInfo> {
+  return apiFetch<ConversationInfo>("/api/chat/conversations", {
+    method: "POST",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export function deleteConversation(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/api/chat/conversations/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export interface DefaultModelStatus {
+  has_default_model: boolean;
+  gateway_healthy: boolean;
+  message?: string;
+}
+
+export function getDefaultModelStatus(): Promise<DefaultModelStatus> {
+  return apiFetch<DefaultModelStatus>("/api/system/default-model-status");
+}
+
 export function saveLlmConfig(
   provider?: string,
   apiKey?: string,

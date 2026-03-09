@@ -13,6 +13,9 @@ import {
   BUNDLES,
   TOOL_SUITES,
 } from "@/lib/constants";
+
+/** 40% deposit at checkout; 60% due 7 days after receipt of hardware. */
+const DEPOSIT_RATIO = 0.4;
 import { formatHKD } from "@/lib/stripe";
 import { CheckoutSteps } from "@/components/checkout-steps";
 import { Button } from "@/components/ui/button";
@@ -64,6 +67,8 @@ export function ReviewStep() {
   }
 
   const softwareTotal = SOFTWARE_BASE_PRICE_HKD + addonsTotal;
+  const depositAmount = Math.round(softwareTotal * DEPOSIT_RATIO);
+  const balanceAmount = softwareTotal - depositAmount;
 
   function handleBack() {
     setCurrentStep(3);
@@ -148,7 +153,7 @@ export function ReviewStep() {
         ) : (
           <CreditCard className="mr-2 h-4 w-4" />
         )}
-        {t("pay")} &middot; {formatHKD(softwareTotal)}
+        {t("pay")} &middot; {formatHKD(depositAmount)}
       </Button>
     );
   }
@@ -222,9 +227,22 @@ export function ReviewStep() {
                 );
               })}
             <Separator />
-            <div className="flex items-center justify-between text-lg font-bold">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{t("total")}</span>
               <span>{formatHKD(softwareTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span>Deposit due now (40%)</span>
+              <span className="font-medium">{formatHKD(depositAmount)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Balance after delivery (60%)</span>
+              <span>{formatHKD(balanceAmount)}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between text-lg font-bold">
+              <span>Pay now (deposit)</span>
+              <span>{formatHKD(depositAmount)}</span>
             </div>
           </CardContent>
         </Card>

@@ -13,6 +13,7 @@ import {
   saveLlmConfig,
   saveMessagingConfig,
   getLlmConfig,
+  getDefaultModelStatus,
   getMessagingConfig,
   getRoutingConfig,
   setActiveModel,
@@ -22,7 +23,7 @@ import {
   getOnboardingState,
   saveProfile,
 } from "@/lib/api";
-import type { RoutingConfig, InteractionStatus } from "@/lib/api";
+import type { DefaultModelStatus, RoutingConfig, InteractionStatus } from "@/lib/api";
 import { LLM_PROVIDERS, MESSAGING_PROVIDERS } from "@/lib/providers";
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -144,9 +145,11 @@ export function SettingsPage() {
   const [expandedMessaging, setExpandedMessaging] = useState<string | null>(null);
   const [savedProviders, setSavedProviders] = useState<Set<string>>(new Set());
   const [profileSaved, setProfileSaved] = useState(false);
+  const [defaultModelStatus, setDefaultModelStatus] = useState<DefaultModelStatus | null>(null);
 
   useEffect(() => {
     getLlmConfig().then(setLlmConfig).catch(() => {});
+    getDefaultModelStatus().then(setDefaultModelStatus).catch(() => {});
     getMessagingConfig().then(setMessagingConfig).catch(() => {});
     getRoutingConfig().then(setRoutingConfig).catch(() => {});
     getInteractionMode().then(setInteractionStatus).catch(() => {});
@@ -170,6 +173,7 @@ export function SettingsPage() {
       try {
         await saveLlmConfig(providerId, credentials.api_key);
         setLlmConfig({ provider: providerId, api_key: credentials.api_key });
+        getDefaultModelStatus().then(setDefaultModelStatus).catch(() => {});
       } catch {}
       setSavedProviders((prev) => new Set(prev).add(providerId));
     },
@@ -267,7 +271,11 @@ export function SettingsPage() {
                 <p className="mt-4 mb-6 text-sm text-text-secondary">
                   Your Mac has local models. Cloud models are optional for heavier tasks.
                 </p>
-
+                {defaultModelStatus && (!defaultModelStatus.has_default_model || !defaultModelStatus.gateway_healthy) && defaultModelStatus.message && (
+                  <p className="mb-4 text-sm text-text-secondary rounded-md px-3 py-2" style={{ background: "var(--accent-subtle)" }}>
+                    {defaultModelStatus.message}
+                  </p>
+                )}
                 <div className="flex flex-col gap-3">
                   {LLM_PROVIDERS.map((provider) => {
                     const isExpanded = expandedLlm === provider.id;

@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useCheckout } from "@/lib/checkout-context";
 import { HARDWARE_OPTIONS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, ExternalLink, ArrowRight } from "lucide-react";
+import { Check, ExternalLink, ArrowRight, Copy } from "lucide-react";
+
+const DELIVERY_ADDRESS = `Rm 413R, 4/F, Ho Tim Hall
+S. H. Ho College, CUHK
+Shatin, New Territories
+Hong Kong`;
 
 export function ConfirmationContent({ orderId }: { orderId: string }) {
   const t = useTranslations("order");
   const { order, resetOrder } = useCheckout();
+  const [copied, setCopied] = useState(false);
 
   const hardware = HARDWARE_OPTIONS.find((h) => h.id === order.hardwareType);
 
@@ -20,6 +26,12 @@ export function ConfirmationContent({ orderId }: { orderId: string }) {
       resetOrder();
     };
   }, [resetOrder]);
+
+  const handleCopyAddress = () => {
+    navigator.clipboard.writeText(DELIVERY_ADDRESS);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="mx-auto max-w-2xl py-10">
@@ -38,7 +50,7 @@ export function ConfirmationContent({ orderId }: { orderId: string }) {
         <CardHeader>
           <CardTitle className="text-lg">Next Steps</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               1
@@ -47,6 +59,9 @@ export function ConfirmationContent({ orderId }: { orderId: string }) {
               <p className="font-medium">{t("appleRedirect")}</p>
               <p className="mb-2 text-sm text-muted-foreground">
                 Purchase your {hardware?.name || "Mac"} from Apple Hong Kong.
+              </p>
+              <p className="mb-3 text-sm text-muted-foreground">
+                {t("step1ConfigReminder", { hardware: hardware?.name || "Mac" })}
               </p>
               {hardware && (
                 <a
@@ -65,11 +80,33 @@ export function ConfirmationContent({ orderId }: { orderId: string }) {
             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               2
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-medium">{t("shippingInstructions")}</p>
-              <p className="text-sm text-muted-foreground">
-                Set the delivery address to: <strong>Sentimento Technologies Limited, Hong Kong</strong>
-              </p>
+              <div className="mt-3 rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <pre className="font-sans text-sm leading-relaxed text-foreground">
+                    {DELIVERY_ADDRESS}
+                  </pre>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-2"
+                    onClick={handleCopyAddress}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        {t("copied")}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        {t("copyAddress")}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 

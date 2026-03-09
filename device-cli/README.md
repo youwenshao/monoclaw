@@ -14,6 +14,7 @@ Python CLI for provisioning, testing, and finalizing Mac devices (Mac mini M4 / 
 | `openclaw-setup provision --email <CLIENT_EMAIL> --serial <SERIAL>` | Provision using client email (looks up most recent order) |
 | `openclaw-setup test --device-id <UUID>` | Run full test suite, upload results to Supabase |
 | `openclaw-setup finalize --device-id <UUID> [--yes]` | Mark device ready and remove CLI |
+| `openclaw-setup reconfigure-gateway` | Reapply config from state files and restart the gateway |
 | `openclaw-setup device-id` | Print device_id from credentials |
 | `openclaw-setup status` | Show current provisioning state |
 
@@ -125,7 +126,7 @@ MONOCLAW_SETUP/
    - **Install OpenClaw** from the pendrive bundle to `/opt/openclaw/openclaw/` and create the `openclaw` CLI wrapper
    - Download the LLM models specified in the order (this can take 10–30+ minutes depending on plan)
    - Install industry tool suites with `manifest.json` and **SKILL.md** (for OpenClaw skill discovery)
-   - Write OpenClaw config (`~/.openclaw/openclaw.json`), gateway token, and routing
+   - Write OpenClaw config (`~/.openclaw/openclaw.json`), gateway token, routing (including `active_model_id`), and chat history directory (`/opt/openclaw/state/chat/`)
    - **Install the OpenClaw gateway daemon** (LaunchAgent `ai.openclaw.gateway` on port 18789)
    - Deploy Mona Hub and build its frontend; start the gateway and verify health
    - Run the full test suite (results upload to Supabase)
@@ -156,11 +157,12 @@ Understanding the flow helps when troubleshooting. The provisioner does the foll
 
 ### 3. Directory Structure
 
-- Creates `/etc/openclaw/core`, `/opt/openclaw/models`, `/opt/openclaw/skills/local`, `/opt/openclaw/skills/clawhub`, `/opt/openclaw/state`, `/opt/openclaw/config/messaging`, `/var/log/openclaw`, `~/.openclaw/user`, `~/OpenClawWorkspace`.
+- Creates `/etc/openclaw/core`, `/opt/openclaw/models`, `/opt/openclaw/skills/local`, `/opt/openclaw/skills/clawhub`, `/opt/openclaw/state`, `/opt/openclaw/state/chat` (persistent chat history), `/opt/openclaw/config/messaging`, `/var/log/openclaw`, `~/.openclaw/user`, `~/OpenClawWorkspace`.
 
 ### 4. Dependencies
 
 - **Node.js 22+** — Required by OpenClaw. The provisioner checks the version and installs `node@22` via Homebrew if the system Node is older.
+- **pnpm** — Installed globally for the OpenClaw gateway Control UI build. The gateway expects `pnpm` on PATH when it runs; the provisioner installs it via `npm install -g pnpm` if missing.
 - **FFmpeg** — Installed via Homebrew for media handling.
 - **Python packages** (in `/opt/openclaw/venv`): `mlx-lm`, `mlx-whisper`, `mlx-audio`, `qwen-agent`, `psutil`, `schedule`, `huggingface-hub`, `sentence-transformers` (for tool auto-routing). The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`) is pre-downloaded during setup to avoid first-request latency.
 
@@ -188,21 +190,26 @@ Understanding the flow helps when troubleshooting. The provisioner does the foll
 
 ### 9. Configuration & Routing
 
-- **Auto-Routing (Max Bundle Only)**: Writes `/opt/openclaw/state/routing-config.json` for task-based model selection.
+- **Routing config**: Writes `/opt/openclaw/state/routing-config.json` with `auto_routing_enabled`, `routes`, and `active_model_id` (initial model from the order’s LLM plan). When the user changes the active model or routing mode in Mona Hub Settings, the backend persists these to the same file so they survive Hub restarts and tab switches.
+- **OpenClaw model sync**: Selecting a local model in Settings updates `~/.openclaw/openclaw.json` (`agents.defaults.model`) so the OpenClaw gateway uses that model for chat. API keys and cloud default model are synced when the user saves LLM config in Settings. **Config refresh**: The gateway only picks up new config after it is stopped and run again. When the user saves an API key or changes the active model in Mona Hub Settings, the backend restarts the gateway automatically (launchctl bootout then bootstrap) so the new agent default model takes effect immediately.
 - **LLM Provider Config**: Writes `/opt/openclaw/state/llm-provider.json` defining the offline/hybrid mode.
-- **OpenClaw native config**: Writes `~/.openclaw/openclaw.json` with gateway port 18789, token auth, chat completions endpoint enabled, and skill dirs (`/opt/openclaw/skills/local`, `/opt/openclaw/skills/clawhub`). Writes `~/.openclaw/.env` with `OPENCLAW_GATEWAY_TOKEN` and optional API keys. The gateway token is also stored in `/opt/openclaw/state/gateway-token.txt` so Mona Hub can authenticate when proxying chat to the gateway.
+- **OpenClaw native config**: Writes `~/.openclaw/openclaw.json` with gateway `mode: "local"`, port 18789, token auth, chat completions endpoint enabled, and skill dirs (`/opt/openclaw/skills/local`, `/opt/openclaw/skills/clawhub`). Writes `~/.openclaw/.env` with `OPENCLAW_GATEWAY_TOKEN` and optional API keys. The gateway token is also stored in `/opt/openclaw/state/gateway-token.txt` so Mona Hub can authenticate when proxying chat to the gateway.
 - **Legacy config**: Writes `~/.openclaw/config.json` for backward compatibility with path references.
 - **Messaging Stubs**: Creates credential stubs for WhatsApp, Telegram, and Discord in `/opt/openclaw/config/messaging/`.
 
 ### 10. OpenClaw Gateway Daemon
 
-- Installs a **LaunchAgent** at `~/Library/LaunchAgents/ai.openclaw.gateway.plist` that runs `openclaw gateway run` (port 18789, loopback). Logs go to `~/.openclaw/gateway.log` and `gateway.err.log`. The one-click script starts this agent after provisioning and polls `/health` until the gateway is ready.
+- Installs a **LaunchAgent** at `~/Library/LaunchAgents/ai.openclaw.gateway.plist` that runs `openclaw gateway run` (port 18789, loopback). Logs go to `~/.openclaw/gateway.log` and `gateway.err.log`. The one-click script runs **launchctl bootout** then **launchctl bootstrap** so the gateway always starts fresh with the current config, and polls `/health` until the gateway is ready.
 
 ### 11. Active Work State
 
 - Writes `/opt/openclaw/state/active-work.json` with order ID, industry, personas, model list. Used by the test suite and runtime.
 
-### 12. Credentials
+### 12. Chat History Storage
+
+- Creates `/opt/openclaw/state/chat/` for persistent chat. Each conversation is stored as a JSON file (`{id}.json`) with messages, title, and timestamps. Mona Hub exposes list/get/create/delete conversation APIs; the chat and stream endpoints persist messages after each exchange. Conversations not accessed for 30 days are automatically removed on Hub startup (auto-drain).
+
+### 13. Credentials
 
 - Stores `/opt/openclaw/.setup-credentials` with `device_id`, `order_id`, and Supabase URL (for the test reporter and finalize step).
 
@@ -273,7 +280,8 @@ For services requiring external setup, Mona provides step-by-step hand-holding:
 ### 5. Interaction Management
 Mona is designed to handle complex interactions without technical friction:
 - **Interaction Manager**: A backend service ensures voice and text modes never conflict (e.g., Mona won't start speaking while you are still typing).
-- **Model Routing**: For Max Bundle users, Mona automatically routes tasks to the best local model (Fast, Think, Coder, or Complex).
+- **Model Routing**: For Max Bundle users, Mona automatically routes tasks to the best local model (Fast, Think, Coder, or Complex). The selected model and routing mode are persisted to disk and stay in sync with OpenClaw’s default model so the gateway uses the user’s choice after restarts.
+- **Persistent Chat**: Chat history is stored locally in `/opt/openclaw/state/chat/` as one JSON file per conversation. The dashboard shows a conversation sidebar (Chat tab) with a "New chat" button and a list of past conversations; switching tabs or reloading the page keeps the current conversation. Conversations unused for 30 days are automatically removed.
 - **Privacy First**: All core interactions (Voice, Chat, Local Skills) happen entirely on-device with zero external data transmission.
 
 ---
@@ -347,6 +355,16 @@ View the current provisioning state (from `active-work.json`):
 openclaw-setup status
 ```
 
+### Reconfigure gateway
+
+After editing `/opt/openclaw/state/llm-provider.json` or `routing-config.json` on disk (or when you want to reapply state without going through Mona Hub), run:
+
+```bash
+openclaw-setup reconfigure-gateway
+```
+
+This reads the state files, writes `~/.openclaw/openclaw.json` and `.env` (preserving the gateway token), then restarts the gateway (bootout + bootstrap) so the new default model and API keys take effect.
+
 ---
 
 ## Pendrive Script: Order ID vs Email
@@ -408,8 +426,8 @@ The `run-setup.sh` script supports both order ID and client email:
 
 ## Architecture: Mona Hub and OpenClaw
 
-- **OpenClaw** is the agent runtime: it runs the **gateway** (HTTP on port 18789, WebSocket), loads skills from `/opt/openclaw/skills/local` and `clawhub`, and executes tools. It exposes an OpenAI-compatible `/v1/chat/completions` endpoint.
-- **Mona Hub** is the user-facing app (onboarding UI, chat UI, voice, system settings). Its backend **proxies all chat requests** to the OpenClaw gateway using the token in `/opt/openclaw/state/gateway-token.txt`. Tool execution and model selection are handled by the gateway; Mona provides the interface and industry tool suites (as OpenClaw skills via SKILL.md).
+- **OpenClaw** is the agent runtime: it runs the **gateway** (HTTP on port 18789, WebSocket), loads skills from `/opt/openclaw/skills/local` and `clawhub`, and executes tools. It exposes an OpenAI-compatible `/v1/chat/completions` endpoint. The gateway uses the default model from `~/.openclaw/openclaw.json`, which Mona Hub keeps in sync when the user selects a local model in Settings.
+- **Mona Hub** is the user-facing app (onboarding UI, chat UI, voice, system settings). Its backend **proxies all chat requests** to the OpenClaw gateway using the token in `/opt/openclaw/state/gateway-token.txt`. Tool execution and model selection are handled by the gateway; Mona provides the interface and industry tool suites (as OpenClaw skills via SKILL.md). Model and routing choices from Settings are persisted in `/opt/openclaw/state/routing-config.json` and synced to OpenClaw’s config. Chat history is stored as JSON files in `/opt/openclaw/state/chat/` and is auto-drained after 30 days of no access.
 
 ---
 

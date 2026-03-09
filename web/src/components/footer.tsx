@@ -57,14 +57,24 @@ export function Footer() {
             <h3 className="mb-3 text-sm font-semibold">{t("legal")}</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="transition-colors hover:text-foreground">
+                <Link href="/privacy" className="transition-colors hover:text-foreground">
                   {t("privacy")}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="transition-colors hover:text-foreground">
+                <Link href="/terms" className="transition-colors hover:text-foreground">
                   {t("terms")}
-                </a>
+                </Link>
+              </li>
+              <li>
+                <Link href="/cookies" className="transition-colors hover:text-foreground">
+                  {t("cookies")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/end-user-certificate" className="transition-colors hover:text-foreground">
+                  {t("endUserCertificate")}
+                </Link>
               </li>
             </ul>
           </div>

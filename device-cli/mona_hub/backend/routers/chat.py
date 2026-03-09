@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.models.onboarding_state import ChatMessage, ChatResponse
+from backend.services.chat_history import chat_history_service
 from backend.services.interaction import InteractionMode, interaction_manager
 from backend.services.llm import CloudAPIError, llm_service
 from backend.services.tool_router import tool_router
@@ -14,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-conversations: dict[str, list[dict[str, str]]] = {}
 
 SYSTEM_PROMPT = (
     "You are Mona, a helpful AI assistant running locally on the user's Mac "
@@ -43,20 +43,58 @@ async def list_tools():
     return tool_router.get_all_tools()
 
 
+@router.get("/conversations")
+async def list_conversations():
+    """List all chat conversations."""
+    return chat_history_service.list_conversations()
+
+
+@router.get("/conversations/{id}")
+async def get_conversation(id: str):
+    """Get full chat history for a conversation."""
+    conv = chat_history_service.get_conversation(id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conv
+
+
+@router.post("/conversations")
+async def create_conversation(body: dict = None):
+    """Create a new chat conversation."""
+    title = body.get("title") if body else None
+    return chat_history_service.create_conversation(title=title)
+
+
+@router.delete("/conversations/{id}")
+async def delete_conversation(id: str):
+    """Delete a chat conversation."""
+    success = chat_history_service.delete_conversation(id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"success": True}
+
+
 @router.post("/message", response_model=ChatResponse)
 async def send_message(msg: ChatMessage):
     conversation_id = msg.conversation_id or str(uuid.uuid4())
-
-    if conversation_id not in conversations:
-        conversations[conversation_id] = []
+    
+    # Ensure conversation exists in persistent storage
+    if not chat_history_service.get_conversation(conversation_id):
+        chat_history_service.create_conversation(title=None)
 
     clean_msg = _clean_message(msg.message)
     system_prompt = _build_system_prompt(msg.tool_id, msg.message)
 
-    conversations[conversation_id].append({"role": "user", "content": clean_msg})
-
-    history = conversations[conversation_id]
+    # Get history from persistent storage
+    conv = chat_history_service.get_conversation(conversation_id)
+    history = conv.get("messages", [])
+    
+    # Format for LLM
     context = "\n".join(f"{m['role']}: {m['content']}" for m in history[-10:])
+    if context:
+        context += f"\nuser: {clean_msg}"
+    else:
+        context = f"user: {clean_msg}"
 
     try:
         response_text = await llm_service.generate(
@@ -69,7 +107,11 @@ async def send_message(msg: ChatMessage):
         logger.error("Unexpected LLM error: %s", exc)
         raise HTTPException(status_code=500, detail=f"LLM error: {exc}") from exc
 
-    conversations[conversation_id].append({"role": "assistant", "content": response_text})
+    # Persist to JSON file
+    chat_history_service.append_messages(conversation_id, [
+        {"role": "user", "content": clean_msg},
+        {"role": "assistant", "content": response_text}
+    ])
 
     return ChatResponse(response=response_text, conversation_id=conversation_id)
 
@@ -81,17 +123,24 @@ async def send_message_stream(msg: ChatMessage):
         raise HTTPException(status_code=409, detail="Another interaction is in progress")
 
     conversation_id = msg.conversation_id or str(uuid.uuid4())
-
-    if conversation_id not in conversations:
-        conversations[conversation_id] = []
+    
+    # Ensure conversation exists in persistent storage
+    if not chat_history_service.get_conversation(conversation_id):
+        chat_history_service.create_conversation(title=None)
 
     clean_msg = _clean_message(msg.message)
     system_prompt = _build_system_prompt(msg.tool_id, msg.message)
 
-    conversations[conversation_id].append({"role": "user", "content": clean_msg})
-
-    history = conversations[conversation_id]
+    # Get history from persistent storage
+    conv = chat_history_service.get_conversation(conversation_id)
+    history = conv.get("messages", [])
+    
+    # Format for LLM
     context = "\n".join(f"{m['role']}: {m['content']}" for m in history[-10:])
+    if context:
+        context += f"\nuser: {clean_msg}"
+    else:
+        context = f"user: {clean_msg}"
 
     async def event_stream():
         full_response = []
@@ -102,9 +151,13 @@ async def send_message_stream(msg: ChatMessage):
             ):
                 full_response.append(token)
                 yield f"data: {json.dumps({'token': token})}\n\n"
-            conversations[conversation_id].append(
+            
+            # Persist to JSON file after stream completes
+            chat_history_service.append_messages(conversation_id, [
+                {"role": "user", "content": clean_msg},
                 {"role": "assistant", "content": "".join(full_response)}
-            )
+            ])
+            
             yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
         except CloudAPIError as exc:
             logger.warning("Gateway error during stream: %s", exc)
@@ -128,15 +181,17 @@ async def abort_message():
 @router.post("/guided-task", response_model=ChatResponse)
 async def guided_task(req: dict):
     task_type = req.get("task_type", "default")
-    conversation_id = str(uuid.uuid4())
-
+    
     prompt_text = (
         "Let's try your first task together! I'll guide you step by step. "
         "What would you like to work on?"
     )
-
-    conversations[conversation_id] = [
-        {"role": "assistant", "content": prompt_text},
-    ]
+    
+    # Create conversation and persist initial message
+    conv = chat_history_service.create_conversation(title="First Task")
+    conversation_id = conv["id"]
+    chat_history_service.append_messages(conversation_id, [
+        {"role": "assistant", "content": prompt_text}
+    ])
 
     return ChatResponse(response=prompt_text, conversation_id=conversation_id)
